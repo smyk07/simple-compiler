@@ -1,12 +1,10 @@
-#include <string.h>
-
 #include "includes/data_structures.h"
 #include "includes/utils.h"
 
 #include "includes/lexer.h"
 
 int main(int argc, char *argv[]) {
-  char *buffer = NULL;
+  char *buffer = (void *)0;
   int buffer_len = read_file(argv[1], &buffer);
 
   dynamic_array tokens;
