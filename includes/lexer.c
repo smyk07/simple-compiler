@@ -31,6 +31,12 @@ const char *show_token_kind(token_kind kind) {
     return "add";
   case SUBTRACT:
     return "subtract";
+  case MULTIPLY:
+    return "multiply";
+  case DIVIDE:
+    return "divide";
+  case MODULO:
+    return "modulo";
   case LESS_THAN:
     return "less_than";
   case GREATER_THAN:
@@ -90,6 +96,15 @@ token lexer_next_token(lexer *l) {
   } else if (l->ch == '-') {
     lexer_read_char(l);
     return (token){.kind = SUBTRACT, .value = NULL};
+  } else if (l->ch == '*') {
+    lexer_read_char(l);
+    return (token){.kind = MULTIPLY, .value = NULL};
+  } else if (l->ch == '/') {
+    lexer_read_char(l);
+    return (token){.kind = DIVIDE, .value = NULL};
+  } else if (l->ch == '%') {
+    lexer_read_char(l);
+    return (token){.kind = MODULO, .value = NULL};
   } else if (l->ch == '<') {
     lexer_read_char(l);
     return (token){.kind = LESS_THAN, .value = NULL};
