@@ -1,14 +1,7 @@
 #ifndef DATA_STRUCTURES
 #define DATA_STRUCTURES
 
-#include <stdint.h>
-
-typedef struct allocator {
-  uint8_t *start;
-  uint8_t *prev;
-  uint8_t *top;
-  uint64_t size;
-} allocator;
+typedef struct allocator allocator;
 
 typedef struct string_slice {
   struct ds_allocator *allocator;
