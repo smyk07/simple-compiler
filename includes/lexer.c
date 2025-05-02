@@ -42,15 +42,6 @@ const char *show_token_kind(token_kind kind) {
   }
 }
 
-void print_token(token token) {
-  const char *kind = show_token_kind(token.kind);
-  printf("%s", kind);
-  if (token.value != NULL) {
-    printf("(%s)", token.value);
-  }
-  printf("\n");
-}
-
 char lexer_peek_char(lexer *l) {
   if (l->read_pos >= l->buffer_len) {
     return EOF;
@@ -156,7 +147,7 @@ token lexer_next_token(lexer *l) {
 int lexer_tokenize(char *buffer, unsigned int buffer_len,
                    dynamic_array *tokens) {
   lexer lexer;
-  lexer_init(&lexer, (char *)buffer, buffer_len);
+  lexer_init(&lexer, buffer, buffer_len);
 
   token token;
   do {
@@ -168,4 +159,13 @@ int lexer_tokenize(char *buffer, unsigned int buffer_len,
   } while (token.kind != END);
 
   return 0;
+}
+
+void print_token(token token) {
+  const char *kind = show_token_kind(token.kind);
+  printf("%s", kind);
+  if (token.value != NULL) {
+    printf("(%s)", token.value);
+  }
+  printf("\n");
 }
