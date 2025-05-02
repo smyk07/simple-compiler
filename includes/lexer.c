@@ -126,7 +126,7 @@ token lexer_next_token(lexer *l) {
     if (strcmp(value, "input") == 0)
       return (token){.kind = INPUT, value = NULL};
     else if (strcmp(value, "output") == 0)
-      return (token){.kind = INPUT, value = NULL};
+      return (token){.kind = OUTPUT, value = NULL};
     else if (strcmp(value, "goto") == 0)
       return (token){.kind = GOTO, value = NULL};
     else if (strcmp(value, "if") == 0)
