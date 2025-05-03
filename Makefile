@@ -4,7 +4,7 @@ CFLAGS = -g -Wall -Wextra
 SRC_DIR = ./includes
 OBJ_DIR = ./obj
 
-SRCS = main.c $(SRC_DIR)/data_structures.c $(SRC_DIR)/utils.c $(SRC_DIR)/lexer.c
+SRCS = main.c $(SRC_DIR)/data_structures.c $(SRC_DIR)/utils.c $(SRC_DIR)/lexer.c $(SRC_DIR)/parser.c
 OBJS = $(SRCS:%.c=$(OBJ_DIR)/%.o)
 
 TARGET = compiler

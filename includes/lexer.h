@@ -37,6 +37,7 @@ typedef struct lexer {
   char ch;
 } lexer;
 
+const char *show_token_kind(token_kind kind);
 void print_token(token token);
 int lexer_tokenize(char *buffer, unsigned int buffer_len,
                    dynamic_array *tokens);
