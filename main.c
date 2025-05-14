@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <string.h>
 
 #include "includes/data_structures.h"
@@ -8,13 +9,16 @@
 #include "includes/parser.h"
 
 int main(int argc, char *argv[]) {
-  char *buffer = NULL;
-  int buffer_len = read_file(argv[1], &buffer);
+  char *filename = argv[1];
+  char *extracted_filename = extract_name(filename);
+
+  char *code_buffer = NULL;
+  int code_buffer_len = read_file(filename, &code_buffer);
 
   // Lexing
   dynamic_array tokens;
   dynamic_array_init(&tokens, sizeof(token));
-  lexer_tokenize(buffer, buffer_len, &tokens);
+  lexer_tokenize(code_buffer, code_buffer_len, &tokens);
 
   // Parsing
   parser p;
@@ -23,7 +27,12 @@ int main(int argc, char *argv[]) {
   parse_program(&p, &program);
 
   // Codegen
+  freopen("output.asm", "w", stdout);
   program_asm(&program);
+  fclose(stdout);
+
+  // Assembler
+  assemble("output.asm", extracted_filename);
 
   return 0;
 }

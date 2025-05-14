@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 int read_file(char *path, char **buffer) {
   int tmp_capacity = MAX_LEN;
@@ -45,4 +46,34 @@ int read_file(char *path, char **buffer) {
   *buffer = tmp;
 
   return tmp_size;
+}
+
+char *extract_name(const char *filename) {
+  const char *dot = strrchr(filename, '.');
+  size_t len;
+
+  if (dot != NULL) {
+    len = dot - filename;
+  } else {
+    len = strlen(filename);
+  }
+
+  char *name = (char *)malloc(len + 1);
+  if (name == NULL) {
+    return NULL;
+  }
+
+  strncpy(name, filename, len);
+  name[len] = '\0';
+
+  return name;
+}
+
+void assemble(char *asm_file, char *output_file) {
+  char command[512];
+  snprintf(command, sizeof(command), "fasm %s %s", asm_file, output_file);
+  int result = system(command);
+  if (result != 0) {
+    fprintf(stderr, "Assembly failed with code %d\n", result);
+  }
 }
