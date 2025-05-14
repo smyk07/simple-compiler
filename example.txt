@@ -1,6 +1,0 @@
-n = input
-i = 0
-:label
-output i
-i = i + 1
-if i < a then goto :label
