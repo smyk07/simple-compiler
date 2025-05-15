@@ -2,7 +2,7 @@
 
 ## Inspiration
 
-![](https://youtu.be/HOe2YFnzO2I)
+[![Youtube video](https://img.youtube.com/vi/HOe2YFnzO2I/0.jpg)](https://youtu.be/HOe2YFnzO2I)
 
 ## Usage
 
