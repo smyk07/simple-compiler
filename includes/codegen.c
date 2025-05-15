@@ -1,4 +1,5 @@
 #include "codegen.h"
+#include "parser.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -29,6 +30,40 @@ void term_asm(term_node *term, dynamic_array *variables) {
   case TERM_INT:
     printf("    mov rax, %s\n", term->value);
     break;
+  case TERM_CHAR: {
+    char ch = term->value[0];
+    int char_value;
+
+    if (ch == '\\' && term->value[1] != '\0') {
+      switch (term->value[1]) {
+      case 'n':
+        char_value = '\n';
+        break;
+      case 't':
+        char_value = '\t';
+        break;
+      case 'r':
+        char_value = '\r';
+        break;
+      case '0':
+        char_value = '\0';
+        break;
+      case '\\':
+        char_value = '\\';
+        break;
+      case '\'':
+        char_value = '\'';
+        break;
+      default:
+        char_value = term->value[1];
+      }
+    } else {
+      char_value = ch;
+    }
+
+    printf("    mov rax, %d\n", char_value);
+    break;
+  }
   case TERM_IDENTIFIER: {
     int index = find_variables(variables, term->value);
     printf("    mov rax, qword [rbp - %d]\n", index * 8 + 8);
@@ -124,13 +159,29 @@ void instr_asm(instr_node *instr, dynamic_array *variables, int *if_count) {
   case INSTR_GOTO:
     printf("    jmp .%s\n", instr->goto_.label);
     break;
-  case INSTR_OUTPUT: {
+  case INSTR_OUTPUTI:
     term_asm(&instr->output.term, variables);
+    printf("    push rdi\n");
+    printf("    push rsi\n");
     printf("    mov rdi, 1\n");
     printf("    mov rsi, rax\n");
     printf("    call write_uint\n");
+    printf("    pop rsi\n");
+    printf("    pop rdi\n");
     break;
-  }
+  case INSTR_OUTPUTC:
+    term_asm(&instr->output.term, variables);
+    printf("    push rax\n");
+    printf("    sub rsp, 8\n");
+    printf("    mov rdi, 1\n");
+    printf("    mov rsi, rsp\n");
+    printf("    add rsi, 8\n");
+    printf("    mov rdx, 1\n");
+    printf("    mov rax, 1\n");
+    printf("    syscall\n");
+    printf("    add rsp, 8\n");
+    printf("    pop rax\n");
+    break;
   case INSTR_LABEL:
     printf(".%s:\n", instr->label.label);
     break;
@@ -142,6 +193,8 @@ void term_declare_variables(term_node *term, dynamic_array *variables) {
   case TERM_INPUT:
     break;
   case TERM_INT:
+    break;
+  case TERM_CHAR:
     break;
   case TERM_IDENTIFIER:
     for (unsigned int i = 0; i < variables->count; i++) {
@@ -224,7 +277,8 @@ void instr_declare_variables(instr_node *instr, dynamic_array *variables) {
     break;
   case INSTR_GOTO:
     break;
-  case INSTR_OUTPUT:
+  case INSTR_OUTPUTI:
+  case INSTR_OUTPUTC:
     term_declare_variables(&instr->output.term, variables);
     break;
   case INSTR_LABEL:

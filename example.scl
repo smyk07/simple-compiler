@@ -1,6 +1,21 @@
 i = 0
-n = input
+
+outputc 'n'
+outputc 'u'
+outputc 'm'
+outputc ':'
+outputc ' '
+
+n = input + 1
+
 :label
-output i
+outputi i
+outputc '\n'
 i = i + 1
+
 if i < n then goto :label
+
+outputc 't'
+outputc 'y'
+outputc '!'
+outputc '\n'

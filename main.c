@@ -20,11 +20,17 @@ int main(int argc, char *argv[]) {
   dynamic_array_init(&tokens, sizeof(token));
   lexer_tokenize(code_buffer, code_buffer_len, &tokens);
 
+  // Lexing test function
+  // print_tokens(&tokens);
+
   // Parsing
   parser p;
   program_node program;
   parser_init(tokens, &p);
   parse_program(&p, &program);
+
+  // Parsing test function
+  // print_program(&program);
 
   // Codegen
   freopen("output.asm", "w", stdout);

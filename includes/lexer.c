@@ -1,6 +1,7 @@
 #include "lexer.h"
 
 #include <ctype.h>
+#include <stdatomic.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -13,8 +14,10 @@ const char *show_token_kind(token_kind kind) {
     return "identifier";
   case INPUT:
     return "input";
-  case OUTPUT:
-    return "output";
+  case OUTPUTI:
+    return "outputi";
+  case OUTPUTC:
+    return "outputc";
   case GOTO:
     return "goto";
   case IF:
@@ -25,6 +28,8 @@ const char *show_token_kind(token_kind kind) {
     return "label";
   case INT:
     return "int";
+  case CHAR:
+    return "char";
   case ASSIGN:
     return "assign";
   case ADD:
@@ -130,6 +135,49 @@ token lexer_next_token(lexer *l) {
     char *value = NULL;
     string_slice_to_owned(&slice, &value);
     return (token){.kind = INT, .value = value};
+  } else if (l->ch == '\'') {
+    lexer_read_char(l);
+    char char_value = l->ch;
+    char escaped_char;
+    if (l->ch == '\\') {
+      lexer_read_char(l);
+      switch (l->ch) {
+      case 'n':
+        escaped_char = '\n';
+        break;
+      case 't':
+        escaped_char = '\t';
+        break;
+      case 'r':
+        escaped_char = '\r';
+        break;
+      case '\\':
+        escaped_char = '\\';
+        break;
+      case '\'':
+        escaped_char = '\'';
+        break;
+      case '0':
+        escaped_char = '\0';
+        break;
+      default:
+        return (token){.kind = INVALID, .value = &(l->ch)};
+      }
+      char_value = escaped_char;
+    }
+    lexer_read_char(l);
+    if (l->ch != '\'') {
+      return (token){.kind = INVALID, .value = &(l->ch)};
+    }
+    lexer_read_char(l);
+    char *value = (char *)malloc(2);
+    if (value == NULL) {
+      perror("Failed to allocate memory for character literal");
+      exit(1);
+    }
+    value[0] = char_value;
+    value[1] = '\0';
+    return (token){.kind = CHAR, .value = value};
   } else if (isalnum(l->ch) || l->ch == '_') {
     string_slice slice = {.str = l->buffer + l->pos, .len = 0};
     while (isalnum(l->ch) || l->ch == '_') {
@@ -139,17 +187,19 @@ token lexer_next_token(lexer *l) {
     char *value = NULL;
     string_slice_to_owned(&slice, &value);
     if (strcmp(value, "input") == 0)
-      return (token){.kind = INPUT, value = NULL};
-    else if (strcmp(value, "output") == 0)
-      return (token){.kind = OUTPUT, value = NULL};
+      return (token){.kind = INPUT, .value = NULL};
+    else if (strcmp(value, "outputi") == 0)
+      return (token){.kind = OUTPUTI, .value = NULL};
+    else if (strcmp(value, "outputc") == 0)
+      return (token){.kind = OUTPUTC, .value = NULL};
     else if (strcmp(value, "goto") == 0)
-      return (token){.kind = GOTO, value = NULL};
+      return (token){.kind = GOTO, .value = NULL};
     else if (strcmp(value, "if") == 0)
-      return (token){.kind = IF, value = NULL};
+      return (token){.kind = IF, .value = NULL};
     else if (strcmp(value, "then") == 0)
-      return (token){.kind = THEN, value = NULL};
+      return (token){.kind = THEN, .value = NULL};
     else
-      return (token){.kind = IDENTIFIER, value = value};
+      return (token){.kind = IDENTIFIER, .value = value};
   } else {
     string_slice slice = {.str = l->buffer + l->pos, .len = 1};
     char *value = NULL;
@@ -183,4 +233,12 @@ void print_token(token token) {
     printf("(%s)", token.value);
   }
   printf("\n");
+}
+
+void print_tokens(dynamic_array *tokens) {
+  for (unsigned int i = 0; i <= tokens->count - 1; i++) {
+    token token;
+    dynamic_array_get(tokens, i, &token);
+    print_token(token);
+  }
 }

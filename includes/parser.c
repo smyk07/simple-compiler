@@ -1,4 +1,5 @@
 #include "parser.h"
+#include "lexer.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -23,11 +24,14 @@ void parse_term(parser *p, term_node *term) {
   } else if (token.kind == INT) {
     term->kind = TERM_INT;
     term->value = token.value;
+  } else if (token.kind == CHAR) {
+    term->kind = TERM_CHAR;
+    term->value = token.value;
   } else if (token.kind == IDENTIFIER) {
     term->kind = TERM_IDENTIFIER;
     term->value = token.value;
   } else {
-    printf("Expected a term (input, int, identifier), got %s\n",
+    printf("Expected a term (input, int, char, identifier), got %s\n",
            show_token_kind(token.kind));
     exit(1);
   }
@@ -168,10 +172,10 @@ void parse_goto(parser *p, instr_node *instr) {
   instr->goto_.label = token.value;
 }
 
-void parse_output(parser *p, instr_node *instr) {
+void parse_output(parser *p, instr_node *instr, instr_kind instr_kind) {
   term_node rhs;
 
-  instr->kind = INSTR_OUTPUT;
+  instr->kind = instr_kind;
   parser_advance(p);
 
   parse_term(p, &rhs);
@@ -200,8 +204,10 @@ void parse_instr(parser *p, instr_node *instr) {
     parse_if(p, instr);
   } else if (token.kind == GOTO) {
     parse_goto(p, instr);
-  } else if (token.kind == OUTPUT) {
-    parse_output(p, instr);
+  } else if (token.kind == OUTPUTI) {
+    parse_output(p, instr, INSTR_OUTPUTI);
+  } else if (token.kind == OUTPUTC) {
+    parse_output(p, instr, INSTR_OUTPUTC);
   } else if (token.kind == LABEL) {
     parse_label(p, instr);
   } else {
@@ -236,6 +242,9 @@ void print_instr(instr_node instr) {
         printf("input\n");
         break;
       case TERM_INT:
+      case TERM_CHAR:
+        printf("\'%s\'\n", instr.assign.expr.term.value);
+        break;
       case TERM_IDENTIFIER:
         printf("%s\n", instr.assign.expr.term.value);
         break;
@@ -280,8 +289,18 @@ void print_instr(instr_node instr) {
   case INSTR_GOTO:
     printf("goto: %s\n", instr.goto_.label);
     break;
-  case INSTR_OUTPUT:
-    printf("output: %s\n", instr.output.term.value);
+  case INSTR_OUTPUTI:
+  case INSTR_OUTPUTC:
+    switch (instr.output.term.kind) {
+    case TERM_INPUT:
+    case TERM_INT:
+    case TERM_CHAR:
+      printf("output: \'%s\'\n", instr.output.term.value);
+      break;
+    case TERM_IDENTIFIER:
+      printf("output: %s\n", instr.output.term.value);
+      break;
+    }
     break;
   case INSTR_LABEL:
     printf("label: %s\n", instr.label.label);

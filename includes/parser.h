@@ -5,7 +5,12 @@
 #include "lexer.h"
 
 // TERM
-typedef enum term_kind { TERM_INPUT, TERM_INT, TERM_IDENTIFIER } term_kind;
+typedef enum term_kind {
+  TERM_INPUT,
+  TERM_INT,
+  TERM_CHAR,
+  TERM_IDENTIFIER
+} term_kind;
 
 typedef struct term_node {
   term_kind kind;
@@ -60,7 +65,8 @@ typedef enum instr_kind {
   INSTR_ASSIGN,
   INSTR_IF,
   INSTR_GOTO,
-  INSTR_OUTPUT,
+  INSTR_OUTPUTI,
+  INSTR_OUTPUTC,
   INSTR_LABEL,
 } instr_kind;
 
