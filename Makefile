@@ -22,7 +22,10 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-clean:
+clean-all:
 	rm -rf $(OBJ_DIR) $(TARGET)
 
-.PHONY: all clean
+clean-obj: 
+	rm -rf $(OBJ_DIR)
+
+.PHONY: all clean-all clean-obj
