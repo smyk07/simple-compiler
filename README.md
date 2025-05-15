@@ -2,7 +2,7 @@
 
 ## Inspiration
 
-[![Youtube video](https://img.youtube.com/vi/HOe2YFnzO2I/0.jpg)](https://youtu.be/HOe2YFnzO2I)
+[How to build a compiler from scratch by Alex The Dev](https://youtu.be/HOe2YFnzO2I)
 
 ## Usage
 
