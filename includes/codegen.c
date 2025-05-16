@@ -87,7 +87,9 @@ void expr_asm(expr_node *expr, dynamic_array *variables) {
     term_asm(&expr->subtract.lhs, variables);
     printf("    mov rdx, rax\n");
     term_asm(&expr->subtract.rhs, variables);
-    printf("    sub rax, rdx\n");
+    printf("    mov rcx, rax\n");
+    printf("    mov rax, rdx\n");
+    printf("    sub rax, rcx\n");
     break;
   case EXPR_MULTIPLY:
     term_asm(&expr->multiply.lhs, variables);
@@ -97,7 +99,7 @@ void expr_asm(expr_node *expr, dynamic_array *variables) {
     break;
   case EXPR_DIVIDE:
     term_asm(&expr->divide.lhs, variables);
-    printf("    push rdx, rax\n");
+    printf("    push rax\n");
     term_asm(&expr->divide.rhs, variables);
     printf("    mov rcx, rax\n");
     printf("    pop rax\n");
