@@ -115,7 +115,6 @@ void expr_asm(expr_node *expr, dynamic_array *variables) {
     printf("    xor rdx, rdx\n");
     printf("    div rcx\n");
     printf("    mov rax, rdx\n");
-    // TODO
     break;
   }
 }

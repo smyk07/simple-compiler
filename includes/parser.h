@@ -1,3 +1,7 @@
+/*
+ * file: parser.h
+ * brief: Parser for the simple-compiler
+ */
 #ifndef PARSER
 #define PARSER
 
@@ -14,9 +18,7 @@ typedef enum term_kind {
 
 typedef struct term_node {
   term_kind kind;
-  union {
-    char *value;
-  };
+  token_value value;
 } term_node;
 
 typedef struct term_binary_node {
@@ -48,15 +50,23 @@ typedef struct expr_node {
 
 // REL
 typedef enum rel_kind {
+  REL_IS_EQUAL,
+  REL_NOT_EQUAL,
   REL_LESS_THAN,
+  REL_LESS_THAN_OR_EQUAL,
   REL_GREATER_THAN,
+  REL_GREATER_THAN_OR_EQUAL,
 } rel_kind;
 
 typedef struct rel_node {
   rel_kind kind;
   union {
+    term_binary_node is_equal;
+    term_binary_node not_equal;
     term_binary_node less_than;
+    term_binary_node less_than_or_equal;
     term_binary_node greater_than;
+    term_binary_node greater_than_or_equal;
   };
 } rel_node;
 
@@ -65,8 +75,7 @@ typedef enum instr_kind {
   INSTR_ASSIGN,
   INSTR_IF,
   INSTR_GOTO,
-  INSTR_OUTPUTI,
-  INSTR_OUTPUTC,
+  INSTR_OUTPUT,
   INSTR_LABEL,
 } instr_kind;
 

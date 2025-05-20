@@ -1,3 +1,7 @@
+/*
+ * file: utils.h
+ * brief: Basic utility functions for the simple-compiler.
+ */
 #ifndef UTILS
 #define UTILS
 

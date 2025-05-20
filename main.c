@@ -30,7 +30,9 @@ int main(int argc, char *argv[]) {
   parse_program(&p, &program);
 
   // Parsing test function
-  // print_program(&program);
+  print_program(&program);
+
+  /*
 
   // Codegen
   freopen("output.asm", "w", stdout);
@@ -39,6 +41,8 @@ int main(int argc, char *argv[]) {
 
   // Assembler
   assemble("output.asm", extracted_filename);
+
+  */
 
   return 0;
 }

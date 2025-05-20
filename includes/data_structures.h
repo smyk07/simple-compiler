@@ -1,3 +1,8 @@
+/*
+ * file: data_structures.h
+ * brief: contains data structures and functions related to them for the
+ * simple-compiler.
+ */
 #ifndef DATA_STRUCTURES
 #define DATA_STRUCTURES
 

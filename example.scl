@@ -1,21 +1,6 @@
-i = 0
+int n = 2 + 1
 
-outputc 'n'
-outputc 'u'
-outputc 'm'
-outputc ':'
-outputc ' '
-
-n = input + 1
+if n <= 10 then goto :label
 
 :label
-outputi i
-outputc '\n'
-i = i + 1
-
-if i < n then goto :label
-
-outputc 't'
-outputc 'y'
-outputc '!'
-outputc '\n'
+n = n + 1

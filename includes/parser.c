@@ -19,17 +19,17 @@ void parse_term(parser *p, term_node *term) {
   token token;
 
   parser_current(p, &token);
-  if (token.kind == INPUT) {
+  if (token.kind == TOKEN_INPUT) {
     term->kind = TERM_INPUT;
-  } else if (token.kind == INT) {
+  } else if (token.kind == TOKEN_INT) {
     term->kind = TERM_INT;
-    term->value = token.value;
-  } else if (token.kind == CHAR) {
+    term->value.integer = token.value.integer;
+  } else if (token.kind == TOKEN_CHAR) {
     term->kind = TERM_CHAR;
-    term->value = token.value;
-  } else if (token.kind == IDENTIFIER) {
+    term->value.character = token.value.character;
+  } else if (token.kind == TOKEN_IDENTIFIER) {
     term->kind = TERM_IDENTIFIER;
-    term->value = token.value;
+    term->value.str = token.value.str;
   } else {
     printf("Expected a term (input, int, char, identifier), got %s\n",
            show_token_kind(token.kind));
@@ -46,35 +46,35 @@ void parse_expr(parser *p, expr_node *expr) {
   parse_term(p, &lhs);
 
   parser_current(p, &token);
-  if (token.kind == ADD) {
+  if (token.kind == TOKEN_ADD) {
     parser_advance(p);
     parse_term(p, &rhs);
 
     expr->kind = EXPR_ADD;
     expr->add.lhs = lhs;
     expr->add.rhs = rhs;
-  } else if (token.kind == SUBTRACT) {
+  } else if (token.kind == TOKEN_SUBTRACT) {
     parser_advance(p);
     parse_term(p, &rhs);
 
     expr->kind = EXPR_SUBTRACT;
     expr->subtract.lhs = lhs;
     expr->subtract.rhs = rhs;
-  } else if (token.kind == MULTIPLY) {
+  } else if (token.kind == TOKEN_MULTIPLY) {
     parser_advance(p);
     parse_term(p, &rhs);
 
     expr->kind = EXPR_MULTIPLY;
     expr->multiply.lhs = lhs;
     expr->multiply.rhs = rhs;
-  } else if (token.kind == DIVIDE) {
+  } else if (token.kind == TOKEN_DIVIDE) {
     parser_advance(p);
     parse_term(p, &rhs);
 
     expr->kind = EXPR_DIVIDE;
     expr->divide.lhs = lhs;
     expr->divide.rhs = rhs;
-  } else if (token.kind == MODULO) {
+  } else if (token.kind == TOKEN_MODULO) {
     parser_advance(p);
     parse_term(p, &rhs);
 
@@ -94,22 +94,51 @@ void parse_rel(parser *p, rel_node *rel) {
   parse_term(p, &lhs);
 
   parser_current(p, &token);
-  if (token.kind == LESS_THAN) {
+  if (token.kind == TOKEN_IS_EQUAL) {
+    parser_advance(p);
+    parse_term(p, &rhs);
+
+    rel->kind = REL_IS_EQUAL;
+    rel->is_equal.lhs = lhs;
+    rel->is_equal.rhs = rhs;
+  } else if (token.kind == TOKEN_NOT_EQUAL) {
+    parser_advance(p);
+    parse_term(p, &rhs);
+
+    rel->kind = REL_NOT_EQUAL;
+    rel->not_equal.lhs = lhs;
+    rel->not_equal.rhs = rhs;
+  } else if (token.kind == TOKEN_LESS_THAN) {
     parser_advance(p);
     parse_term(p, &rhs);
 
     rel->kind = REL_LESS_THAN;
     rel->less_than.lhs = lhs;
     rel->less_than.rhs = rhs;
-  } else if (token.kind == GREATER_THAN) {
+  } else if (token.kind == TOKEN_LESS_THAN_OR_EQUAL) {
+    parser_advance(p);
+    parse_term(p, &rhs);
+
+    rel->kind = REL_LESS_THAN_OR_EQUAL;
+    rel->less_than_or_equal.lhs = lhs;
+    rel->less_than_or_equal.rhs = rhs;
+  } else if (token.kind == TOKEN_GREATER_THAN) {
     parser_advance(p);
     parse_term(p, &rhs);
 
     rel->kind = REL_GREATER_THAN;
     rel->greater_than.lhs = lhs;
     rel->greater_than.rhs = rhs;
+  } else if (token.kind == TOKEN_GREATER_THAN_OR_EQUAL) {
+    parser_advance(p);
+    parse_term(p, &rhs);
+
+    rel->kind = REL_GREATER_THAN_OR_EQUAL;
+    rel->greater_than_or_equal.lhs = lhs;
+    rel->greater_than_or_equal.rhs = rhs;
   } else {
-    printf("Expected a relation (<, >), got %s\n", show_token_kind(token.kind));
+    printf("Expected a relation (==, !=, <, <=, >, >=), got %s\n",
+           show_token_kind(token.kind));
     exit(1);
   }
 }
@@ -122,11 +151,11 @@ void parse_assign(parser *p, instr_node *instr) {
   instr->kind = INSTR_ASSIGN;
 
   parser_current(p, &token);
-  instr->assign.identifier = token.value;
+  instr->assign.identifier = token.value.str;
   parser_advance(p);
 
   parser_current(p, &token);
-  if (token.kind != ASSIGN) {
+  if (token.kind != TOKEN_ASSIGN) {
     printf("Expected assign, found %s\n", show_token_kind(token.kind));
     exit(1);
   }
@@ -145,7 +174,7 @@ void parse_if(parser *p, instr_node *instr) {
   parse_rel(p, &instr->if_.rel);
 
   parser_current(p, &token);
-  if (token.kind != THEN) {
+  if (token.kind != TOKEN_THEN) {
     printf("Expected then, found %s\n", show_token_kind(token.kind));
     exit(1);
   }
@@ -163,21 +192,19 @@ void parse_goto(parser *p, instr_node *instr) {
   parser_advance(p);
 
   parser_current(p, &token);
-  if (token.kind != LABEL) {
+  if (token.kind != TOKEN_LABEL) {
     printf("Expected label, found %s\n", show_token_kind(token.kind));
     exit(1);
   }
   parser_advance(p);
 
-  instr->goto_.label = token.value;
+  instr->goto_.label = token.value.str;
 }
 
-void parse_output(parser *p, instr_node *instr, instr_kind instr_kind) {
+void parse_output(parser *p, instr_node *instr) {
   term_node rhs;
 
-  instr->kind = instr_kind;
   parser_advance(p);
-
   parse_term(p, &rhs);
 
   instr->output.term = rhs;
@@ -189,7 +216,7 @@ void parse_label(parser *p, instr_node *instr) {
   instr->kind = INSTR_LABEL;
 
   parser_current(p, &token);
-  instr->label.label = token.value;
+  instr->label.label = token.value.str;
 
   parser_advance(p);
 }
@@ -198,19 +225,35 @@ void parse_instr(parser *p, instr_node *instr) {
   token token;
 
   parser_current(p, &token);
-  if (token.kind == IDENTIFIER) {
+
+  switch (token.kind) {
+  case TOKEN_TYPE_INT:
+  case TOKEN_TYPE_CHAR:
+    parser_advance(p);
+    parser_current(p, &token);
+    if (token.kind == TOKEN_IDENTIFIER) {
+      parse_assign(p, instr);
+    } else {
+      printf("unexpected token: %s\n", show_token_kind(token.kind));
+      exit(1);
+    }
+    break;
+  case TOKEN_IDENTIFIER:
     parse_assign(p, instr);
-  } else if (token.kind == IF) {
+    break;
+  case TOKEN_OUTPUT:
+    parse_output(p, instr);
+    break;
+  case TOKEN_IF:
     parse_if(p, instr);
-  } else if (token.kind == GOTO) {
+    break;
+  case TOKEN_GOTO:
     parse_goto(p, instr);
-  } else if (token.kind == OUTPUTI) {
-    parse_output(p, instr, INSTR_OUTPUTI);
-  } else if (token.kind == OUTPUTC) {
-    parse_output(p, instr, INSTR_OUTPUTC);
-  } else if (token.kind == LABEL) {
+    break;
+  case TOKEN_LABEL:
     parse_label(p, instr);
-  } else {
+    break;
+  default:
     printf("unexpected token: %s\n", show_token_kind(token.kind));
     exit(1);
   }
@@ -221,14 +264,45 @@ void parse_program(parser *p, program_node *program) {
 
   token token;
   do {
-    instr_node instr;
-
-    parse_instr(p, &instr);
-
-    dynamic_array_append(&program->instrs, &instr);
-
+    instr_node *instr = malloc(sizeof(instr_node));
+    parse_instr(p, instr);
+    dynamic_array_append(&program->instrs, instr);
     parser_current(p, &token);
-  } while (token.kind != END);
+  } while (token.kind != TOKEN_END);
+}
+
+void check_terms_and_print(term_node *lhs, char *operator, term_node * rhs) {
+  switch (lhs->kind) {
+  case TERM_INPUT:
+    printf("input\n");
+    break;
+  case TERM_INT:
+    printf("%d", lhs->value.integer);
+    break;
+  case TERM_CHAR:
+    printf("%c", lhs->value.character);
+    break;
+  case TERM_IDENTIFIER:
+    printf("%s", lhs->value.str);
+    break;
+  }
+
+  printf(" %s ", operator);
+
+  switch (rhs->kind) {
+  case TERM_INPUT:
+    printf("input\n");
+    break;
+  case TERM_INT:
+    printf("%d\n", rhs->value.integer);
+    break;
+  case TERM_CHAR:
+    printf("%c\n", rhs->value.character);
+    break;
+  case TERM_IDENTIFIER:
+    printf("%s\n", rhs->value.str);
+    break;
+  }
 }
 
 void print_instr(instr_node instr) {
@@ -242,63 +316,95 @@ void print_instr(instr_node instr) {
         printf("input\n");
         break;
       case TERM_INT:
+        printf("\'%d\'\n", instr.assign.expr.term.value.integer);
+        break;
       case TERM_CHAR:
-        printf("\'%s\'\n", instr.assign.expr.term.value);
+        printf("\'%c\'\n", instr.assign.expr.term.value.character);
         break;
       case TERM_IDENTIFIER:
-        printf("%s\n", instr.assign.expr.term.value);
+        printf("%s\n", instr.assign.expr.term.value.str);
         break;
       }
       break;
     case EXPR_ADD:
-      printf("%s + %s\n", instr.assign.expr.add.lhs.value,
-             instr.assign.expr.add.rhs.value);
+      check_terms_and_print(&instr.assign.expr.add.lhs, "+",
+                            &instr.assign.expr.add.rhs);
       break;
     case EXPR_SUBTRACT:
-      printf("%s i %s\n", instr.assign.expr.subtract.lhs.value,
-             instr.assign.expr.subtract.rhs.value);
+      check_terms_and_print(&instr.assign.expr.subtract.lhs, "-",
+                            &instr.assign.expr.subtract.rhs);
       break;
     case EXPR_MULTIPLY:
-      printf("%s * %s\n", instr.assign.expr.multiply.lhs.value,
-             instr.assign.expr.multiply.rhs.value);
+      check_terms_and_print(&instr.assign.expr.multiply.lhs, "*",
+                            &instr.assign.expr.multiply.rhs);
       break;
     case EXPR_DIVIDE:
-      printf("%s / %s\n", instr.assign.expr.divide.lhs.value,
-             instr.assign.expr.divide.rhs.value);
+      check_terms_and_print(&instr.assign.expr.divide.lhs, "/",
+                            &instr.assign.expr.divide.rhs);
       break;
     case EXPR_MODULO:
-      printf("%s %% %s\n", instr.assign.expr.modulo.lhs.value,
-             instr.assign.expr.modulo.rhs.value);
+      check_terms_and_print(&instr.assign.expr.modulo.lhs, "%%",
+                            &instr.assign.expr.modulo.rhs);
       break;
     }
     break;
   case INSTR_IF:
-    if (instr.if_.rel.kind == REL_GREATER_THAN) {
-      printf("if: %s > %s\n", instr.if_.rel.greater_than.lhs.value,
-             instr.if_.rel.greater_than.rhs.value);
+    switch (instr.if_.rel.kind) {
+    case REL_IS_EQUAL:
+      check_terms_and_print(&instr.if_.rel.is_equal.lhs,
+                            "==", &instr.if_.rel.is_equal.rhs);
       printf("\t then: ");
       print_instr(*instr.if_.instr);
       break;
-    } else {
-      printf("if: %s < %s\n", instr.if_.rel.less_than.lhs.value,
-             instr.if_.rel.less_than.rhs.value);
+    case REL_NOT_EQUAL:
+      check_terms_and_print(&instr.if_.rel.not_equal.lhs,
+                            "!=", &instr.if_.rel.not_equal.rhs);
+      printf("\t then: ");
+      print_instr(*instr.if_.instr);
+      break;
+    case REL_LESS_THAN:
+      check_terms_and_print(&instr.if_.rel.less_than.lhs, "<",
+                            &instr.if_.rel.less_than.rhs);
+      printf("\t then: ");
+      print_instr(*instr.if_.instr);
+      break;
+    case REL_LESS_THAN_OR_EQUAL:
+      check_terms_and_print(&instr.if_.rel.less_than_or_equal.lhs,
+                            "<=", &instr.if_.rel.less_than_or_equal.rhs);
+      printf("\t then: ");
+      print_instr(*instr.if_.instr);
+      break;
+    case REL_GREATER_THAN:
+      check_terms_and_print(&instr.if_.rel.greater_than.lhs, ">",
+                            &instr.if_.rel.greater_than.rhs);
+      printf("\t then: ");
+      print_instr(*instr.if_.instr);
+      break;
+    case REL_GREATER_THAN_OR_EQUAL:
+      check_terms_and_print(&instr.if_.rel.greater_than_or_equal.lhs,
+                            ">=", &instr.if_.rel.greater_than_or_equal.rhs);
       printf("\t then: ");
       print_instr(*instr.if_.instr);
       break;
     }
+    break;
   case INSTR_GOTO:
     printf("goto: %s\n", instr.goto_.label);
     break;
-  case INSTR_OUTPUTI:
-  case INSTR_OUTPUTC:
+  case INSTR_OUTPUT:
+    printf("output: ");
     switch (instr.output.term.kind) {
     case TERM_INPUT:
+      printf("input\n");
+      break;
     case TERM_INT:
+      printf("\'%d\'\n", instr.output.term.value.integer);
+      break;
     case TERM_CHAR:
-      printf("output: \'%s\'\n", instr.output.term.value);
+      printf("\'%c\'\n", instr.output.term.value.character);
       break;
     case TERM_IDENTIFIER:
-      printf("output: %s\n", instr.output.term.value);
+      printf("%s\n", instr.output.term.value.str);
       break;
     }
     break;
