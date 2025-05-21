@@ -1,3 +1,7 @@
+/*
+ * file: codegen.h
+ * brief: Converts the simple-compiler AST to Assembly.
+ */
 #ifndef CODEGEN
 #define CODEGEN
 

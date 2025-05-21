@@ -28,7 +28,7 @@ void term_asm(term_node *term, dynamic_array *variables) {
     printf("   call parse_uint\n");
     break;
   case TERM_INT:
-    printf("    mov rax, %s\n", term->value);
+    printf("    mov rax, %d\n", term->value.integer);
     break;
   case TERM_CHAR: {
     char ch = term->value[0];
@@ -65,7 +65,7 @@ void term_asm(term_node *term, dynamic_array *variables) {
     break;
   }
   case TERM_IDENTIFIER: {
-    int index = find_variables(variables, term->value);
+    int index = find_variables(variables, term->value.str);
     printf("    mov rax, qword [rbp - %d]\n", index * 8 + 8);
     break;
   }
@@ -160,6 +160,8 @@ void instr_asm(instr_node *instr, dynamic_array *variables, int *if_count) {
   case INSTR_GOTO:
     printf("    jmp .%s\n", instr->goto_.label);
     break;
+  // TODO: make only one output instruction
+  /*
   case INSTR_OUTPUTI:
     term_asm(&instr->output.term, variables);
     printf("    push rdi\n");
@@ -183,10 +185,24 @@ void instr_asm(instr_node *instr, dynamic_array *variables, int *if_count) {
     printf("    add rsp, 8\n");
     printf("    pop rax\n");
     break;
+  */
   case INSTR_LABEL:
     printf(".%s:\n", instr->label.label);
     break;
   }
+}
+
+void declare_variables(char **identifier, dynamic_array *variables) {
+  for (unsigned int i = 0; i < variables->count; i++) {
+    char *variable = NULL;
+    dynamic_array_get(variables, i, &variable);
+
+    if (strcmp(*identifier, variable) == 0) {
+      return;
+    }
+  }
+
+  dynamic_array_append(variables, identifier);
 }
 
 void term_declare_variables(term_node *term, dynamic_array *variables) {
@@ -202,12 +218,12 @@ void term_declare_variables(term_node *term, dynamic_array *variables) {
       char *variable = NULL;
       dynamic_array_get(variables, i, &variable);
 
-      if (strcmp(term->value, variable) == 0) {
+      if (strcmp(term->value.str, (char *)variable) == 0) {
         return;
       }
     }
 
-    printf("Error: Identifier is not defined: %s\n", term->value);
+    printf("Error: Identifier is not defined: %s\n", term->value.str);
     exit(1);
 
     break;
@@ -244,20 +260,40 @@ void expr_declare_variables(expr_node *expr, dynamic_array *variables) {
 
 void rel_declare_variables(rel_node *rel, dynamic_array *variables) {
   switch (rel->kind) {
+  case REL_IS_EQUAL:
+    term_declare_variables(&rel->is_equal.lhs, variables);
+    term_declare_variables(&rel->is_equal.rhs, variables);
+    break;
+  case REL_NOT_EQUAL:
+    term_declare_variables(&rel->not_equal.lhs, variables);
+    term_declare_variables(&rel->not_equal.rhs, variables);
+    break;
   case REL_LESS_THAN:
     term_declare_variables(&rel->less_than.lhs, variables);
     term_declare_variables(&rel->less_than.rhs, variables);
     break;
+  case REL_LESS_THAN_OR_EQUAL:
+    term_declare_variables(&rel->less_than_or_equal.lhs, variables);
+    term_declare_variables(&rel->less_than_or_equal.rhs, variables);
+    break;
   case REL_GREATER_THAN:
     term_declare_variables(&rel->greater_than.lhs, variables);
     term_declare_variables(&rel->greater_than.rhs, variables);
+    break;
+  case REL_GREATER_THAN_OR_EQUAL:
+    term_declare_variables(&rel->greater_than_or_equal.lhs, variables);
+    term_declare_variables(&rel->greater_than_or_equal.rhs, variables);
     break;
   }
 }
 
 void instr_declare_variables(instr_node *instr, dynamic_array *variables) {
   switch (instr->kind) {
+  case INSTR_DECLARE:
+    declare_variables(&instr->declare_variable.identifier, variables);
+    break;
   case INSTR_ASSIGN:
+    // TODO
     expr_declare_variables(&instr->assign.expr, variables);
 
     for (unsigned int i = 0; i < variables->count; i++) {
@@ -278,8 +314,7 @@ void instr_declare_variables(instr_node *instr, dynamic_array *variables) {
     break;
   case INSTR_GOTO:
     break;
-  case INSTR_OUTPUTI:
-  case INSTR_OUTPUTC:
+  case INSTR_OUTPUT:
     term_declare_variables(&instr->output.term, variables);
     break;
   case INSTR_LABEL:
@@ -296,7 +331,6 @@ void program_asm(program_node *program) {
   for (unsigned int i = 0; i < program->instrs.count; i++) {
     struct instr_node instr;
     dynamic_array_get(&program->instrs, i, &instr);
-
     instr_declare_variables(&instr, &variables);
   }
 
