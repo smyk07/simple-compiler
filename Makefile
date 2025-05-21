@@ -28,4 +28,6 @@ clean-all:
 clean-obj: 
 	rm -rf $(OBJ_DIR)
 
+clean: clean-all
+
 .PHONY: all clean-all clean-obj
