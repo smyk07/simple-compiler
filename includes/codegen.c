@@ -199,9 +199,8 @@ void instr_asm(instr_node *instr, dynamic_array *variables, int *if_count) {
                instr->output.term.value.str);
         exit(1);
       }
-      printf("    ;; TERM_IDENTIFIER output\n");
       printf("    mov rsi, qword [rbp - %d]\n", index * 8 + 8);
-      printf("    mov rdi, 1\n"); // stdout
+      printf("    mov rdi, 1\n");
       printf("    call write_uint\n");
       printf("    mov rsi, newline\n");
       printf("    mov rdi, 1\n");
