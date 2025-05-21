@@ -145,6 +145,20 @@ void parse_rel(parser *p, rel_node *rel) {
 
 void parse_instr(parser *p, instr_node *instr);
 
+void parse_declare(parser *p, instr_node *instr) {
+  token token;
+
+  instr->kind = INSTR_DECLARE;
+
+  parser_current(p, &token);
+  instr->declare_variable.type = token.kind;
+  parser_advance(p);
+
+  parser_current(p, &token);
+  instr->declare_variable.identifier = token.value.str;
+  parser_advance(p);
+}
+
 void parse_assign(parser *p, instr_node *instr) {
   token token;
 
@@ -204,6 +218,8 @@ void parse_goto(parser *p, instr_node *instr) {
 void parse_output(parser *p, instr_node *instr) {
   term_node rhs;
 
+  instr->kind = INSTR_OUTPUT;
+
   parser_advance(p);
   parse_term(p, &rhs);
 
@@ -229,14 +245,7 @@ void parse_instr(parser *p, instr_node *instr) {
   switch (token.kind) {
   case TOKEN_TYPE_INT:
   case TOKEN_TYPE_CHAR:
-    parser_advance(p);
-    parser_current(p, &token);
-    if (token.kind == TOKEN_IDENTIFIER) {
-      parse_assign(p, instr);
-    } else {
-      printf("unexpected token: %s\n", show_token_kind(token.kind));
-      exit(1);
-    }
+    parse_declare(p, instr);
     break;
   case TOKEN_IDENTIFIER:
     parse_assign(p, instr);
@@ -307,6 +316,9 @@ void check_terms_and_print(term_node *lhs, char *operator, term_node * rhs) {
 
 void print_instr(instr_node instr) {
   switch (instr.kind) {
+  case INSTR_DECLARE:
+    printf("declare: %s\n", instr.declare_variable.identifier);
+    break;
   case INSTR_ASSIGN:
     printf("assign: %s = ", instr.assign.identifier);
     switch (instr.assign.expr.kind) {

@@ -1,6 +1,3 @@
-int n = 2 + 1
-
-if n <= 10 then goto :label
-
-:label
-n = n + 1
+int a
+a = 1
+output a

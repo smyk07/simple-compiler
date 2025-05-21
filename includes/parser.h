@@ -72,6 +72,7 @@ typedef struct rel_node {
 
 // INSTR
 typedef enum instr_kind {
+  INSTR_DECLARE,
   INSTR_ASSIGN,
   INSTR_IF,
   INSTR_GOTO,
@@ -80,6 +81,11 @@ typedef enum instr_kind {
 } instr_kind;
 
 typedef struct instr_node instr_node;
+
+typedef struct variable {
+  char *identifier;
+  token_kind type;
+} variable;
 
 typedef struct assign_node {
   char *identifier;
@@ -106,6 +112,7 @@ typedef struct label_node {
 typedef struct instr_node {
   instr_kind kind;
   union {
+    variable declare_variable;
     assign_node assign;
     if_node if_;
     goto_node goto_;
