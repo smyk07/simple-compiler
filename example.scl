@@ -1,4 +1,11 @@
 int a
-a = 1
-a = a + 1
-output a
+int n
+
+n = 1
+a = input
+
+:label
+output n
+n = n * 2
+
+if n <= a then goto :label
