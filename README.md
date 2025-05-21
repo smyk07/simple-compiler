@@ -1,5 +1,7 @@
 # Simple Compiler
 
+A Simple Compiler. (Compiles to x64 fasm assembly)
+
 ## Inspiration
 
 [How to build a compiler from scratch by Alex The Dev](https://youtu.be/HOe2YFnzO2I)
