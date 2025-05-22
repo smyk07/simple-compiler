@@ -1,9 +1,8 @@
 #include "data_structures.h"
 #include "lexer.h"
 #include "parser.h"
+#include "utils.h"
 
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 // Variable tracking
@@ -16,8 +15,8 @@ int find_variables(dynamic_array *variables, variable *var_to_find) {
       return i;
     }
   }
-  fprintf(stderr, "Use of undeclared variable: %s\n", var_to_find->name);
-  exit(1);
+  scu_perror("Use of undeclared variable: %s\n", var_to_find->name);
+  return -1;
 }
 
 void declare_variables(variable *var_to_declare, dynamic_array *variables) {
@@ -140,8 +139,8 @@ token_kind var_type(char *name, dynamic_array *variables) {
       return var.type;
     }
   }
-  fprintf(stderr, "Use of undeclared variable: %s\n", name);
-  exit(1);
+  scu_perror("Use of undeclared variable: %s\n", name);
+  return -1;
 }
 
 token_kind term_type(term_node *term, token_kind target_type,
@@ -160,6 +159,8 @@ token_kind term_type(term_node *term, token_kind target_type,
   case TERM_IDENTIFIER:
     return var_type(term->identifier.name, variables);
     break;
+  default:
+    return -1;
   }
 }
 
@@ -193,9 +194,7 @@ token_kind expr_type(expr_node *expr, token_kind target_type,
   }
 
   if (lhs != rhs) {
-    fprintf(stderr, "Type mismatch in arithmetic expression: %d vs %d\n", lhs,
-            rhs);
-    exit(1);
+    scu_perror("Type mismatch in arithmetic expression: %d vs %d\n", lhs, rhs);
   }
   return lhs;
 }
@@ -231,9 +230,7 @@ void rel_typecheck(rel_node *rel, dynamic_array *variables) {
   }
 
   if (lhs != rhs) {
-    fprintf(stderr, "Type mismatch in conditional statement: %d vs %d\n", lhs,
-            rhs);
-    exit(1);
+    scu_perror("Type mismatch in conditional statement: %d vs %d\n", lhs, rhs);
   }
 }
 
@@ -244,9 +241,8 @@ void instr_typecheck(instr_node *instr, dynamic_array *variables) {
     token_kind expr_result =
         expr_type(&instr->assign.expr, target_type, variables);
     if (target_type != expr_result) {
-      fprintf(stderr, "Type mismatch in assignment to %s - %d to %d\n",
-              instr->assign.identifier.name, target_type, expr_result);
-      exit(1);
+      scu_perror("Type mismatch in assignment to %s - %d to %d\n",
+                 instr->assign.identifier.name, target_type, expr_result);
     }
     break;
   }

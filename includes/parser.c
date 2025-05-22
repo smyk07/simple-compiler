@@ -1,5 +1,6 @@
 #include "parser.h"
 #include "lexer.h"
+#include "utils.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -31,9 +32,8 @@ void parse_term(parser *p, term_node *term) {
     term->kind = TERM_IDENTIFIER;
     term->identifier.name = token.value.str;
   } else {
-    printf("Expected a term (input, int, char, identifier), got %s\n",
-           show_token_kind(token.kind));
-    exit(1);
+    scu_perror("Expected a term (input, int, char, identifier), got %s\n",
+               show_token_kind(token.kind));
   }
 
   parser_advance(p);
@@ -137,9 +137,8 @@ void parse_rel(parser *p, rel_node *rel) {
     rel->greater_than_or_equal.lhs = lhs;
     rel->greater_than_or_equal.rhs = rhs;
   } else {
-    printf("Expected a relation (==, !=, <, <=, >, >=), got %s\n",
-           show_token_kind(token.kind));
-    exit(1);
+    scu_perror("Expected a relation (==, !=, <, <=, >, >=), got %s\n",
+               show_token_kind(token.kind));
   }
 }
 
@@ -170,8 +169,7 @@ void parse_assign(parser *p, instr_node *instr) {
 
   parser_current(p, &token);
   if (token.kind != TOKEN_ASSIGN) {
-    printf("Expected assign, found %s\n", show_token_kind(token.kind));
-    exit(1);
+    scu_perror("Expected assign, found %s\n", show_token_kind(token.kind));
   }
   parser_advance(p);
 
@@ -189,8 +187,7 @@ void parse_if(parser *p, instr_node *instr) {
 
   parser_current(p, &token);
   if (token.kind != TOKEN_THEN) {
-    printf("Expected then, found %s\n", show_token_kind(token.kind));
-    exit(1);
+    scu_perror("Expected then, found %s\n", show_token_kind(token.kind));
   }
   parser_advance(p);
 
@@ -207,8 +204,7 @@ void parse_goto(parser *p, instr_node *instr) {
 
   parser_current(p, &token);
   if (token.kind != TOKEN_LABEL) {
-    printf("Expected label, found %s\n", show_token_kind(token.kind));
-    exit(1);
+    scu_perror("Expected label, found %s\n", show_token_kind(token.kind));
   }
   parser_advance(p);
 
@@ -263,8 +259,7 @@ void parse_instr(parser *p, instr_node *instr) {
     parse_label(p, instr);
     break;
   default:
-    printf("unexpected token: %s\n", show_token_kind(token.kind));
-    exit(1);
+    scu_perror("unexpected token: %s\n", show_token_kind(token.kind));
   }
 }
 

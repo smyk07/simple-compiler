@@ -10,10 +10,10 @@
 
 int main(int argc, char *argv[]) {
   char *filename = argv[1];
-  char *extracted_filename = extract_name(filename);
+  char *extracted_filename = scu_extract_name(filename);
 
   char *code_buffer = NULL;
-  int code_buffer_len = read_file(filename, &code_buffer);
+  int code_buffer_len = scu_read_file(filename, &code_buffer);
 
   // Lexing
   dynamic_array tokens;
@@ -38,7 +38,9 @@ int main(int argc, char *argv[]) {
   fclose(stdout);
 
   // Assembler
-  assemble("output.asm", extracted_filename);
+  scu_assemble("output.asm", extracted_filename);
 
   return 0;
+
+  printf("Hello\n");
 }

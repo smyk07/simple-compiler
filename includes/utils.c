@@ -1,10 +1,11 @@
 #include "utils.h"
 
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-int read_file(char *path, char **buffer) {
+int scu_read_file(char *path, char **buffer) {
   int tmp_capacity = MAX_LEN;
   char *tmp = malloc(tmp_capacity * sizeof(char));
 
@@ -48,7 +49,7 @@ int read_file(char *path, char **buffer) {
   return tmp_size;
 }
 
-char *extract_name(const char *filename) {
+char *scu_extract_name(const char *filename) {
   const char *dot = strrchr(filename, '.');
   size_t len;
 
@@ -69,7 +70,22 @@ char *extract_name(const char *filename) {
   return name;
 }
 
-void assemble(char *asm_file, char *output_file) {
+void scu_perror(char *__restrict __format, ...) {
+  va_list args;
+  va_start(args, __format);
+  vfprintf(stderr, __format, args);
+  va_end(args);
+  exit(1);
+}
+
+void scu_pwarning(char *__restrict __format, ...) {
+  va_list args;
+  va_start(args, __format);
+  vfprintf(stderr, __format, args);
+  va_end(args);
+}
+
+void scu_assemble(char *asm_file, char *output_file) {
   char command[512];
   snprintf(command, sizeof(command), "fasm %s %s", asm_file, output_file);
   int result = system(command);

@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include "data_structures.h"
+#include "utils.h"
 
 char lexer_peek_char(lexer *l) {
   if (l->read_pos >= l->buffer_len) {
@@ -222,8 +223,7 @@ int lexer_tokenize(char *buffer, unsigned int buffer_len,
   do {
     token = lexer_next_token(&lexer);
     if (dynamic_array_append(tokens, &token) != 0) {
-      perror("Failed to append token to array...\n");
-      exit(1);
+      scu_perror("Failed to append token to array\n");
     }
   } while (token.kind != TOKEN_END);
 
@@ -278,6 +278,8 @@ char *show_token_kind(token_kind kind) {
     return "greater_than";
   case TOKEN_GREATER_THAN_OR_EQUAL:
     return "greater_than_or_equal";
+  case TOKEN_NULL:
+    return "null";
   case TOKEN_INVALID:
     return "invalid";
   case TOKEN_END:

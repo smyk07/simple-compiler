@@ -7,8 +7,14 @@
 
 #define MAX_LEN 4096
 
-int read_file(char *path, char **buffer);
-char *extract_name(const char *filename);
-void assemble(char *asm_file, char *output_file);
+char *scu_extract_name(const char *filename);
+
+int scu_read_file(char *path, char **buffer);
+
+void scu_perror(char *__restrict __format, ...);
+
+void scu_pwarning(char *__restrict __format, ...);
+
+void scu_assemble(char *asm_file, char *output_file);
 
 #endif
