@@ -2,6 +2,7 @@
 #include <string.h>
 
 #include "includes/data_structures.h"
+#include "includes/semantic.h"
 #include "includes/utils.h"
 
 #include "includes/codegen.h"
@@ -32,9 +33,27 @@ int main(int argc, char *argv[]) {
   // Parsing test function
   // print_program(&program);
 
-  // Semantic Analysis and Codegen
+  dynamic_array variables;
+  dynamic_array_init(&variables, sizeof(variable));
+
+  // Semantic Analysis - Check variables
+  for (unsigned int i = 0; i < program.instrs.count; i++) {
+    struct instr_node instr;
+    dynamic_array_get(&program.instrs, i, &instr);
+    instr_check_variables(&instr, &variables);
+  }
+
+  // Semantic Analysis - Check variable types
+  for (unsigned int i = 0; i < program.instrs.count; i++) {
+    struct instr_node instr;
+    dynamic_array_get(&program.instrs, i, &instr);
+
+    instr_typecheck(&instr, &variables);
+  }
+
+  // Codegen
   freopen("output.asm", "w", stdout);
-  program_asm(&program);
+  program_asm(&program, &variables);
   fclose(stdout);
 
   // Assembler

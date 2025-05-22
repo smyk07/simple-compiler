@@ -203,24 +203,8 @@ void instr_asm(instr_node *instr, dynamic_array *variables, int *if_count) {
   }
 }
 
-void program_asm(program_node *program) {
+void program_asm(program_node *program, dynamic_array *variables) {
   int if_count = 0;
-
-  dynamic_array variables;
-  dynamic_array_init(&variables, sizeof(variable));
-
-  for (unsigned int i = 0; i < program->instrs.count; i++) {
-    struct instr_node instr;
-    dynamic_array_get(&program->instrs, i, &instr);
-    instr_check_variables(&instr, &variables);
-  }
-
-  for (unsigned int i = 0; i < program->instrs.count; i++) {
-    struct instr_node instr;
-    dynamic_array_get(&program->instrs, i, &instr);
-
-    instr_typecheck(&instr, &variables);
-  }
 
   printf("format ELF64 executable\n");
   printf("LINE_MAX equ 1024\n");
@@ -234,16 +218,16 @@ void program_asm(program_node *program) {
   printf("segment readable executable\n");
   printf("_start:\n");
   printf("    mov rbp, rsp\n");
-  printf("    sub rsp, %d\n", variables.count * 8);
+  printf("    sub rsp, %d\n", variables->count * 8);
 
   for (unsigned int i = 0; i < program->instrs.count; i++) {
     struct instr_node instr;
     dynamic_array_get(&program->instrs, i, &instr);
 
-    instr_asm(&instr, &variables, &if_count);
+    instr_asm(&instr, variables, &if_count);
   }
 
-  printf("    add rsp, %d\n", variables.count * 8);
+  printf("    add rsp, %d\n", variables->count * 8);
 
   printf("    mov rax, 60\n");
   printf("    xor rdi, rdi\n");
