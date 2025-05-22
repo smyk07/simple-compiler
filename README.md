@@ -2,7 +2,7 @@
 
 A Simple Compiler. (Compiles to x64 fasm assembly).
 
-Check [example.scl](https://github.com/smyk07/simple-compiler/) for an example of how the language is written.
+Check [example.scl](https://github.com/smyk07/simple-compiler/blob/main/example.scl) for an example of how the language is written.
 
 ## Inspiration
 
