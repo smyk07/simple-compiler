@@ -32,7 +32,7 @@ int main(int argc, char *argv[]) {
   // Parsing test function
   // print_program(&program);
 
-  // Codegen
+  // Semantic Analysis and Codegen
   freopen("output.asm", "w", stdout);
   program_asm(&program);
   fclose(stdout);

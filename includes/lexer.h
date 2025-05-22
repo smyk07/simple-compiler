@@ -39,6 +39,7 @@ typedef enum token_kind {
   TOKEN_GREATER_THAN_OR_EQUAL,
 
   // Special Tokens
+  TOKEN_NULL,
   TOKEN_INVALID,
   TOKEN_END
 } token_kind;

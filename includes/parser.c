@@ -29,7 +29,7 @@ void parse_term(parser *p, term_node *term) {
     term->value.character = token.value.character;
   } else if (token.kind == TOKEN_IDENTIFIER) {
     term->kind = TERM_IDENTIFIER;
-    term->value.str = token.value.str;
+    term->identifier.name = token.value.str;
   } else {
     printf("Expected a term (input, int, char, identifier), got %s\n",
            show_token_kind(token.kind));
@@ -155,7 +155,7 @@ void parse_declare(parser *p, instr_node *instr) {
   parser_advance(p);
 
   parser_current(p, &token);
-  instr->declare_variable.identifier = token.value.str;
+  instr->declare_variable.name = token.value.str;
   parser_advance(p);
 }
 
@@ -165,7 +165,7 @@ void parse_assign(parser *p, instr_node *instr) {
   instr->kind = INSTR_ASSIGN;
 
   parser_current(p, &token);
-  instr->assign.identifier = token.value.str;
+  instr->assign.identifier.name = token.value.str;
   parser_advance(p);
 
   parser_current(p, &token);
@@ -272,12 +272,12 @@ void parse_program(parser *p, program_node *program) {
   dynamic_array_init(&program->instrs, sizeof(instr_node));
 
   token token;
-  do {
+  while (token.kind != TOKEN_END) {
     instr_node *instr = malloc(sizeof(instr_node));
     parse_instr(p, instr);
     dynamic_array_append(&program->instrs, instr);
     parser_current(p, &token);
-  } while (token.kind != TOKEN_END);
+  }
 }
 
 void check_terms_and_print(term_node *lhs, char *operator, term_node * rhs) {
@@ -292,7 +292,7 @@ void check_terms_and_print(term_node *lhs, char *operator, term_node * rhs) {
     printf("%c", lhs->value.character);
     break;
   case TERM_IDENTIFIER:
-    printf("%s", lhs->value.str);
+    printf("%s", lhs->identifier.name);
     break;
   }
 
@@ -309,7 +309,7 @@ void check_terms_and_print(term_node *lhs, char *operator, term_node * rhs) {
     printf("%c\n", rhs->value.character);
     break;
   case TERM_IDENTIFIER:
-    printf("%s\n", rhs->value.str);
+    printf("%s\n", rhs->identifier.name);
     break;
   }
 }
@@ -317,10 +317,10 @@ void check_terms_and_print(term_node *lhs, char *operator, term_node * rhs) {
 void print_instr(instr_node instr) {
   switch (instr.kind) {
   case INSTR_DECLARE:
-    printf("declare: %s\n", instr.declare_variable.identifier);
+    printf("declare: %s\n", instr.declare_variable.name);
     break;
   case INSTR_ASSIGN:
-    printf("assign: %s = ", instr.assign.identifier);
+    printf("assign: %s = ", instr.assign.identifier.name);
     switch (instr.assign.expr.kind) {
     case EXPR_TERM:
       switch (instr.assign.expr.term.kind) {
@@ -334,7 +334,7 @@ void print_instr(instr_node instr) {
         printf("\'%c\'\n", instr.assign.expr.term.value.character);
         break;
       case TERM_IDENTIFIER:
-        printf("%s\n", instr.assign.expr.term.value.str);
+        printf("%s\n", instr.assign.expr.term.identifier.name);
         break;
       }
       break;
@@ -416,7 +416,7 @@ void print_instr(instr_node instr) {
       printf("\'%c\'\n", instr.output.term.value.character);
       break;
     case TERM_IDENTIFIER:
-      printf("%s\n", instr.output.term.value.str);
+      printf("%s\n", instr.output.term.identifier.name);
       break;
     }
     break;

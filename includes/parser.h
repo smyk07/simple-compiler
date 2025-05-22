@@ -16,9 +16,17 @@ typedef enum term_kind {
   TERM_IDENTIFIER
 } term_kind;
 
+typedef struct variable {
+  token_kind type;
+  char *name;
+} variable;
+
 typedef struct term_node {
   term_kind kind;
-  token_value value;
+  union {
+    token_value value;
+    variable identifier;
+  };
 } term_node;
 
 typedef struct term_binary_node {
@@ -82,13 +90,8 @@ typedef enum instr_kind {
 
 typedef struct instr_node instr_node;
 
-typedef struct variable {
-  char *identifier;
-  token_kind type;
-} variable;
-
 typedef struct assign_node {
-  char *identifier;
+  variable identifier;
   expr_node expr;
 } assign_node;
 
