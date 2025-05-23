@@ -214,8 +214,8 @@ token lexer_next_token(lexer *l) {
   }
 }
 
-int lexer_tokenize(char *buffer, unsigned int buffer_len,
-                   dynamic_array *tokens) {
+int lexer_tokenize(char *buffer, unsigned int buffer_len, dynamic_array *tokens,
+                   int *errors) {
   lexer lexer;
   lexer_init(&lexer, buffer, buffer_len);
 
@@ -223,7 +223,7 @@ int lexer_tokenize(char *buffer, unsigned int buffer_len,
   do {
     token = lexer_next_token(&lexer);
     if (dynamic_array_append(tokens, &token) != 0) {
-      scu_perror("Failed to append token to array\n");
+      scu_perror(errors, "Failed to append token to array\n");
     }
   } while (token.kind != TOKEN_END);
 

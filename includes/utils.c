@@ -70,12 +70,19 @@ char *scu_extract_name(const char *filename) {
   return name;
 }
 
-void scu_perror(char *__restrict __format, ...) {
+void scu_check_errors(int *errors) {
+  if (*errors > 0) {
+    scu_pwarning("%d errors found\n", *errors);
+    exit(1);
+  }
+}
+
+void scu_perror(int *errors, char *__restrict __format, ...) {
+  (*errors)++;
   va_list args;
   va_start(args, __format);
   vfprintf(stderr, __format, args);
   va_end(args);
-  exit(1);
 }
 
 void scu_pwarning(char *__restrict __format, ...) {

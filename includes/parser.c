@@ -16,7 +16,7 @@ void parser_current(parser *p, token *token) {
 
 void parser_advance(parser *p) { p->index++; }
 
-void parse_term(parser *p, term_node *term) {
+void parse_term(parser *p, term_node *term, int *errors) {
   token token;
 
   parser_current(p, &token);
@@ -32,51 +32,52 @@ void parse_term(parser *p, term_node *term) {
     term->kind = TERM_IDENTIFIER;
     term->identifier.name = token.value.str;
   } else {
-    scu_perror("Expected a term (input, int, char, identifier), got %s\n",
+    scu_perror(errors,
+               "Expected a term (input, int, char, identifier), got %s\n",
                show_token_kind(token.kind));
   }
 
   parser_advance(p);
 }
 
-void parse_expr(parser *p, expr_node *expr) {
+void parse_expr(parser *p, expr_node *expr, int *errors) {
   token token;
   term_node lhs, rhs;
 
-  parse_term(p, &lhs);
+  parse_term(p, &lhs, errors);
 
   parser_current(p, &token);
   if (token.kind == TOKEN_ADD) {
     parser_advance(p);
-    parse_term(p, &rhs);
+    parse_term(p, &rhs, errors);
 
     expr->kind = EXPR_ADD;
     expr->add.lhs = lhs;
     expr->add.rhs = rhs;
   } else if (token.kind == TOKEN_SUBTRACT) {
     parser_advance(p);
-    parse_term(p, &rhs);
+    parse_term(p, &rhs, errors);
 
     expr->kind = EXPR_SUBTRACT;
     expr->subtract.lhs = lhs;
     expr->subtract.rhs = rhs;
   } else if (token.kind == TOKEN_MULTIPLY) {
     parser_advance(p);
-    parse_term(p, &rhs);
+    parse_term(p, &rhs, errors);
 
     expr->kind = EXPR_MULTIPLY;
     expr->multiply.lhs = lhs;
     expr->multiply.rhs = rhs;
   } else if (token.kind == TOKEN_DIVIDE) {
     parser_advance(p);
-    parse_term(p, &rhs);
+    parse_term(p, &rhs, errors);
 
     expr->kind = EXPR_DIVIDE;
     expr->divide.lhs = lhs;
     expr->divide.rhs = rhs;
   } else if (token.kind == TOKEN_MODULO) {
     parser_advance(p);
-    parse_term(p, &rhs);
+    parse_term(p, &rhs, errors);
 
     expr->kind = EXPR_MODULO;
     expr->modulo.lhs = lhs;
@@ -87,62 +88,62 @@ void parse_expr(parser *p, expr_node *expr) {
   }
 }
 
-void parse_rel(parser *p, rel_node *rel) {
+void parse_rel(parser *p, rel_node *rel, int *errors) {
   token token;
   term_node lhs, rhs;
 
-  parse_term(p, &lhs);
+  parse_term(p, &lhs, errors);
 
   parser_current(p, &token);
   if (token.kind == TOKEN_IS_EQUAL) {
     parser_advance(p);
-    parse_term(p, &rhs);
+    parse_term(p, &rhs, errors);
 
     rel->kind = REL_IS_EQUAL;
     rel->is_equal.lhs = lhs;
     rel->is_equal.rhs = rhs;
   } else if (token.kind == TOKEN_NOT_EQUAL) {
     parser_advance(p);
-    parse_term(p, &rhs);
+    parse_term(p, &rhs, errors);
 
     rel->kind = REL_NOT_EQUAL;
     rel->not_equal.lhs = lhs;
     rel->not_equal.rhs = rhs;
   } else if (token.kind == TOKEN_LESS_THAN) {
     parser_advance(p);
-    parse_term(p, &rhs);
+    parse_term(p, &rhs, errors);
 
     rel->kind = REL_LESS_THAN;
     rel->less_than.lhs = lhs;
     rel->less_than.rhs = rhs;
   } else if (token.kind == TOKEN_LESS_THAN_OR_EQUAL) {
     parser_advance(p);
-    parse_term(p, &rhs);
+    parse_term(p, &rhs, errors);
 
     rel->kind = REL_LESS_THAN_OR_EQUAL;
     rel->less_than_or_equal.lhs = lhs;
     rel->less_than_or_equal.rhs = rhs;
   } else if (token.kind == TOKEN_GREATER_THAN) {
     parser_advance(p);
-    parse_term(p, &rhs);
+    parse_term(p, &rhs, errors);
 
     rel->kind = REL_GREATER_THAN;
     rel->greater_than.lhs = lhs;
     rel->greater_than.rhs = rhs;
   } else if (token.kind == TOKEN_GREATER_THAN_OR_EQUAL) {
     parser_advance(p);
-    parse_term(p, &rhs);
+    parse_term(p, &rhs, errors);
 
     rel->kind = REL_GREATER_THAN_OR_EQUAL;
     rel->greater_than_or_equal.lhs = lhs;
     rel->greater_than_or_equal.rhs = rhs;
   } else {
-    scu_perror("Expected a relation (==, !=, <, <=, >, >=), got %s\n",
+    scu_perror(errors, "Expected a relation (==, !=, <, <=, >, >=), got %s\n",
                show_token_kind(token.kind));
   }
 }
 
-void parse_instr(parser *p, instr_node *instr);
+void parse_instr(parser *p, instr_node *instr, int *errors);
 
 void parse_declare(parser *p, instr_node *instr) {
   token token;
@@ -158,7 +159,7 @@ void parse_declare(parser *p, instr_node *instr) {
   parser_advance(p);
 }
 
-void parse_assign(parser *p, instr_node *instr) {
+void parse_assign(parser *p, instr_node *instr, int *errors) {
   token token;
 
   instr->kind = INSTR_ASSIGN;
@@ -169,33 +170,35 @@ void parse_assign(parser *p, instr_node *instr) {
 
   parser_current(p, &token);
   if (token.kind != TOKEN_ASSIGN) {
-    scu_perror("Expected assign, found %s\n", show_token_kind(token.kind));
+    scu_perror(errors, "Expected assign, found %s\n",
+               show_token_kind(token.kind));
   }
   parser_advance(p);
 
-  parse_expr(p, &instr->assign.expr);
+  parse_expr(p, &instr->assign.expr, errors);
 }
 
-void parse_if(parser *p, instr_node *instr) {
+void parse_if(parser *p, instr_node *instr, int *errors) {
   token token;
 
   instr->kind = INSTR_IF;
 
   parser_advance(p);
 
-  parse_rel(p, &instr->if_.rel);
+  parse_rel(p, &instr->if_.rel, errors);
 
   parser_current(p, &token);
   if (token.kind != TOKEN_THEN) {
-    scu_perror("Expected then, found %s\n", show_token_kind(token.kind));
+    scu_perror(errors, "Expected then, found %s\n",
+               show_token_kind(token.kind));
   }
   parser_advance(p);
 
   instr->if_.instr = malloc(sizeof(instr_node));
-  parse_instr(p, instr->if_.instr);
+  parse_instr(p, instr->if_.instr, errors);
 }
 
-void parse_goto(parser *p, instr_node *instr) {
+void parse_goto(parser *p, instr_node *instr, int *errors) {
   token token;
 
   instr->kind = INSTR_GOTO;
@@ -204,20 +207,21 @@ void parse_goto(parser *p, instr_node *instr) {
 
   parser_current(p, &token);
   if (token.kind != TOKEN_LABEL) {
-    scu_perror("Expected label, found %s\n", show_token_kind(token.kind));
+    scu_perror(errors, "Expected label, found %s\n",
+               show_token_kind(token.kind));
   }
   parser_advance(p);
 
   instr->goto_.label = token.value.str;
 }
 
-void parse_output(parser *p, instr_node *instr) {
+void parse_output(parser *p, instr_node *instr, int *errors) {
   term_node rhs;
 
   instr->kind = INSTR_OUTPUT;
 
   parser_advance(p);
-  parse_term(p, &rhs);
+  parse_term(p, &rhs, errors);
 
   instr->output.term = rhs;
 }
@@ -233,7 +237,7 @@ void parse_label(parser *p, instr_node *instr) {
   parser_advance(p);
 }
 
-void parse_instr(parser *p, instr_node *instr) {
+void parse_instr(parser *p, instr_node *instr, int *errors) {
   token token;
 
   parser_current(p, &token);
@@ -244,32 +248,32 @@ void parse_instr(parser *p, instr_node *instr) {
     parse_declare(p, instr);
     break;
   case TOKEN_IDENTIFIER:
-    parse_assign(p, instr);
+    parse_assign(p, instr, errors);
     break;
   case TOKEN_OUTPUT:
-    parse_output(p, instr);
+    parse_output(p, instr, errors);
     break;
   case TOKEN_IF:
-    parse_if(p, instr);
+    parse_if(p, instr, errors);
     break;
   case TOKEN_GOTO:
-    parse_goto(p, instr);
+    parse_goto(p, instr, errors);
     break;
   case TOKEN_LABEL:
     parse_label(p, instr);
     break;
   default:
-    scu_perror("unexpected token: %s\n", show_token_kind(token.kind));
+    scu_perror(errors, "unexpected token: %s\n", show_token_kind(token.kind));
   }
 }
 
-void parse_program(parser *p, program_node *program) {
+void parse_program(parser *p, program_node *program, int *errors) {
   dynamic_array_init(&program->instrs, sizeof(instr_node));
 
   token token;
   while (token.kind != TOKEN_END) {
     instr_node *instr = malloc(sizeof(instr_node));
-    parse_instr(p, instr);
+    parse_instr(p, instr, errors);
     dynamic_array_append(&program->instrs, instr);
     parser_current(p, &token);
   }

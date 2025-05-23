@@ -16,10 +16,12 @@ int main(int argc, char *argv[]) {
   char *code_buffer = NULL;
   int code_buffer_len = scu_read_file(filename, &code_buffer);
 
+  int errors = 0;
+
   // Lexing
   dynamic_array tokens;
   dynamic_array_init(&tokens, sizeof(token));
-  lexer_tokenize(code_buffer, code_buffer_len, &tokens);
+  lexer_tokenize(code_buffer, code_buffer_len, &tokens, &errors);
 
   // Lexing test function
   // print_tokens(&tokens);
@@ -28,28 +30,16 @@ int main(int argc, char *argv[]) {
   parser p;
   program_node program;
   parser_init(tokens, &p);
-  parse_program(&p, &program);
+  parse_program(&p, &program, &errors);
 
   // Parsing test function
   // print_program(&program);
 
+  // Semantic Analysis
   dynamic_array variables;
   dynamic_array_init(&variables, sizeof(variable));
 
-  // Semantic Analysis - Check variables
-  for (unsigned int i = 0; i < program.instrs.count; i++) {
-    struct instr_node instr;
-    dynamic_array_get(&program.instrs, i, &instr);
-    instr_check_variables(&instr, &variables);
-  }
-
-  // Semantic Analysis - Check variable types
-  for (unsigned int i = 0; i < program.instrs.count; i++) {
-    struct instr_node instr;
-    dynamic_array_get(&program.instrs, i, &instr);
-
-    instr_typecheck(&instr, &variables);
-  }
+  check_semantics(&program.instrs, &variables, &errors);
 
   // Codegen
   freopen("output.asm", "w", stdout);

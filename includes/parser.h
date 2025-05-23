@@ -135,7 +135,7 @@ typedef struct parser {
 
 void parser_init(dynamic_array tokens, parser *p);
 
-void parse_program(parser *p, program_node *program);
+void parse_program(parser *p, program_node *program, int *errors);
 
 void print_program(program_node *program);
 
