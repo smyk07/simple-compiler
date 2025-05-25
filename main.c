@@ -44,10 +44,15 @@ int main(int argc, char *argv[]) {
   // Codegen
   freopen("output.asm", "w", stdout);
   program_asm(&program, &variables);
+  fflush(stdout);
   fclose(stdout);
 
   // Assembler
-  scu_assemble("output.asm", extracted_filename);
+  scu_assemble("output.asm", extracted_filename, &errors);
+
+  // Restore STDOUT
+  stdout = fopen("/dev/tty", "w");
+  scu_psuccess("%s\n", filename);
 
   return 0;
 }
