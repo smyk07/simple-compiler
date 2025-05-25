@@ -92,6 +92,14 @@ void scu_pwarning(char *__restrict __format, ...) {
   va_end(args);
 }
 
+void scu_pdebug(char *__restrict __format, ...) {
+  va_list args;
+  va_start(args, __format);
+  printf("[DEBUG] ");
+  vfprintf(stdout, __format, args);
+  va_end(args);
+}
+
 void scu_assemble(char *asm_file, char *output_file) {
   char command[512];
   snprintf(command, sizeof(command), "fasm %s %s", asm_file, output_file);

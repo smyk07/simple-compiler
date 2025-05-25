@@ -13,6 +13,8 @@ int scu_read_file(char *path, char **buffer);
 
 void scu_check_errors(int *errors);
 
+void scu_pdebug(char *__restrict __format, ...);
+
 void scu_perror(int *errors, char *__restrict __format, ...);
 
 void scu_pwarning(char *__restrict __format, ...);
