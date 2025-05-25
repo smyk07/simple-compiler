@@ -50,6 +50,4 @@ int main(int argc, char *argv[]) {
   scu_assemble("output.asm", extracted_filename);
 
   return 0;
-
-  printf("Hello\n");
 }

@@ -74,7 +74,9 @@ void scu_perror(int *errors, char *__restrict __format, ...) {
   (*errors)++;
   va_list args;
   va_start(args, __format);
+  fprintf(stderr, "\033[1;31m");
   fprintf(stderr, "[ERROR] ");
+  fprintf(stderr, "\033[0m");
   vfprintf(stderr, __format, args);
   va_end(args);
 }
@@ -82,7 +84,9 @@ void scu_perror(int *errors, char *__restrict __format, ...) {
 void scu_pwarning(char *__restrict __format, ...) {
   va_list args;
   va_start(args, __format);
+  fprintf(stderr, "\033[1;33m");
   fprintf(stderr, "[WARNING] ");
+  fprintf(stderr, "\033[0m");
   vfprintf(stderr, __format, args);
   va_end(args);
 }
@@ -90,7 +94,9 @@ void scu_pwarning(char *__restrict __format, ...) {
 void scu_pdebug(char *__restrict __format, ...) {
   va_list args;
   va_start(args, __format);
+  fprintf(stdout, "\033[1;32m");
   fprintf(stdout, "[DEBUG] ");
+  fprintf(stdout, "\033[0m");
   vfprintf(stdout, __format, args);
   va_end(args);
 }
