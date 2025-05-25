@@ -70,17 +70,11 @@ char *scu_extract_name(const char *filename) {
   return name;
 }
 
-void scu_check_errors(int *errors) {
-  if (*errors > 0) {
-    scu_pwarning("%d errors found\n", *errors);
-    exit(1);
-  }
-}
-
 void scu_perror(int *errors, char *__restrict __format, ...) {
   (*errors)++;
   va_list args;
   va_start(args, __format);
+  fprintf(stderr, "[ERROR] ");
   vfprintf(stderr, __format, args);
   va_end(args);
 }
@@ -88,6 +82,7 @@ void scu_perror(int *errors, char *__restrict __format, ...) {
 void scu_pwarning(char *__restrict __format, ...) {
   va_list args;
   va_start(args, __format);
+  fprintf(stderr, "[WARNING] ");
   vfprintf(stderr, __format, args);
   va_end(args);
 }
@@ -95,9 +90,16 @@ void scu_pwarning(char *__restrict __format, ...) {
 void scu_pdebug(char *__restrict __format, ...) {
   va_list args;
   va_start(args, __format);
-  printf("[DEBUG] ");
+  fprintf(stdout, "[DEBUG] ");
   vfprintf(stdout, __format, args);
   va_end(args);
+}
+
+void scu_check_errors(int *errors) {
+  if (*errors > 0) {
+    scu_pwarning("%d error(s) found\n", *errors);
+    exit(1);
+  }
 }
 
 void scu_assemble(char *asm_file, char *output_file) {
