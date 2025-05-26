@@ -53,14 +53,10 @@ void declare_variables(variable *var_to_declare, dynamic_array *variables) {
 void term_check_variables(term_node *term, dynamic_array *variables,
                           int *errors) {
   switch (term->kind) {
-  case TERM_INPUT:
-    break;
-  case TERM_INT:
-    break;
-  case TERM_CHAR:
-    break;
   case TERM_IDENTIFIER:
     find_variables(variables, &term->identifier, errors);
+    break;
+  default:
     break;
   }
 }
@@ -140,12 +136,53 @@ void instr_check_variables(instr_node *instr, dynamic_array *variables,
     rel_check_variables(&instr->if_.rel, variables, errors);
     instr_check_variables(instr->if_.instr, variables, errors);
     break;
-  case INSTR_GOTO:
-    break;
   case INSTR_OUTPUT:
     term_check_variables(&instr->output.term, variables, errors);
     break;
-  case INSTR_LABEL:
+  default:
+    break;
+  }
+}
+
+// Label checking
+void instr_check_labels(instr_node *instr, dynamic_array *labels, int *errors) {
+  switch (instr->kind) {
+  case INSTR_LABEL: {
+    char *label_name = instr->label.label;
+    for (unsigned int i = 0; i < labels->count; i++) {
+      char *existing;
+      dynamic_array_get(labels, i, &existing);
+      if (strcmp(label_name, existing) == 0) {
+        scu_perror(errors, "Duplicate label declaration: %s [line %d]\n",
+                   label_name, instr->line);
+        return;
+      }
+    }
+    char *copy = strdup(label_name);
+    dynamic_array_append(labels, &copy);
+    break;
+  }
+  case INSTR_GOTO: {
+    int found = 0;
+    for (unsigned int i = 0; i < labels->count; i++) {
+      char *label;
+      dynamic_array_get(labels, i, &label);
+      if (strcmp(label, instr->goto_.label) == 0) {
+        found = 1;
+        break;
+      }
+    }
+    if (!found) {
+      scu_perror(errors, "Use of undeclared label: %s [line %d]\n",
+                 instr->goto_.label, instr->line);
+    }
+    break;
+  }
+  case INSTR_IF: {
+    instr_check_labels(instr->if_.instr, labels, errors);
+    break;
+  }
+  default:
     break;
   }
 }
@@ -168,10 +205,9 @@ token_kind var_type(char *name, unsigned int line, dynamic_array *variables,
 token_kind term_type(term_node *term, token_kind target_type, unsigned int line,
                      dynamic_array *variables, int *errors) {
   switch (term->kind) {
-  case TERM_INPUT: {
+  case TERM_INPUT:
     return target_type;
     break;
-  }
   case TERM_INT:
     return TOKEN_TYPE_INT;
     break;
@@ -319,28 +355,34 @@ void instr_typecheck(instr_node *instr, dynamic_array *variables, int *errors) {
   case INSTR_IF:
     rel_typecheck(&instr->if_.rel, variables, errors);
     break;
-  case INSTR_OUTPUT:
-  case INSTR_DECLARE:
-  case INSTR_GOTO:
-  case INSTR_LABEL:
+  default:
     break;
   }
 }
 
 void check_semantics(dynamic_array *instrs, dynamic_array *variables,
-                     int *errors) {
+                     dynamic_array *labels, int *errors) {
   // Semantic Analysis - Check variables
   for (unsigned int i = 0; i < instrs->count; i++) {
-    struct instr_node instr;
+    instr_node instr;
     dynamic_array_get(instrs, i, &instr);
     instr_check_variables(&instr, variables, errors);
   }
 
   scu_check_errors(errors);
 
+  // Semantic Analysis - Check labels
+  for (unsigned int i = 0; i < instrs->count; i++) {
+    instr_node instr;
+    dynamic_array_get(instrs, i, &instr);
+    instr_check_labels(&instr, labels, errors);
+  }
+
+  scu_check_errors(errors);
+
   // Semantic Analysis - Check variable types
   for (unsigned int i = 0; i < instrs->count; i++) {
-    struct instr_node instr;
+    instr_node instr;
     dynamic_array_get(instrs, i, &instr);
     instr_typecheck(&instr, variables, errors);
   }

@@ -18,12 +18,11 @@ char lexer_peek_char(lexer *l) {
 
 char lexer_read_char(lexer *l) {
   l->ch = lexer_peek_char(l);
-
-  if (l->ch == '\n')
-    l->line += 1;
-
   l->pos = l->read_pos;
   l->read_pos += 1;
+
+  if (l->ch == '\n')
+    l->line++;
 
   return l->ch;
 }
