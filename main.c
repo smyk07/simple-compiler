@@ -2,12 +2,12 @@
 #include <string.h>
 
 #include "includes/data_structures.h"
-#include "includes/semantic.h"
 #include "includes/utils.h"
 
 #include "includes/codegen.h"
 #include "includes/lexer.h"
 #include "includes/parser.h"
+#include "includes/semantic.h"
 
 int main(int argc, char *argv[]) {
   char *filename = argv[1];

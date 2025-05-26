@@ -124,5 +124,6 @@ void scu_assemble(char *asm_file, char *output_file, int *errors) {
   int result = system(command);
   if (result != 0) {
     scu_perror(errors, "Assembly failed with code %d\n", result);
+    exit(1);
   }
 }

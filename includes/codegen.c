@@ -9,12 +9,12 @@
 void term_asm(term_node *term, dynamic_array *variables) {
   switch (term->kind) {
   case TERM_INPUT: {
-    printf("   read 0, line, LINE_MAX\n");
-    printf("   mov rdi, line\n");
-    printf("   call strlen\n");
-    printf("   mov rdi, line\n");
-    printf("   mov rsi, rax\n");
-    printf("   call parse_uint\n");
+    printf("    read 0, line, LINE_MAX\n");
+    printf("    mov rdi, line\n");
+    printf("    call strlen\n");
+    printf("    mov rdi, line\n");
+    printf("    mov rsi, rax\n");
+    printf("    call parse_uint\n");
     break;
   }
   case TERM_INT:
@@ -135,9 +135,15 @@ void instr_asm(instr_node *instr, dynamic_array *variables, int *if_count) {
   switch (instr->kind) {
   case INSTR_DECLARE:
     break;
+  case INSTR_INITIALIZE: {
+    int index = find_variables(variables, &instr->initialize_variable.var);
+    expr_asm(&instr->initialize_variable.expr, variables);
+    printf("    mov qword [rbp - %d], rax\n", index * 8 + 8);
+    break;
+  }
   case INSTR_ASSIGN: {
-    expr_asm(&instr->assign.expr, variables);
     int index = find_variables(variables, &instr->assign.identifier);
+    expr_asm(&instr->assign.expr, variables);
     printf("    mov qword [rbp - %d], rax\n", index * 8 + 8);
     break;
   }

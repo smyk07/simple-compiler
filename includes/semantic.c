@@ -6,6 +6,17 @@
 #include <string.h>
 
 // Variable tracking
+char *type_to_str(token_kind type) {
+  switch (type) {
+  case TOKEN_TYPE_INT:
+    return "int";
+  case TOKEN_TYPE_CHAR:
+    return "char";
+  default:
+    return "unknown";
+  }
+}
+
 int find_variables(dynamic_array *variables, variable *var_to_find,
                    int *errors) {
   for (unsigned int i = 0; i < variables->count; i++) {
@@ -117,6 +128,10 @@ void instr_check_variables(instr_node *instr, dynamic_array *variables,
   case INSTR_DECLARE:
     declare_variables(&instr->declare_variable, variables);
     break;
+  case INSTR_INITIALIZE:
+    declare_variables(&instr->initialize_variable.var, variables);
+    expr_check_variables(&instr->initialize_variable.expr, variables, errors);
+    break;
   case INSTR_ASSIGN:
     expr_check_variables(&instr->assign.expr, variables, errors);
     break;
@@ -199,8 +214,10 @@ token_kind expr_type(expr_node *expr, token_kind target_type,
   }
 
   if (lhs != rhs) {
-    scu_perror(errors, "Type mismatch in arithmetic expression: %d vs %d\n",
-               lhs, rhs);
+    char *lhs_type_str = type_to_str(lhs);
+    char *rhs_type_str = type_to_str(rhs);
+    scu_perror(errors, "Type mismatch in arithmetic expression: %s vs %s\n",
+               lhs_type_str, rhs_type_str);
   }
   return lhs;
 }
@@ -240,13 +257,28 @@ void rel_typecheck(rel_node *rel, dynamic_array *variables, int *errors) {
   }
 
   if (lhs != rhs) {
-    scu_perror(errors, "Type mismatch in conditional statement: %d vs %d\n",
-               lhs, rhs);
+    char *lhs_type_str = type_to_str(lhs);
+    char *rhs_type_str = type_to_str(rhs);
+    scu_perror(errors, "Type mismatch in conditional statement: %s vs %s\n",
+               lhs_type_str, rhs_type_str);
   }
 }
 
 void instr_typecheck(instr_node *instr, dynamic_array *variables, int *errors) {
   switch (instr->kind) {
+  case INSTR_INITIALIZE: {
+    token_kind target_type = instr->initialize_variable.var.type;
+    token_kind expr_result = expr_type(&instr->initialize_variable.expr,
+                                       target_type, variables, errors);
+    if (target_type != expr_result) {
+      char *target_type_str = type_to_str(target_type);
+      char *expr_result_str = type_to_str(expr_result);
+      scu_perror(errors, "Type mismatch in initialization to %s - %s to %s\n",
+                 instr->assign.identifier.name, expr_result_str,
+                 target_type_str);
+    }
+    break;
+  }
   case INSTR_ASSIGN: {
     token_kind target_type =
         var_type(instr->assign.identifier.name, variables, errors);
@@ -254,8 +286,11 @@ void instr_typecheck(instr_node *instr, dynamic_array *variables, int *errors) {
     token_kind expr_result =
         expr_type(&instr->assign.expr, target_type, variables, errors);
     if (target_type != expr_result) {
-      scu_perror(errors, "Type mismatch in assignment to %s - %d to %d\n",
-                 instr->assign.identifier.name, target_type, expr_result);
+      char *target_type_str = type_to_str(target_type);
+      char *expr_result_str = type_to_str(expr_result);
+      scu_perror(errors, "Type mismatch in assignment to %s - %s to %s\n",
+                 instr->assign.identifier.name, expr_result_str,
+                 target_type_str);
     }
     break;
   }

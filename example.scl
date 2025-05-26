@@ -1,8 +1,5 @@
-int a
-int n
-
-n = 1
-a = input
+int n = 1
+int a = input
 
 :label
 output n

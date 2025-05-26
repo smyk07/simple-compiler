@@ -224,6 +224,7 @@ int lexer_tokenize(char *buffer, unsigned int buffer_len, dynamic_array *tokens,
     token = lexer_next_token(&lexer);
     if (dynamic_array_append(tokens, &token) != 0) {
       scu_perror(errors, "Failed to append token to array\n");
+      exit(1);
     }
   } while (token.kind != TOKEN_END);
 
@@ -288,6 +289,8 @@ char *show_token_kind(token_kind kind) {
 }
 
 void print_tokens(dynamic_array *tokens) {
+  scu_pdebug("Lexing Debug Statements:\n");
+
   for (unsigned int i = 0; i <= tokens->count - 1; i++) {
     token token;
     dynamic_array_get(tokens, i, &token);
