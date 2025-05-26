@@ -19,10 +19,12 @@ typedef enum term_kind {
 typedef struct variable {
   token_kind type;
   char *name;
+  unsigned int line;
 } variable;
 
 typedef struct term_node {
   term_kind kind;
+  unsigned int line;
   union {
     token_value value;
     variable identifier;
@@ -46,6 +48,7 @@ typedef enum expr_kind {
 
 typedef struct expr_node {
   expr_kind kind;
+  unsigned int line;
   union {
     term_node term;
     term_binary_node add;
@@ -68,6 +71,7 @@ typedef enum rel_kind {
 
 typedef struct rel_node {
   rel_kind kind;
+  unsigned int line;
   union {
     term_binary_node is_equal;
     term_binary_node not_equal;
@@ -120,6 +124,7 @@ typedef struct label_node {
 
 typedef struct instr_node {
   instr_kind kind;
+  unsigned int line;
   union {
     variable declare_variable;
     initialize_variable_node initialize_variable;

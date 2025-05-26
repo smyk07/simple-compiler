@@ -19,10 +19,24 @@ char lexer_peek_char(lexer *l) {
 char lexer_read_char(lexer *l) {
   l->ch = lexer_peek_char(l);
 
+  if (l->ch == '\n')
+    l->line += 1;
+
   l->pos = l->read_pos;
   l->read_pos += 1;
 
   return l->ch;
+}
+
+void lexer_init(lexer *l, char *buffer, unsigned int buffer_len) {
+  l->buffer = buffer;
+  l->buffer_len = buffer_len;
+  l->line = 1;
+  l->pos = 0;
+  l->read_pos = 0;
+  l->ch = 0;
+
+  lexer_read_char(l);
 }
 
 void skip_whitespaces(lexer *l) {
@@ -31,86 +45,82 @@ void skip_whitespaces(lexer *l) {
   }
 }
 
-void lexer_init(lexer *l, char *buffer, unsigned int buffer_len) {
-  l->buffer = buffer;
-  l->buffer_len = buffer_len;
-  l->pos = 0;
-  l->read_pos = 0;
-  l->ch = 0;
-
-  lexer_read_char(l);
-}
-
 token lexer_next_token(lexer *l) {
   skip_whitespaces(l);
 
   if (l->ch == EOF) {
     lexer_read_char(l);
-    return (token){.kind = TOKEN_END, .value.str = NULL};
+    return (token){.kind = TOKEN_END, .value.str = NULL, .line = l->line};
   }
 
   else if (l->ch == '=') {
     lexer_read_char(l);
     if (l->ch == '=') {
       lexer_read_char(l);
-      return (token){.kind = TOKEN_IS_EQUAL, .value.str = NULL};
+      return (token){
+          .kind = TOKEN_IS_EQUAL, .value.str = NULL, .line = l->line};
     }
-    return (token){.kind = TOKEN_ASSIGN, .value.str = NULL};
+    return (token){.kind = TOKEN_ASSIGN, .value.str = NULL, .line = l->line};
   }
 
   else if (l->ch == '!') {
     lexer_read_char(l);
     if (l->ch == '=') {
       lexer_read_char(l);
-      return (token){.kind = TOKEN_NOT_EQUAL, .value.str = NULL};
+      return (token){
+          .kind = TOKEN_NOT_EQUAL, .value.str = NULL, .line = l->line};
     }
     string_slice slice = {.str = "!", .len = 1};
     char *value = NULL;
     string_slice_to_owned(&slice, &value);
-    return (token){.kind = TOKEN_INVALID, .value.str = value};
+    return (token){.kind = TOKEN_INVALID, .value.str = value, .line = l->line};
   }
 
   else if (l->ch == '+') {
     lexer_read_char(l);
-    return (token){.kind = TOKEN_ADD, .value.str = NULL};
+    return (token){.kind = TOKEN_ADD, .value.str = NULL, .line = l->line};
   }
 
   else if (l->ch == '-') {
     lexer_read_char(l);
-    return (token){.kind = TOKEN_SUBTRACT, .value.str = NULL};
+    return (token){.kind = TOKEN_SUBTRACT, .value.str = NULL, .line = l->line};
   }
 
   else if (l->ch == '*') {
     lexer_read_char(l);
-    return (token){.kind = TOKEN_MULTIPLY, .value.str = NULL};
+    return (token){.kind = TOKEN_MULTIPLY, .value.str = NULL, .line = l->line};
   }
 
   else if (l->ch == '/') {
     lexer_read_char(l);
-    return (token){.kind = TOKEN_DIVIDE, .value.str = NULL};
+    return (token){.kind = TOKEN_DIVIDE, .value.str = NULL, .line = l->line};
   }
 
   else if (l->ch == '%') {
     lexer_read_char(l);
-    return (token){.kind = TOKEN_MODULO, .value.str = NULL};
+    return (token){.kind = TOKEN_MODULO, .value.str = NULL, .line = l->line};
   }
 
   else if (l->ch == '<') {
     lexer_read_char(l);
     if (l->ch == '=') {
       lexer_read_char(l);
-      return (token){.kind = TOKEN_LESS_THAN_OR_EQUAL, .value.str = NULL};
+      return (token){
+          .kind = TOKEN_LESS_THAN_OR_EQUAL, .value.str = NULL, .line = l->line};
     }
-    return (token){.kind = TOKEN_LESS_THAN, .value.str = NULL};
+    return (token){.kind = TOKEN_LESS_THAN, .value.str = NULL, .line = l->line};
   }
 
   else if (l->ch == '>') {
     lexer_read_char(l);
     if (l->ch == '=') {
       lexer_read_char(l);
-      return (token){.kind = TOKEN_GREATER_THAN_OR_EQUAL, .value.str = NULL};
+      return (token){.kind = TOKEN_GREATER_THAN_OR_EQUAL,
+                     .value.str = NULL,
+                     .line = l->line};
     }
-    return (token){.kind = TOKEN_GREATER_THAN, .value.str = NULL};
+    return (token){
+        .kind = TOKEN_GREATER_THAN, .value.str = NULL, .line = l->line};
   }
 
   else if (l->ch == ':') {
@@ -122,7 +132,7 @@ token lexer_next_token(lexer *l) {
     }
     char *value = NULL;
     string_slice_to_owned(&slice, &value);
-    return (token){.kind = TOKEN_LABEL, .value.str = value};
+    return (token){.kind = TOKEN_LABEL, .value.str = value, .line = l->line};
   }
 
   else if (isdigit(l->ch)) {
@@ -137,7 +147,7 @@ token lexer_next_token(lexer *l) {
     int value = atoi(temp);
     free(temp);
 
-    return (token){.kind = TOKEN_INT, .value.integer = value};
+    return (token){.kind = TOKEN_INT, .value.integer = value, .line = l->line};
   }
 
   else if (l->ch == '\'') {
@@ -166,17 +176,20 @@ token lexer_next_token(lexer *l) {
         escaped_char = '\0';
         break;
       default:
-        return (token){.kind = TOKEN_INVALID, .value.character = l->ch};
+        return (token){
+            .kind = TOKEN_INVALID, .value.character = l->ch, .line = l->line};
       }
       char_value = escaped_char;
     }
     lexer_read_char(l);
     if (l->ch != '\'') {
-      return (token){.kind = TOKEN_INVALID, .value.character = l->ch};
+      return (token){
+          .kind = TOKEN_INVALID, .value.character = l->ch, .line = l->line};
     }
     lexer_read_char(l);
 
-    return (token){.kind = TOKEN_CHAR, .value.character = char_value};
+    return (token){
+        .kind = TOKEN_CHAR, .value.character = char_value, .line = l->line};
   }
 
   else if (isalnum(l->ch) || l->ch == '_') {
@@ -188,21 +201,24 @@ token lexer_next_token(lexer *l) {
     char *value = NULL;
     string_slice_to_owned(&slice, &value);
     if (strcmp(value, "input") == 0)
-      return (token){.kind = TOKEN_INPUT, .value.str = NULL};
+      return (token){.kind = TOKEN_INPUT, .value.str = NULL, .line = l->line};
     else if (strcmp(value, "output") == 0)
-      return (token){.kind = TOKEN_OUTPUT, .value.str = NULL};
+      return (token){.kind = TOKEN_OUTPUT, .value.str = NULL, .line = l->line};
     else if (strcmp(value, "goto") == 0)
-      return (token){.kind = TOKEN_GOTO, .value.str = NULL};
+      return (token){.kind = TOKEN_GOTO, .value.str = NULL, .line = l->line};
     else if (strcmp(value, "if") == 0)
-      return (token){.kind = TOKEN_IF, .value.str = NULL};
+      return (token){.kind = TOKEN_IF, .value.str = NULL, .line = l->line};
     else if (strcmp(value, "then") == 0)
-      return (token){.kind = TOKEN_THEN, .value.str = NULL};
+      return (token){.kind = TOKEN_THEN, .value.str = NULL, .line = l->line};
     else if (strcmp(value, "int") == 0)
-      return (token){.kind = TOKEN_TYPE_INT, .value.str = NULL};
+      return (token){
+          .kind = TOKEN_TYPE_INT, .value.str = NULL, .line = l->line};
     else if (strcmp(value, "char") == 0)
-      return (token){.kind = TOKEN_TYPE_CHAR, .value.str = NULL};
+      return (token){
+          .kind = TOKEN_TYPE_CHAR, .value.str = NULL, .line = l->line};
     else
-      return (token){.kind = TOKEN_IDENTIFIER, .value.str = value};
+      return (token){
+          .kind = TOKEN_IDENTIFIER, .value.str = value, .line = l->line};
   }
 
   else {
@@ -210,7 +226,7 @@ token lexer_next_token(lexer *l) {
     char *value = NULL;
     string_slice_to_owned(&slice, &value);
     lexer_read_char(l);
-    return (token){.kind = TOKEN_INVALID, .value.str = value};
+    return (token){.kind = TOKEN_INVALID, .value.str = value, .line = l->line};
   }
 }
 
@@ -294,6 +310,8 @@ void print_tokens(dynamic_array *tokens) {
   for (unsigned int i = 0; i <= tokens->count - 1; i++) {
     token token;
     dynamic_array_get(tokens, i, &token);
+
+    printf("[line %d] ", token.line);
 
     const char *kind = show_token_kind(token.kind);
     printf("%s", kind);

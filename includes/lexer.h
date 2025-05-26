@@ -53,11 +53,13 @@ typedef union token_value {
 typedef struct token {
   token_kind kind;
   token_value value;
+  unsigned int line;
 } token;
 
 typedef struct lexer {
   char *buffer;
   unsigned int buffer_len;
+  unsigned int line;
   unsigned int pos;
   unsigned int read_pos;
   char ch;

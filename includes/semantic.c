@@ -28,7 +28,8 @@ int find_variables(dynamic_array *variables, variable *var_to_find,
     }
   }
 
-  scu_perror(errors, "Use of undeclared variable: %s\n", var_to_find->name);
+  scu_perror(errors, "Use of undeclared variable: %s [line %d]\n",
+             var_to_find->name, var_to_find->line);
   return -1;
 }
 
@@ -150,7 +151,8 @@ void instr_check_variables(instr_node *instr, dynamic_array *variables,
 }
 
 // Typechecking
-token_kind var_type(char *name, dynamic_array *variables, int *errors) {
+token_kind var_type(char *name, unsigned int line, dynamic_array *variables,
+                    int *errors) {
   for (unsigned int i = 0; i < variables->count; i++) {
     variable var;
     dynamic_array_get(variables, i, &var);
@@ -159,11 +161,11 @@ token_kind var_type(char *name, dynamic_array *variables, int *errors) {
       return var.type;
     }
   }
-  scu_perror(errors, "Use of undeclared variable: %s\n", name);
+  scu_perror(errors, "Use of undeclared variable: %s [line %d]\n", name, line);
   return -1;
 }
 
-token_kind term_type(term_node *term, token_kind target_type,
+token_kind term_type(term_node *term, token_kind target_type, unsigned int line,
                      dynamic_array *variables, int *errors) {
   switch (term->kind) {
   case TERM_INPUT: {
@@ -177,7 +179,7 @@ token_kind term_type(term_node *term, token_kind target_type,
     return TOKEN_TYPE_CHAR;
     break;
   case TERM_IDENTIFIER:
-    return var_type(term->identifier.name, variables, errors);
+    return var_type(term->identifier.name, line, variables, errors);
     break;
   default:
     return -1;
@@ -190,34 +192,43 @@ token_kind expr_type(expr_node *expr, token_kind target_type,
 
   switch (expr->kind) {
   case EXPR_TERM:
-    return term_type(&expr->term, target_type, variables, errors);
+    return term_type(&expr->term, target_type, expr->line, variables, errors);
   case EXPR_ADD:
-    lhs = term_type(&expr->add.lhs, target_type, variables, errors);
-    rhs = term_type(&expr->add.rhs, target_type, variables, errors);
+    lhs = term_type(&expr->add.lhs, target_type, expr->line, variables, errors);
+    rhs = term_type(&expr->add.rhs, target_type, expr->line, variables, errors);
     break;
   case EXPR_SUBTRACT:
-    lhs = term_type(&expr->subtract.lhs, target_type, variables, errors);
-    rhs = term_type(&expr->subtract.rhs, target_type, variables, errors);
+    lhs = term_type(&expr->subtract.lhs, target_type, expr->line, variables,
+                    errors);
+    rhs = term_type(&expr->subtract.rhs, target_type, expr->line, variables,
+                    errors);
     break;
   case EXPR_MULTIPLY:
-    lhs = term_type(&expr->multiply.lhs, target_type, variables, errors);
-    rhs = term_type(&expr->multiply.rhs, target_type, variables, errors);
+    lhs = term_type(&expr->multiply.lhs, target_type, expr->line, variables,
+                    errors);
+    rhs = term_type(&expr->multiply.rhs, target_type, expr->line, variables,
+                    errors);
     break;
   case EXPR_DIVIDE:
-    lhs = term_type(&expr->divide.lhs, target_type, variables, errors);
-    rhs = term_type(&expr->divide.rhs, target_type, variables, errors);
+    lhs = term_type(&expr->divide.lhs, target_type, expr->line, variables,
+                    errors);
+    rhs = term_type(&expr->divide.rhs, target_type, expr->line, variables,
+                    errors);
     break;
   case EXPR_MODULO:
-    lhs = term_type(&expr->modulo.lhs, target_type, variables, errors);
-    rhs = term_type(&expr->modulo.rhs, target_type, variables, errors);
+    lhs = term_type(&expr->modulo.lhs, target_type, expr->line, variables,
+                    errors);
+    rhs = term_type(&expr->modulo.rhs, target_type, expr->line, variables,
+                    errors);
     break;
   }
 
   if (lhs != rhs) {
     char *lhs_type_str = type_to_str(lhs);
     char *rhs_type_str = type_to_str(rhs);
-    scu_perror(errors, "Type mismatch in arithmetic expression: %s vs %s\n",
-               lhs_type_str, rhs_type_str);
+    scu_perror(errors,
+               "Type mismatch in arithmetic expression: %s vs %s [line %d]\n",
+               lhs_type_str, rhs_type_str, expr->line);
   }
   return lhs;
 }
@@ -227,40 +238,49 @@ void rel_typecheck(rel_node *rel, dynamic_array *variables, int *errors) {
 
   switch (rel->kind) {
   case REL_IS_EQUAL:
-    lhs = term_type(&rel->is_equal.lhs, TOKEN_NULL, variables, errors);
-    rhs = term_type(&rel->is_equal.rhs, TOKEN_NULL, variables, errors);
+    lhs =
+        term_type(&rel->is_equal.lhs, TOKEN_NULL, rel->line, variables, errors);
+    rhs =
+        term_type(&rel->is_equal.rhs, TOKEN_NULL, rel->line, variables, errors);
     break;
   case REL_NOT_EQUAL:
-    lhs = term_type(&rel->not_equal.lhs, TOKEN_NULL, variables, errors);
-    rhs = term_type(&rel->not_equal.rhs, TOKEN_NULL, variables, errors);
+    lhs = term_type(&rel->not_equal.lhs, TOKEN_NULL, rel->line, variables,
+                    errors);
+    rhs = term_type(&rel->not_equal.rhs, TOKEN_NULL, rel->line, variables,
+                    errors);
     break;
   case REL_LESS_THAN:
-    lhs = term_type(&rel->less_than.lhs, TOKEN_NULL, variables, errors);
-    rhs = term_type(&rel->less_than.rhs, TOKEN_NULL, variables, errors);
+    lhs = term_type(&rel->less_than.lhs, TOKEN_NULL, rel->line, variables,
+                    errors);
+    rhs = term_type(&rel->less_than.rhs, TOKEN_NULL, rel->line, variables,
+                    errors);
     break;
   case REL_LESS_THAN_OR_EQUAL:
-    lhs =
-        term_type(&rel->less_than_or_equal.lhs, TOKEN_NULL, variables, errors);
-    rhs =
-        term_type(&rel->less_than_or_equal.rhs, TOKEN_NULL, variables, errors);
+    lhs = term_type(&rel->less_than_or_equal.lhs, TOKEN_NULL, rel->line,
+                    variables, errors);
+    rhs = term_type(&rel->less_than_or_equal.rhs, TOKEN_NULL, rel->line,
+                    variables, errors);
     break;
   case REL_GREATER_THAN:
-    lhs = term_type(&rel->greater_than.lhs, TOKEN_NULL, variables, errors);
-    rhs = term_type(&rel->greater_than.rhs, TOKEN_NULL, variables, errors);
+    lhs = term_type(&rel->greater_than.lhs, TOKEN_NULL, rel->line, variables,
+                    errors);
+    rhs = term_type(&rel->greater_than.rhs, TOKEN_NULL, rel->line, variables,
+                    errors);
     break;
   case REL_GREATER_THAN_OR_EQUAL:
-    lhs = term_type(&rel->greater_than_or_equal.lhs, TOKEN_NULL, variables,
-                    errors);
-    rhs = term_type(&rel->greater_than_or_equal.rhs, TOKEN_NULL, variables,
-                    errors);
+    lhs = term_type(&rel->greater_than_or_equal.lhs, TOKEN_NULL, rel->line,
+                    variables, errors);
+    rhs = term_type(&rel->greater_than_or_equal.rhs, TOKEN_NULL, rel->line,
+                    variables, errors);
     break;
   }
 
   if (lhs != rhs) {
     char *lhs_type_str = type_to_str(lhs);
     char *rhs_type_str = type_to_str(rhs);
-    scu_perror(errors, "Type mismatch in conditional statement: %s vs %s\n",
-               lhs_type_str, rhs_type_str);
+    scu_perror(errors,
+               "Type mismatch in conditional statement: %s vs %s [line %d]\n",
+               lhs_type_str, rhs_type_str, rel->line);
   }
 }
 
@@ -273,24 +293,26 @@ void instr_typecheck(instr_node *instr, dynamic_array *variables, int *errors) {
     if (target_type != expr_result) {
       char *target_type_str = type_to_str(target_type);
       char *expr_result_str = type_to_str(expr_result);
-      scu_perror(errors, "Type mismatch in initialization to %s - %s to %s\n",
+      scu_perror(errors,
+                 "Type mismatch in initialization to %s - %s to %s [line %d]\n",
                  instr->assign.identifier.name, expr_result_str,
-                 target_type_str);
+                 target_type_str, instr->line);
     }
     break;
   }
   case INSTR_ASSIGN: {
     token_kind target_type =
-        var_type(instr->assign.identifier.name, variables, errors);
+        var_type(instr->assign.identifier.name, instr->line, variables, errors);
 
     token_kind expr_result =
         expr_type(&instr->assign.expr, target_type, variables, errors);
     if (target_type != expr_result) {
       char *target_type_str = type_to_str(target_type);
       char *expr_result_str = type_to_str(expr_result);
-      scu_perror(errors, "Type mismatch in assignment to %s - %s to %s\n",
+      scu_perror(errors,
+                 "Type mismatch in assignment to %s - %s to %s [line %d]\n",
                  instr->assign.identifier.name, expr_result_str,
-                 target_type_str);
+                 target_type_str, instr->line);
     }
     break;
   }
