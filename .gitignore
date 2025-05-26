@@ -1,5 +1,5 @@
-output.asm
-example
 compiler
+example
+example.asm
 
 obj/

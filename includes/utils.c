@@ -70,6 +70,32 @@ char *scu_extract_name(const char *filename) {
   return name;
 }
 
+char *scu_format_string(char *__restrict __format, ...) {
+  va_list args;
+  va_start(args, __format);
+
+  va_list args_copy;
+  va_copy(args_copy, args);
+  int length = vsnprintf(NULL, 0, __format, args_copy);
+  va_end(args_copy);
+
+  if (length < 0) {
+    va_end(args);
+    return NULL;
+  }
+
+  char *result = malloc(length + 1);
+  if (!result) {
+    va_end(args);
+    return NULL;
+  }
+
+  vsnprintf(result, length + 1, __format, args);
+  va_end(args);
+
+  return result;
+}
+
 void scu_psuccess(char *__restrict __format, ...) {
   va_list args;
   va_start(args, __format);

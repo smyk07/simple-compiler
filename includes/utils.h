@@ -11,6 +11,8 @@ char *scu_extract_name(const char *filename);
 
 int scu_read_file(char *path, char **buffer);
 
+char *scu_format_string(char *__restrict __format, ...);
+
 void scu_psuccess(char *__restrict __format, ...);
 void scu_pdebug(char *__restrict __format, ...);
 void scu_pwarning(char *__restrict __format, ...);
