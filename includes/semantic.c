@@ -28,7 +28,7 @@ int find_variables(dynamic_array *variables, variable *var_to_find,
     }
   }
 
-  scu_perror(errors, "Use of undeclared variable: %s [line %d]\n",
+  scu_perror(errors, "Use of undeclared variable: %s [line %u]\n",
              var_to_find->name, var_to_find->line);
   return -1;
 }
@@ -153,7 +153,7 @@ void instr_check_labels(instr_node *instr, dynamic_array *labels, int *errors) {
       char *existing;
       dynamic_array_get(labels, i, &existing);
       if (strcmp(label_name, existing) == 0) {
-        scu_perror(errors, "Duplicate label declaration: %s [line %d]\n",
+        scu_perror(errors, "Duplicate label declaration: %s [line %u]\n",
                    label_name, instr->line);
         return;
       }
@@ -173,7 +173,7 @@ void instr_check_labels(instr_node *instr, dynamic_array *labels, int *errors) {
       }
     }
     if (!found) {
-      scu_perror(errors, "Use of undeclared label: %s [line %d]\n",
+      scu_perror(errors, "Use of undeclared label: %s [line %u]\n",
                  instr->goto_.label, instr->line);
     }
     break;
@@ -198,7 +198,7 @@ token_kind var_type(char *name, unsigned int line, dynamic_array *variables,
       return var.type;
     }
   }
-  scu_perror(errors, "Use of undeclared variable: %s [line %d]\n", name, line);
+  scu_perror(errors, "Use of undeclared variable: %s [line %u]\n", name, line);
   return -1;
 }
 
@@ -263,7 +263,7 @@ token_kind expr_type(expr_node *expr, token_kind target_type,
     char *lhs_type_str = type_to_str(lhs);
     char *rhs_type_str = type_to_str(rhs);
     scu_perror(errors,
-               "Type mismatch in arithmetic expression: %s vs %s [line %d]\n",
+               "Type mismatch in arithmetic expression: %s vs %s [line %u]\n",
                lhs_type_str, rhs_type_str, expr->line);
   }
   return lhs;
@@ -315,7 +315,7 @@ void rel_typecheck(rel_node *rel, dynamic_array *variables, int *errors) {
     char *lhs_type_str = type_to_str(lhs);
     char *rhs_type_str = type_to_str(rhs);
     scu_perror(errors,
-               "Type mismatch in conditional statement: %s vs %s [line %d]\n",
+               "Type mismatch in conditional statement: %s vs %s [line %u]\n",
                lhs_type_str, rhs_type_str, rel->line);
   }
 }
@@ -330,7 +330,7 @@ void instr_typecheck(instr_node *instr, dynamic_array *variables, int *errors) {
       char *target_type_str = type_to_str(target_type);
       char *expr_result_str = type_to_str(expr_result);
       scu_perror(errors,
-                 "Type mismatch in initialization to %s - %s to %s [line %d]\n",
+                 "Type mismatch in initialization to %s - %s to %s [line %u]\n",
                  instr->assign.identifier.name, expr_result_str,
                  target_type_str, instr->line);
     }
@@ -346,7 +346,7 @@ void instr_typecheck(instr_node *instr, dynamic_array *variables, int *errors) {
       char *target_type_str = type_to_str(target_type);
       char *expr_result_str = type_to_str(expr_result);
       scu_perror(errors,
-                 "Type mismatch in assignment to %s - %s to %s [line %d]\n",
+                 "Type mismatch in assignment to %s - %s to %s [line %u]\n",
                  instr->assign.identifier.name, expr_result_str,
                  target_type_str, instr->line);
     }
@@ -362,6 +362,7 @@ void instr_typecheck(instr_node *instr, dynamic_array *variables, int *errors) {
 
 void check_semantics(dynamic_array *instrs, dynamic_array *variables,
                      dynamic_array *labels, int *errors) {
+
   // Semantic Analysis - Check variables
   for (unsigned int i = 0; i < instrs->count; i++) {
     instr_node instr;
@@ -369,22 +370,18 @@ void check_semantics(dynamic_array *instrs, dynamic_array *variables,
     instr_check_variables(&instr, variables, errors);
   }
 
-  scu_check_errors(errors);
+  // Semantic Analysis - Check variable types
+  for (unsigned int i = 0; i < instrs->count; i++) {
+    instr_node instr;
+    dynamic_array_get(instrs, i, &instr);
+    instr_typecheck(&instr, variables, errors);
+  }
 
   // Semantic Analysis - Check labels
   for (unsigned int i = 0; i < instrs->count; i++) {
     instr_node instr;
     dynamic_array_get(instrs, i, &instr);
     instr_check_labels(&instr, labels, errors);
-  }
-
-  scu_check_errors(errors);
-
-  // Semantic Analysis - Check variable types
-  for (unsigned int i = 0; i < instrs->count; i++) {
-    instr_node instr;
-    dynamic_array_get(instrs, i, &instr);
-    instr_typecheck(&instr, variables, errors);
   }
 
   scu_check_errors(errors);
