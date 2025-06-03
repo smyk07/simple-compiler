@@ -8,6 +8,11 @@ Check [example.scl](https://github.com/smyk07/simple-compiler/blob/main/example.
 
 [How to build a compiler from scratch by Alex The Dev](https://youtu.be/HOe2YFnzO2I)
 
+## Prerequisites
+
+- `make`
+- `clang`
+
 ## Usage
 
 Compile the compiler:
