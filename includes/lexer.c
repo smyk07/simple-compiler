@@ -314,7 +314,7 @@ char *show_token_kind(token_kind kind) {
 void print_tokens(dynamic_array *tokens) {
   scu_pdebug("Lexing Debug Statements:\n");
 
-  for (unsigned int i = 0; i <= tokens->count - 1; i++) {
+  for (unsigned int i = 0; i < tokens->count; i++) {
     token token;
     dynamic_array_get(tokens, i, &token);
 
