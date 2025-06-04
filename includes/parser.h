@@ -151,4 +151,6 @@ void parse_program(parser *p, program_node *program, int *errors);
 
 void print_program(program_node *program);
 
+void free_if_instrs(program_node *program);
+
 #endif

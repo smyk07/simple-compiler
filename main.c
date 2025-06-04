@@ -76,17 +76,26 @@ int main(int argc, char *argv[]) {
   scu_assemble(output_asm_file, extracted_filename, &errors);
 
   // Restore STDOUT
-  stdout = fopen("/dev/tty", "w");
+  FILE *stdout = fopen("/dev/tty", "w");
+  if (!stdout) {
+    perror("fopen");
+    exit(1);
+  }
   scu_psuccess("%s\n", filename);
 
   // Free memory
+  fclose(stdout);
+
   free(extracted_filename);
   free(code_buffer);
   free(output_asm_file);
+
   free_tokens(&tokens);
+  free_if_instrs(&program);
+  dynamic_array_free_items(&labels);
+
   dynamic_array_free(&tokens);
   dynamic_array_free(&variables);
-  dynamic_array_free(&labels);
   dynamic_array_free(&program.instrs);
 
   return 0;

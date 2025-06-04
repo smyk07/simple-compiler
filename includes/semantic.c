@@ -159,8 +159,7 @@ void instr_check_labels(instr_node *instr, dynamic_array *labels, int *errors) {
         return;
       }
     }
-    char *copy = strdup(label_name);
-    dynamic_array_append(labels, &copy);
+    dynamic_array_append(labels, &label_name);
     break;
   }
   case INSTR_GOTO: {

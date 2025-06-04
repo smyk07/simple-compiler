@@ -182,8 +182,9 @@ void instr_asm(instr_node *instr, dynamic_array *variables, int *if_count) {
       break;
     case TERM_IDENTIFIER: {
       int index = find_variables(variables, &instr->output.term.identifier);
-      token_kind type = var_type(instr->output.term.identifier.name, variables);
-      if (type == TOKEN_TYPE_CHAR) {
+      variable var;
+      dynamic_array_get(variables, index, &var);
+      if (var.type == TOKEN_TYPE_CHAR) {
         printf("    mov al, byte [rbp - %d]\n", index * 8 + 8);
         printf("    mov [char_buf], al\n");
         printf("    mov rdi, 1\n");

@@ -311,6 +311,7 @@ void parse_program(parser *p, program_node *program, int *errors) {
     instr_node *instr = malloc(sizeof(instr_node));
     parse_instr(p, instr, errors);
     dynamic_array_append(&program->instrs, instr);
+    free(instr);
     parser_current(p, &token);
   }
 }
@@ -527,5 +528,14 @@ void print_program(program_node *program) {
     instr_node instr;
     dynamic_array_get(&program->instrs, i, &instr);
     print_instr(instr);
+  }
+}
+
+void free_if_instrs(program_node *program) {
+  for (unsigned int i = 0; i < program->instrs.count; i++) {
+    instr_node *instr = program->instrs.items + (i * program->instrs.item_size);
+    if (instr->kind == INSTR_IF) {
+      free(instr->if_.instr);
+    }
   }
 }

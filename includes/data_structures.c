@@ -151,3 +151,10 @@ void dynamic_array_free(dynamic_array *da) {
   da->capacity = 0;
   da->item_size = 0;
 }
+
+void dynamic_array_free_items(dynamic_array *da) {
+  for (unsigned int i = 0; i < da->count; i++) {
+    char *item = (char *)da->items + (i * da->item_size);
+    free(item);
+  }
+}
