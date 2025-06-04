@@ -76,11 +76,7 @@ int main(int argc, char *argv[]) {
   scu_assemble(output_asm_file, extracted_filename, &errors);
 
   // Restore STDOUT
-  FILE *stdout = fopen("/dev/tty", "w");
-  if (!stdout) {
-    perror("fopen");
-    exit(1);
-  }
+  stdout = fopen("/dev/tty", "w");
   scu_psuccess("%s\n", filename);
 
   // Free memory
