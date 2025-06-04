@@ -79,5 +79,15 @@ int main(int argc, char *argv[]) {
   stdout = fopen("/dev/tty", "w");
   scu_psuccess("%s\n", filename);
 
+  // Free memory
+  free(extracted_filename);
+  free(code_buffer);
+  free(output_asm_file);
+  free_tokens(&tokens);
+  dynamic_array_free(&tokens);
+  dynamic_array_free(&variables);
+  dynamic_array_free(&labels);
+  dynamic_array_free(&program.instrs);
+
   return 0;
 }

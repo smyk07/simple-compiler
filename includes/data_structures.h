@@ -27,5 +27,6 @@ int string_slice_to_owned(string_slice *ss, char **str);
 void dynamic_array_init(dynamic_array *da, unsigned int item_size);
 int dynamic_array_get(dynamic_array *da, unsigned int index, void *item);
 int dynamic_array_append(dynamic_array *da, const void *item);
+void dynamic_array_free(dynamic_array *da);
 
 #endif

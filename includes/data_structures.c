@@ -20,7 +20,7 @@ int string_slice_to_owned(string_slice *ss, char **str) {
     return -1;
 
   memcpy(*str, ss->str, ss->len);
-  (*str)[ss->len] = '\0'; // Null-terminate the string
+  (*str)[ss->len] = '\0';
 
   return 0;
 }
@@ -74,4 +74,14 @@ int dynamic_array_append(dynamic_array *da, const void *item) {
   da->count++;
 
   return 0;
+}
+
+void dynamic_array_free(dynamic_array *da) {
+  if (!da)
+    return;
+  free(da->items);
+  da->items = NULL;
+  da->count = 0;
+  da->capacity = 0;
+  da->item_size = 0;
 }

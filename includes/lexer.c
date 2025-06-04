@@ -199,25 +199,33 @@ token lexer_next_token(lexer *l) {
     }
     char *value = NULL;
     string_slice_to_owned(&slice, &value);
-    if (strcmp(value, "input") == 0)
+    if (strcmp(value, "input") == 0) {
+      free(value);
       return (token){.kind = TOKEN_INPUT, .value.str = NULL, .line = l->line};
-    else if (strcmp(value, "output") == 0)
+    } else if (strcmp(value, "output") == 0) {
+      free(value);
       return (token){.kind = TOKEN_OUTPUT, .value.str = NULL, .line = l->line};
-    else if (strcmp(value, "goto") == 0)
+    } else if (strcmp(value, "goto") == 0) {
+      free(value);
       return (token){.kind = TOKEN_GOTO, .value.str = NULL, .line = l->line};
-    else if (strcmp(value, "if") == 0)
+    } else if (strcmp(value, "if") == 0) {
+      free(value);
       return (token){.kind = TOKEN_IF, .value.str = NULL, .line = l->line};
-    else if (strcmp(value, "then") == 0)
+    } else if (strcmp(value, "then") == 0) {
+      free(value);
       return (token){.kind = TOKEN_THEN, .value.str = NULL, .line = l->line};
-    else if (strcmp(value, "int") == 0)
+    } else if (strcmp(value, "int") == 0) {
+      free(value);
       return (token){
           .kind = TOKEN_TYPE_INT, .value.str = NULL, .line = l->line};
-    else if (strcmp(value, "char") == 0)
+    } else if (strcmp(value, "char") == 0) {
+      free(value);
       return (token){
           .kind = TOKEN_TYPE_CHAR, .value.str = NULL, .line = l->line};
-    else
+    } else {
       return (token){
           .kind = TOKEN_IDENTIFIER, .value.str = value, .line = l->line};
+    }
   }
 
   else {
@@ -332,5 +340,15 @@ void print_tokens(dynamic_array *tokens) {
     }
 
     printf("\n");
+  }
+}
+
+void free_tokens(dynamic_array *tokens) {
+  for (unsigned int i = 0; i < tokens->count; i++) {
+    token *token = tokens->items + (i * tokens->item_size);
+    if (token->kind == TOKEN_IDENTIFIER || token->kind == TOKEN_LABEL ||
+        token->kind == TOKEN_INVALID) {
+      free(token->value.str);
+    }
   }
 }
