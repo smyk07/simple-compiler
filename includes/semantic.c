@@ -146,44 +146,75 @@ void instr_check_variables(instr_node *instr, dynamic_array *variables,
 }
 
 // Label checking
-void instr_check_labels(instr_node *instr, dynamic_array *labels, int *errors) {
-  switch (instr->kind) {
-  case INSTR_LABEL: {
-    char *label_name = instr->label.label;
-    for (unsigned int i = 0; i < labels->count; i++) {
-      char *existing;
-      dynamic_array_get(labels, i, &existing);
-      if (strcmp(label_name, existing) == 0) {
-        scu_perror(errors, "Duplicate label declaration: %s [line %u]\n",
-                   label_name, instr->line);
-        return;
-      }
+void check_label(dynamic_array *labels, instr_node *instr, int *errors) {
+  char *label_name = instr->label.label;
+  for (unsigned int i = 0; i < labels->count; i++) {
+    char *existing;
+    dynamic_array_get(labels, i, &existing);
+    if (strcmp(label_name, existing) == 0) {
+      scu_perror(errors, "Duplicate label declaration: %s [line %u]\n",
+                 label_name, instr->line);
+      return;
     }
-    dynamic_array_append(labels, &label_name);
-    break;
   }
-  case INSTR_GOTO: {
-    int found = 0;
-    for (unsigned int i = 0; i < labels->count; i++) {
-      char *label;
-      dynamic_array_get(labels, i, &label);
-      if (strcmp(label, instr->goto_.label) == 0) {
-        found = 1;
+  dynamic_array_append(labels, &label_name);
+}
+
+void check_goto(dynamic_array *labels, instr_node *instr, int *errors) {
+  int found = 0;
+  for (unsigned int i = 0; i < labels->count; i++) {
+    char *label;
+    dynamic_array_get(labels, i, &label);
+    if (strcmp(label, instr->goto_.label) == 0) {
+      found = 1;
+      break;
+    }
+  }
+  if (!found) {
+    scu_perror(errors, "Use of undeclared label: %s [line %u]\n",
+               instr->goto_.label, instr->line);
+  }
+}
+
+void instrs_check_labels(dynamic_array *instrs, dynamic_array *labels,
+                         int *errors) {
+  // check labels first
+  for (unsigned int i = 0; i < instrs->count; i++) {
+    instr_node instr;
+    dynamic_array_get(instrs, i, &instr);
+
+    if (instr.kind == INSTR_LABEL) {
+      check_label(labels, &instr, errors);
+    }
+  }
+
+  // then check goto
+  for (unsigned int i = 0; i < instrs->count; i++) {
+    instr_node instr;
+    dynamic_array_get(instrs, i, &instr);
+
+    if (instr.kind == INSTR_GOTO) {
+      check_goto(labels, &instr, errors);
+    }
+  }
+
+  // then check if
+  for (unsigned int i = 0; i < instrs->count; i++) {
+    instr_node instr;
+    dynamic_array_get(instrs, i, &instr);
+
+    if (instr.kind == INSTR_IF) {
+      switch (instr.if_.instr->kind) {
+      case INSTR_GOTO:
+        check_goto(labels, instr.if_.instr, errors);
+        break;
+      case INSTR_LABEL:
+        check_label(labels, instr.if_.instr, errors);
+        break;
+      default:
         break;
       }
     }
-    if (!found) {
-      scu_perror(errors, "Use of undeclared label: %s [line %u]\n",
-                 instr->goto_.label, instr->line);
-    }
-    break;
-  }
-  case INSTR_IF: {
-    instr_check_labels(instr->if_.instr, labels, errors);
-    break;
-  }
-  default:
-    break;
   }
 }
 
@@ -361,8 +392,7 @@ void instr_typecheck(instr_node *instr, dynamic_array *variables, int *errors) {
 }
 
 void check_semantics(dynamic_array *instrs, dynamic_array *variables,
-                     dynamic_array *labels, int *errors) {
-
+                     int *errors) {
   // Semantic Analysis - Check variables
   for (unsigned int i = 0; i < instrs->count; i++) {
     instr_node instr;
@@ -378,11 +408,10 @@ void check_semantics(dynamic_array *instrs, dynamic_array *variables,
   }
 
   // Semantic Analysis - Check labels
-  for (unsigned int i = 0; i < instrs->count; i++) {
-    instr_node instr;
-    dynamic_array_get(instrs, i, &instr);
-    instr_check_labels(&instr, labels, errors);
-  }
+  dynamic_array labels;
+  dynamic_array_init(&labels, sizeof(char *));
+  instrs_check_labels(instrs, &labels, errors);
+  dynamic_array_free(&labels);
 
   scu_check_errors(errors);
 }

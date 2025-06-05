@@ -58,12 +58,11 @@ int main(int argc, char *argv[]) {
   if (debug)
     print_program(&program);
 
-  dynamic_array variables, labels;
+  dynamic_array variables;
   dynamic_array_init(&variables, sizeof(variable));
-  dynamic_array_init(&labels, sizeof(char *));
 
   // Semantic Analysis
-  check_semantics(&program.instrs, &variables, &labels, &errors);
+  check_semantics(&program.instrs, &variables, &errors);
 
   // Codegen
   char *output_asm_file = scu_format_string("%s.asm", extracted_filename);
@@ -88,7 +87,6 @@ int main(int argc, char *argv[]) {
 
   free_tokens(&tokens);
   free_if_instrs(&program);
-  dynamic_array_free_items(&labels);
 
   dynamic_array_free(&tokens);
   dynamic_array_free(&variables);

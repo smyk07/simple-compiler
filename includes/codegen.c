@@ -47,7 +47,7 @@ void expr_asm(expr_node *expr, dynamic_array *variables) {
     term_asm(&expr->subtract.lhs, variables);
     printf("    mov rdx, rax\n");
     term_asm(&expr->subtract.rhs, variables);
-    printf("    sub rax, rcx\n");
+    printf("    sub rdx, rax\n");
     printf("    mov rax, rdx\n");
     break;
   case EXPR_MULTIPLY:
