@@ -1,8 +1,42 @@
-int n = 1
-int a = input
+int n = input - 1
+int count = 0
 
-:label
-output n
-n = n * 2
+int num = 2
 
-if n <= a then goto :label
+output num
+
+:main
+if count == n then goto :end
+int i = 2
+int is_prime = 1
+int temp = 1
+int sqrt = 0
+goto :approx_sqrt
+
+:approx_sqrt
+int mul = sqrt * sqrt
+if mul > num then goto :div_loop
+sqrt = sqrt + 1
+goto :approx_sqrt
+
+:div_loop
+if i > sqrt then goto :check_prime
+temp = num / i
+mul = temp * i
+if mul == num then is_prime = 0
+i = i + 1
+goto :div_loop
+
+:check_prime
+if is_prime == 1 then goto :print_prime
+goto :next_num
+
+:print_prime
+output num
+count = count + 1
+
+:next_num
+num = num + 1
+goto :main
+
+:end
