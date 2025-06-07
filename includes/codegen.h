@@ -8,6 +8,7 @@
 #include "data_structures.h"
 #include "parser.h"
 
-void program_asm(program_node *program, dynamic_array *variables);
+void program_asm(program_node *program, dynamic_array *variables,
+                 char *filename, int *errors);
 
 #endif // !CODEGEN

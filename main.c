@@ -64,15 +64,8 @@ int main(int argc, char *argv[]) {
   // Semantic Analysis
   check_semantics(&program.instrs, &variables, &errors);
 
-  // Codegen
-  char *output_asm_file = scu_format_string("%s.asm", extracted_filename);
-  freopen(output_asm_file, "w", stdout);
-  program_asm(&program, &variables);
-  fflush(stdout);
-  fclose(stdout);
-
-  // Assembler
-  scu_assemble(output_asm_file, extracted_filename, &errors);
+  // Codegen & Assembler
+  program_asm(&program, &variables, extracted_filename, &errors);
 
   // Restore STDOUT
   stdout = fopen("/dev/tty", "w");
@@ -83,7 +76,6 @@ int main(int argc, char *argv[]) {
 
   free(extracted_filename);
   free(code_buffer);
-  free(output_asm_file);
 
   free_tokens(&tokens);
   free_if_instrs(&program);

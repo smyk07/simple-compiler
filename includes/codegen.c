@@ -3,8 +3,10 @@
 #include "lexer.h"
 #include "parser.h"
 #include "semantic.h"
+#include "utils.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 
 void term_asm(term_node *term, dynamic_array *variables) {
   switch (term->kind) {
@@ -210,8 +212,12 @@ void instr_asm(instr_node *instr, dynamic_array *variables, int *if_count) {
   }
 }
 
-void program_asm(program_node *program, dynamic_array *variables) {
+void program_asm(program_node *program, dynamic_array *variables,
+                 char *filename, int *errors) {
   int if_count = 0;
+
+  char *output_asm_file = scu_format_string("%s.asm", filename);
+  freopen(output_asm_file, "w", stdout);
 
   printf("format ELF64 executable\n");
   printf("LINE_MAX equ 1024\n");
@@ -244,4 +250,10 @@ void program_asm(program_node *program, dynamic_array *variables) {
   printf("line rb LINE_MAX\n");
   printf("newline db 10, 0\n");
   printf("char_buf db 0, 0\n");
+
+  fflush(stdout);
+  fclose(stdout);
+
+  scu_assemble(output_asm_file, filename, errors);
+  free(output_asm_file);
 }
