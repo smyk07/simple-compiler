@@ -1,12 +1,11 @@
 #include "lexer.h"
+#include "data_structures.h"
+#include "utils.h"
 
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include "data_structures.h"
-#include "utils.h"
 
 char lexer_peek_char(lexer *l) {
   if (l->read_pos >= l->buffer_len) {
@@ -17,12 +16,13 @@ char lexer_peek_char(lexer *l) {
 }
 
 char lexer_read_char(lexer *l) {
+  if (l->ch == '\n') {
+    l->line++;
+  }
+
   l->ch = lexer_peek_char(l);
   l->pos = l->read_pos;
   l->read_pos += 1;
-
-  if (l->ch == '\n')
-    l->line++;
 
   return l->ch;
 }
