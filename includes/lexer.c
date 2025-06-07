@@ -87,6 +87,19 @@ token lexer_next_token(lexer *l) {
 
   else if (l->ch == '*') {
     lexer_read_char(l);
+
+    if (isalnum(l->ch) || l->ch == '_') {
+      string_slice slice = {.str = l->buffer + l->pos, .len = 0};
+      while (isalnum(l->ch) || l->ch == '_') {
+        slice.len += 1;
+        lexer_read_char(l);
+      }
+      char *value = NULL;
+      string_slice_to_owned(&slice, &value);
+      return (token){
+          .kind = TOKEN_POINTER, .value.str = value, .line = l->line};
+    }
+
     return (token){.kind = TOKEN_MULTIPLY, .value.str = NULL, .line = l->line};
   }
 
@@ -98,6 +111,19 @@ token lexer_next_token(lexer *l) {
   else if (l->ch == '%') {
     lexer_read_char(l);
     return (token){.kind = TOKEN_MODULO, .value.str = NULL, .line = l->line};
+  }
+
+  else if (l->ch == '&') {
+    lexer_read_char(l);
+    string_slice slice = {.str = l->buffer + l->pos, .len = 0};
+    while (isalnum(l->ch) || l->ch == '_') {
+      slice.len += 1;
+      lexer_read_char(l);
+    }
+    char *value = NULL;
+    string_slice_to_owned(&slice, &value);
+    return (token){
+        .kind = TOKEN_ADDRESS_OF, .value.str = value, .line = l->line};
   }
 
   else if (l->ch == '<') {
@@ -272,6 +298,8 @@ char *show_token_kind(token_kind kind) {
     return "type_int";
   case TOKEN_TYPE_CHAR:
     return "type_char";
+  case TOKEN_POINTER:
+    return "pointer";
   case TOKEN_IDENTIFIER:
     return "identifier";
   case TOKEN_INT:
@@ -290,6 +318,8 @@ char *show_token_kind(token_kind kind) {
     return "divide";
   case TOKEN_MODULO:
     return "modulo";
+  case TOKEN_ADDRESS_OF:
+    return "addof";
   case TOKEN_IS_EQUAL:
     return "is_equal";
   case TOKEN_NOT_EQUAL:
@@ -330,6 +360,8 @@ void print_tokens(dynamic_array *tokens) {
     case TOKEN_CHAR:
       printf("(%c)", token.value.character);
       break;
+    case TOKEN_POINTER:
+    case TOKEN_ADDRESS_OF:
     case TOKEN_LABEL:
     case TOKEN_IDENTIFIER:
     case TOKEN_INVALID:
