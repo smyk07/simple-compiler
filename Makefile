@@ -1,5 +1,5 @@
 CC = clang
-CFLAGS = -std=c11 -g -Wall -Werror -Wextra
+CFLAGS = -std=c11 -g -Wall -Wextra
 
 SRC_DIR = ./includes
 OBJ_DIR = ./obj

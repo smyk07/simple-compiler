@@ -2,4 +2,8 @@ compiler
 example
 example.asm
 
+test.scl
+test.asm
+test
+
 obj/
