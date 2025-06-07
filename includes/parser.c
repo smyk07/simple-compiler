@@ -10,8 +10,11 @@ void parser_init(dynamic_array tokens, parser *p) {
   p->index = 0;
 }
 
-void parser_current(parser *p, token *token) {
+void parser_current(parser *p, token *token, int *errors) {
   dynamic_array_get(&p->tokens, p->index, token);
+  if (token->kind == TOKEN_END) {
+    scu_check_errors(errors);
+  }
 }
 
 void parser_advance(parser *p) { p->index++; }
@@ -19,7 +22,7 @@ void parser_advance(parser *p) { p->index++; }
 void parse_term(parser *p, term_node *term, int *errors) {
   token token;
 
-  parser_current(p, &token);
+  parser_current(p, &token, errors);
   term->line = token.line;
   if (token.kind == TOKEN_INPUT) {
     term->kind = TERM_INPUT;
@@ -48,7 +51,7 @@ void parse_expr(parser *p, expr_node *expr, int *errors) {
 
   parse_term(p, &lhs, errors);
 
-  parser_current(p, &token);
+  parser_current(p, &token, errors);
   expr->line = token.line;
   if (token.kind == TOKEN_ADD) {
     parser_advance(p);
@@ -97,7 +100,7 @@ void parse_rel(parser *p, rel_node *rel, int *errors) {
 
   parse_term(p, &lhs, errors);
 
-  parser_current(p, &token);
+  parser_current(p, &token, errors);
   rel->line = token.line;
   if (token.kind == TOKEN_IS_EQUAL) {
     parser_advance(p);
@@ -168,19 +171,19 @@ void parse_declare(parser *p, instr_node *instr, int *errors) {
 
   instr->kind = INSTR_DECLARE;
 
-  parser_current(p, &token);
+  parser_current(p, &token, errors);
   instr->line = token.line;
   instr->declare_variable.type = token.kind;
   instr->declare_variable.line = token.line;
   _type = token.kind;
   parser_advance(p);
 
-  parser_current(p, &token);
+  parser_current(p, &token, errors);
   instr->declare_variable.name = token.value.str;
   _name = token.value.str;
   parser_advance(p);
 
-  parser_current(p, &token);
+  parser_current(p, &token, errors);
   if (token.kind == TOKEN_ASSIGN) {
     parse_initialize(p, instr, _type, _name, errors);
   }
@@ -191,13 +194,13 @@ void parse_assign(parser *p, instr_node *instr, int *errors) {
 
   instr->kind = INSTR_ASSIGN;
 
-  parser_current(p, &token);
+  parser_current(p, &token, errors);
   instr->line = token.line;
   instr->assign.identifier.name = token.value.str;
   instr->assign.identifier.line = token.line;
   parser_advance(p);
 
-  parser_current(p, &token);
+  parser_current(p, &token, errors);
   if (token.kind != TOKEN_ASSIGN) {
     scu_perror(errors, "Expected assign, found %s [line %d]\n",
                show_token_kind(token.kind), token.line);
@@ -216,7 +219,7 @@ void parse_if(parser *p, instr_node *instr, int *errors) {
 
   parse_rel(p, &instr->if_.rel, errors);
 
-  parser_current(p, &token);
+  parser_current(p, &token, errors);
   instr->line = token.line;
   if (token.kind != TOKEN_THEN) {
     scu_perror(errors, "Expected then, found %s [line %d]\n",
@@ -235,7 +238,7 @@ void parse_goto(parser *p, instr_node *instr, int *errors) {
 
   parser_advance(p);
 
-  parser_current(p, &token);
+  parser_current(p, &token, errors);
   instr->line = token.line;
   if (token.kind != TOKEN_LABEL) {
     scu_perror(errors, "Expected label, found %s [line %d]\n",
@@ -258,12 +261,12 @@ void parse_output(parser *p, instr_node *instr, int *errors) {
   instr->output.term = rhs;
 }
 
-void parse_label(parser *p, instr_node *instr) {
+void parse_label(parser *p, instr_node *instr, int *errors) {
   token token;
 
   instr->kind = INSTR_LABEL;
 
-  parser_current(p, &token);
+  parser_current(p, &token, errors);
   instr->line = token.line;
   instr->label.label = token.value.str;
 
@@ -273,7 +276,7 @@ void parse_label(parser *p, instr_node *instr) {
 void parse_instr(parser *p, instr_node *instr, int *errors) {
   token token;
 
-  parser_current(p, &token);
+  parser_current(p, &token, errors);
 
   switch (token.kind) {
   case TOKEN_TYPE_INT:
@@ -293,12 +296,12 @@ void parse_instr(parser *p, instr_node *instr, int *errors) {
     parse_goto(p, instr, errors);
     break;
   case TOKEN_LABEL:
-    parse_label(p, instr);
+    parse_label(p, instr, errors);
     break;
   default:
     scu_perror(errors, "unexpected token: %s [line %d]\n",
                show_token_kind(token.kind), token.line);
-    exit(1);
+    scu_check_errors(errors);
   }
 }
 
@@ -306,13 +309,13 @@ void parse_program(parser *p, program_node *program, int *errors) {
   dynamic_array_init(&program->instrs, sizeof(instr_node));
 
   token token;
-  parser_current(p, &token);
+  parser_current(p, &token, errors);
   while (token.kind != TOKEN_END) {
     instr_node *instr = malloc(sizeof(instr_node));
     parse_instr(p, instr, errors);
     dynamic_array_append(&program->instrs, instr);
     free(instr);
-    parser_current(p, &token);
+    parser_current(p, &token, errors);
   }
 }
 

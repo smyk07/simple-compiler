@@ -29,6 +29,7 @@ char *parse_arguments(int argc, char *argv[], int *debug) {
 }
 
 int main(int argc, char *argv[]) {
+  int errors = 0;
   int debug = 0;
 
   char *filename = parse_arguments(argc, argv, &debug);
@@ -36,8 +37,6 @@ int main(int argc, char *argv[]) {
 
   char *code_buffer = NULL;
   int code_buffer_len = scu_read_file(filename, &code_buffer);
-
-  int errors = 0;
 
   // Lexing
   dynamic_array tokens;
