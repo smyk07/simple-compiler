@@ -9,7 +9,7 @@
 #include "lexer.h"
 
 // Variable
-typedef enum type { TYPE_INT, TYPE_CHAR, TYPE_VOID } type;
+typedef enum type { TYPE_INT, TYPE_CHAR, TYPE_POINTER, TYPE_VOID } type;
 
 typedef struct variable {
   type type;
@@ -22,7 +22,9 @@ typedef enum term_kind {
   TERM_INPUT,
   TERM_INT,
   TERM_CHAR,
-  TERM_IDENTIFIER
+  TERM_IDENTIFIER,
+  TERM_POINTER,
+  TERM_ADDOF
 } term_kind;
 
 typedef struct term_node {

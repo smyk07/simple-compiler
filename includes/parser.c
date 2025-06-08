@@ -35,6 +35,12 @@ void parse_term(parser *p, term_node *term, int *errors) {
   } else if (token.kind == TOKEN_IDENTIFIER) {
     term->kind = TERM_IDENTIFIER;
     term->identifier.name = token.value.str;
+  } else if (token.kind == TOKEN_POINTER) {
+    term->kind = TERM_POINTER;
+    term->identifier.name = token.value.str;
+  } else if (token.kind == TOKEN_ADDRESS_OF) {
+    term->kind = TERM_ADDOF;
+    term->identifier.name = token.value.str;
   } else {
     scu_perror(
         errors,
@@ -168,26 +174,29 @@ void parse_declare(parser *p, instr_node *instr, int *errors) {
 
   type _type = TYPE_VOID;
   char *_name;
-
-  instr->kind = INSTR_DECLARE;
+  int _line;
 
   parser_current(p, &token, errors);
   instr->line = token.line;
-
   if (token.kind == TOKEN_TYPE_INT) {
     _type = TYPE_INT;
   } else if (token.kind == TOKEN_TYPE_CHAR) {
     _type = TYPE_CHAR;
   }
-
-  instr->declare_variable.type = _type;
   parser_advance(p);
 
   parser_current(p, &token, errors);
+  if (token.kind == TOKEN_POINTER) {
+    _type = TYPE_POINTER;
+  }
   _name = token.value.str;
-  instr->declare_variable.name = _name;
-  instr->declare_variable.line = token.line;
+  _line = token.line;
   parser_advance(p);
+
+  instr->kind = INSTR_DECLARE;
+  instr->declare_variable.type = _type;
+  instr->declare_variable.name = _name;
+  instr->declare_variable.line = _line;
 
   parser_current(p, &token, errors);
   if (token.kind == TOKEN_ASSIGN) {
@@ -290,6 +299,9 @@ void parse_instr(parser *p, instr_node *instr, int *errors) {
     parse_declare(p, instr, errors);
     break;
   case TOKEN_IDENTIFIER:
+    parse_assign(p, instr, errors);
+    break;
+  case TOKEN_POINTER:
     parse_assign(p, instr, errors);
     break;
   case TOKEN_OUTPUT:
