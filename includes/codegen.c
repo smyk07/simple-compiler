@@ -186,7 +186,7 @@ void instr_asm(instr_node *instr, dynamic_array *variables, int *if_count) {
       int index = find_variables(variables, &instr->output.term.identifier);
       variable var;
       dynamic_array_get(variables, index, &var);
-      if (var.type == TOKEN_TYPE_CHAR) {
+      if (var.type == TYPE_CHAR) {
         printf("    mov al, byte [rbp - %d]\n", index * 8 + 8);
         printf("    mov [char_buf], al\n");
         printf("    mov rdi, 1\n");
@@ -194,7 +194,7 @@ void instr_asm(instr_node *instr, dynamic_array *variables, int *if_count) {
         printf("    mov rdx, 2\n");
         printf("    mov rax, 1\n");
         printf("    syscall\n");
-      } else {
+      } else if (var.type == TYPE_INT) {
         printf("    mov rsi, qword [rbp - %d]\n", index * 8 + 8);
         printf("    mov rdi, 1\n");
         printf("    call write_uint\n");

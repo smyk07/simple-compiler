@@ -153,8 +153,8 @@ void parse_rel(parser *p, rel_node *rel, int *errors) {
 
 void parse_instr(parser *p, instr_node *instr, int *errors);
 
-void parse_initialize(parser *p, instr_node *instr, token_kind _type,
-                      char *_name, int *errors) {
+void parse_initialize(parser *p, instr_node *instr, type _type, char *_name,
+                      int *errors) {
   instr->kind = INSTR_INITIALIZE;
   instr->initialize_variable.var.type = _type;
   instr->initialize_variable.var.name = _name;
@@ -166,21 +166,27 @@ void parse_initialize(parser *p, instr_node *instr, token_kind _type,
 void parse_declare(parser *p, instr_node *instr, int *errors) {
   token token;
 
-  token_kind _type;
+  type _type = TYPE_VOID;
   char *_name;
 
   instr->kind = INSTR_DECLARE;
 
   parser_current(p, &token, errors);
   instr->line = token.line;
-  instr->declare_variable.type = token.kind;
-  instr->declare_variable.line = token.line;
-  _type = token.kind;
+
+  if (token.kind == TOKEN_TYPE_INT) {
+    _type = TYPE_INT;
+  } else if (token.kind == TOKEN_TYPE_CHAR) {
+    _type = TYPE_CHAR;
+  }
+
+  instr->declare_variable.type = _type;
   parser_advance(p);
 
   parser_current(p, &token, errors);
-  instr->declare_variable.name = token.value.str;
   _name = token.value.str;
+  instr->declare_variable.name = _name;
+  instr->declare_variable.line = token.line;
   parser_advance(p);
 
   parser_current(p, &token, errors);
@@ -362,7 +368,7 @@ void print_instr(instr_node instr) {
   case INSTR_INITIALIZE:
     printf("initialize: %s = ", instr.initialize_variable.var.name);
     switch (instr.initialize_variable.var.type) {
-    case TOKEN_TYPE_INT:
+    case TYPE_INT:
       switch (instr.initialize_variable.expr.kind) {
       case EXPR_TERM:
         switch (instr.initialize_variable.expr.term.kind) {
@@ -403,7 +409,7 @@ void print_instr(instr_node instr) {
         break;
       }
       break;
-    case TOKEN_TYPE_CHAR:
+    case TYPE_CHAR:
       switch (instr.initialize_variable.expr.kind) {
       case EXPR_TERM:
         printf("\'%c\'\n", instr.initialize_variable.expr.term.value.character);
