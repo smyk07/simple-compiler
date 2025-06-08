@@ -328,7 +328,7 @@ void parse_program(parser *p, program_node *program, int *errors) {
 void check_terms_and_print(term_node *lhs, char *operator, term_node * rhs) {
   switch (lhs->kind) {
   case TERM_INPUT:
-    printf("input\n");
+    printf("input");
     break;
   case TERM_INT:
     printf("\'%d\'", lhs->value.integer);
