@@ -138,7 +138,7 @@ void scu_perror(int *errors, char *__restrict __format, ...) {
 }
 
 void scu_check_errors(int *errors) {
-  if (*errors > 0) {
+  if (*errors) {
     scu_pwarning("%d error(s) found\n", *errors);
     exit(1);
   }
