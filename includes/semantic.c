@@ -12,8 +12,10 @@ char *type_to_str(type type) {
     return "int";
   case TYPE_CHAR:
     return "char";
-  default:
-    return "unknown";
+  case TYPE_POINTER:
+    return "ptr";
+  case TYPE_VOID:
+    return "void";
   }
 }
 
@@ -237,18 +239,15 @@ type term_type(term_node *term, type target_type, unsigned int line,
   switch (term->kind) {
   case TERM_INPUT:
     return target_type;
-    break;
   case TERM_INT:
     return TYPE_INT;
-    break;
   case TERM_CHAR:
     return TYPE_CHAR;
-    break;
+  case TERM_POINTER:
+    return TYPE_POINTER;
+  case TERM_ADDOF:
   case TERM_IDENTIFIER:
     return var_type(term->identifier.name, line, variables, errors);
-    break;
-  default:
-    return -1;
   }
 }
 
@@ -289,7 +288,9 @@ type expr_type(expr_node *expr, type target_type, dynamic_array *variables,
     break;
   }
 
-  if (lhs != rhs) {
+  if (lhs == TYPE_POINTER || rhs == TYPE_POINTER) {
+    return target_type;
+  } else if (lhs != rhs) {
     char *lhs_type_str = type_to_str(lhs);
     char *rhs_type_str = type_to_str(rhs);
     scu_perror(errors,
@@ -341,7 +342,9 @@ void rel_typecheck(rel_node *rel, dynamic_array *variables, int *errors) {
     break;
   }
 
-  if (lhs != rhs) {
+  if (lhs == TYPE_POINTER || rhs == TYPE_POINTER) {
+    return;
+  } else if (lhs != rhs) {
     char *lhs_type_str = type_to_str(lhs);
     char *rhs_type_str = type_to_str(rhs);
     scu_perror(errors,
@@ -356,7 +359,9 @@ void instr_typecheck(instr_node *instr, dynamic_array *variables, int *errors) {
     type target_type = instr->initialize_variable.var.type;
     type expr_result = expr_type(&instr->initialize_variable.expr, target_type,
                                  variables, errors);
-    if (target_type != expr_result) {
+    if (target_type == TYPE_POINTER) {
+      return;
+    } else if (target_type != expr_result) {
       char *target_type_str = type_to_str(target_type);
       char *expr_result_str = type_to_str(expr_result);
       scu_perror(errors,
@@ -371,7 +376,9 @@ void instr_typecheck(instr_node *instr, dynamic_array *variables, int *errors) {
         var_type(instr->assign.identifier.name, instr->line, variables, errors);
     type expr_result =
         expr_type(&instr->assign.expr, target_type, variables, errors);
-    if (target_type != expr_result) {
+    if (target_type == TYPE_POINTER) {
+      return;
+    } else if (target_type != expr_result) {
       char *target_type_str = type_to_str(target_type);
       char *expr_result_str = type_to_str(expr_result);
       scu_perror(errors,
