@@ -24,6 +24,7 @@ typedef enum term_kind {
   TERM_CHAR,
   TERM_IDENTIFIER,
   TERM_POINTER,
+  TERM_DEREF,
   TERM_ADDOF
 } term_kind;
 
@@ -33,6 +34,7 @@ typedef struct term_node {
   union {
     token_value value;
     variable identifier;
+    struct term_node *deref;
   };
 } term_node;
 

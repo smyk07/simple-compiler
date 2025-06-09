@@ -35,12 +35,14 @@ void parse_term(parser *p, term_node *term, int *errors) {
   } else if (token.kind == TOKEN_IDENTIFIER) {
     term->kind = TERM_IDENTIFIER;
     term->identifier.name = token.value.str;
-  } else if (token.kind == TOKEN_POINTER) {
-    term->kind = TERM_POINTER;
-    term->identifier.name = token.value.str;
   } else if (token.kind == TOKEN_ADDRESS_OF) {
     term->kind = TERM_ADDOF;
     term->identifier.name = token.value.str;
+  } else if (token.kind == TOKEN_POINTER) {
+    term->kind = TERM_DEREF;
+    term->deref = malloc(sizeof(term_node));
+    term->deref->kind = TERM_IDENTIFIER;
+    term->deref->identifier.name = token.value.str;
   } else {
     scu_perror(
         errors,
@@ -366,7 +368,10 @@ void check_term_and_print(term_node *term) {
     printf("%s", term->identifier.name);
     break;
   case TERM_POINTER:
-    printf("*%s", term->identifier.name);
+    printf("p*%s", term->identifier.name);
+    break;
+  case TERM_DEREF:
+    printf("d*%s", term->identifier.name);
     break;
   case TERM_ADDOF:
     printf("&%s", term->identifier.name);

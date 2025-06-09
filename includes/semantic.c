@@ -244,6 +244,7 @@ type term_type(term_node *term, type target_type, unsigned int line,
   case TERM_CHAR:
     return TYPE_CHAR;
   case TERM_POINTER:
+  case TERM_DEREF:
     return TYPE_POINTER;
   case TERM_ADDOF:
   case TERM_IDENTIFIER:
