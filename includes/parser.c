@@ -35,11 +35,17 @@ void parse_term(parser *p, term_node *term, int *errors) {
   } else if (token.kind == TOKEN_IDENTIFIER) {
     term->kind = TERM_IDENTIFIER;
     term->identifier.name = token.value.str;
+  } else if (token.kind == TOKEN_ADDRESS_OF) {
+    term->kind = TERM_ADDOF;
+    term->identifier.name = token.value.str;
+  } else if (token.kind == TOKEN_POINTER) {
+    term->kind = TERM_DEREF;
+    term->identifier.name = token.value.str;
   } else {
-    scu_perror(
-        errors,
-        "Expected a term (input, int, char, identifier), got %s [line %d]\n",
-        show_token_kind(token.kind), token.line);
+    scu_perror(errors,
+               "Expected a term (input, int, char, identifier, addof, "
+               "pointer), got %s [line %d]\n",
+               show_token_kind(token.kind), token.line);
   }
 
   parser_advance(p);
@@ -153,8 +159,8 @@ void parse_rel(parser *p, rel_node *rel, int *errors) {
 
 void parse_instr(parser *p, instr_node *instr, int *errors);
 
-void parse_initialize(parser *p, instr_node *instr, token_kind _type,
-                      char *_name, int *errors) {
+void parse_initialize(parser *p, instr_node *instr, type _type, char *_name,
+                      int *errors) {
   instr->kind = INSTR_INITIALIZE;
   instr->initialize_variable.var.type = _type;
   instr->initialize_variable.var.name = _name;
@@ -166,22 +172,28 @@ void parse_initialize(parser *p, instr_node *instr, token_kind _type,
 void parse_declare(parser *p, instr_node *instr, int *errors) {
   token token;
 
-  token_kind _type;
+  type _type = TYPE_VOID;
   char *_name;
-
-  instr->kind = INSTR_DECLARE;
+  int _line;
 
   parser_current(p, &token, errors);
   instr->line = token.line;
-  instr->declare_variable.type = token.kind;
-  instr->declare_variable.line = token.line;
-  _type = token.kind;
+  if (token.kind == TOKEN_TYPE_INT) {
+    _type = TYPE_INT;
+  } else if (token.kind == TOKEN_TYPE_CHAR) {
+    _type = TYPE_CHAR;
+  }
   parser_advance(p);
 
   parser_current(p, &token, errors);
-  instr->declare_variable.name = token.value.str;
   _name = token.value.str;
+  _line = token.line;
   parser_advance(p);
+
+  instr->kind = INSTR_DECLARE;
+  instr->declare_variable.type = _type;
+  instr->declare_variable.name = _name;
+  instr->declare_variable.line = _line;
 
   parser_current(p, &token, errors);
   if (token.kind == TOKEN_ASSIGN) {
@@ -198,6 +210,9 @@ void parse_assign(parser *p, instr_node *instr, int *errors) {
   instr->line = token.line;
   instr->assign.identifier.name = token.value.str;
   instr->assign.identifier.line = token.line;
+  if (token.kind == TOKEN_POINTER) {
+    instr->assign.identifier.type = TYPE_POINTER;
+  }
   parser_advance(p);
 
   parser_current(p, &token, errors);
@@ -284,6 +299,7 @@ void parse_instr(parser *p, instr_node *instr, int *errors) {
     parse_declare(p, instr, errors);
     break;
   case TOKEN_IDENTIFIER:
+  case TOKEN_POINTER:
     parse_assign(p, instr, errors);
     break;
   case TOKEN_OUTPUT:
@@ -319,36 +335,71 @@ void parse_program(parser *p, program_node *program, int *errors) {
   }
 }
 
-void check_terms_and_print(term_node *lhs, char *operator, term_node * rhs) {
-  switch (lhs->kind) {
-  case TERM_INPUT:
-    printf("input\n");
+void check_var_and_print(variable *var) {
+  switch (var->type) {
+  case TYPE_INT:
+  case TYPE_CHAR:
+    printf("%s", var->name);
     break;
-  case TERM_INT:
-    printf("\'%d\'", lhs->value.integer);
+  case TYPE_POINTER:
+    printf("*%s", var->name);
     break;
-  case TERM_CHAR:
-    printf("\'%c\'", lhs->value.character);
-    break;
-  case TERM_IDENTIFIER:
-    printf("%s", lhs->identifier.name);
+  case TYPE_VOID:
     break;
   }
+}
 
-  printf(" %s ", operator);
-
-  switch (rhs->kind) {
+void check_term_and_print(term_node *term) {
+  switch (term->kind) {
   case TERM_INPUT:
-    printf("input\n");
+    printf("input");
     break;
   case TERM_INT:
-    printf("\'%d\'\n", rhs->value.integer);
+    printf("\'%d\'", term->value.integer);
     break;
   case TERM_CHAR:
-    printf("\'%c\'\n", rhs->value.character);
+    printf("\'%c\'", term->value.character);
     break;
   case TERM_IDENTIFIER:
-    printf("%s\n", rhs->identifier.name);
+    printf("%s", term->identifier.name);
+    break;
+  case TERM_POINTER:
+  case TERM_DEREF:
+    printf("*%s", term->identifier.name);
+    break;
+  case TERM_ADDOF:
+    printf("&%s", term->identifier.name);
+    break;
+  }
+}
+
+void check_binary_node_and_print(term_binary_node *bnode, char *operator) {
+  check_term_and_print(&bnode->lhs);
+  printf(" %s ", operator);
+  check_term_and_print(&bnode->rhs);
+  printf("\n");
+}
+
+void check_expr_and_print(expr_node *expr) {
+  switch (expr->kind) {
+  case EXPR_TERM:
+    check_term_and_print(&expr->term);
+    printf("\n");
+    break;
+  case EXPR_ADD:
+    check_binary_node_and_print(&expr->add, "+");
+    break;
+  case EXPR_SUBTRACT:
+    check_binary_node_and_print(&expr->subtract, "-");
+    break;
+  case EXPR_MULTIPLY:
+    check_binary_node_and_print(&expr->multiply, "*");
+    break;
+  case EXPR_DIVIDE:
+    check_binary_node_and_print(&expr->divide, "/");
+    break;
+  case EXPR_MODULO:
+    check_binary_node_and_print(&expr->modulo, "%");
     break;
   }
 }
@@ -357,53 +408,21 @@ void print_instr(instr_node instr) {
   printf("[line %d] ", instr.line);
   switch (instr.kind) {
   case INSTR_DECLARE:
-    printf("declare: %s\n", instr.declare_variable.name);
+    printf("declare: ");
+    check_var_and_print(&instr.declare_variable);
+    printf("\n");
     break;
+
   case INSTR_INITIALIZE:
-    printf("initialize: %s = ", instr.initialize_variable.var.name);
+    printf("initialize: ");
+    check_var_and_print(&instr.initialize_variable.var);
+    printf(" = ");
     switch (instr.initialize_variable.var.type) {
-    case TOKEN_TYPE_INT:
-      switch (instr.initialize_variable.expr.kind) {
-      case EXPR_TERM:
-        switch (instr.initialize_variable.expr.term.kind) {
-        case TERM_INPUT:
-          printf("input\n");
-          break;
-        case TERM_INT:
-          printf("\'%d\'\n", instr.initialize_variable.expr.term.value.integer);
-          break;
-        case TERM_CHAR:
-          printf("\'%c\'\n",
-                 instr.initialize_variable.expr.term.value.character);
-          break;
-        case TERM_IDENTIFIER:
-          printf("%s\n", instr.initialize_variable.expr.term.identifier.name);
-          break;
-        }
-        break;
-      case EXPR_ADD:
-        check_terms_and_print(&instr.initialize_variable.expr.add.lhs, "+",
-                              &instr.initialize_variable.expr.add.rhs);
-        break;
-      case EXPR_SUBTRACT:
-        check_terms_and_print(&instr.initialize_variable.expr.subtract.lhs, "-",
-                              &instr.initialize_variable.expr.subtract.rhs);
-        break;
-      case EXPR_MULTIPLY:
-        check_terms_and_print(&instr.initialize_variable.expr.multiply.lhs, "*",
-                              &instr.initialize_variable.expr.multiply.rhs);
-        break;
-      case EXPR_DIVIDE:
-        check_terms_and_print(&instr.initialize_variable.expr.divide.lhs, "/",
-                              &instr.initialize_variable.expr.divide.rhs);
-        break;
-      case EXPR_MODULO:
-        check_terms_and_print(&instr.initialize_variable.expr.modulo.lhs, "%",
-                              &instr.initialize_variable.expr.modulo.rhs);
-        break;
-      }
+    case TYPE_INT:
+    case TYPE_POINTER:
+      check_expr_and_print(&instr.initialize_variable.expr);
       break;
-    case TOKEN_TYPE_CHAR:
+    case TYPE_CHAR:
       switch (instr.initialize_variable.expr.kind) {
       case EXPR_TERM:
         printf("\'%c\'\n", instr.initialize_variable.expr.term.value.character);
@@ -416,108 +435,60 @@ void print_instr(instr_node instr) {
       break;
     }
     break;
+
   case INSTR_ASSIGN:
-    printf("assign: %s = ", instr.assign.identifier.name);
-    switch (instr.assign.expr.kind) {
-    case EXPR_TERM:
-      switch (instr.assign.expr.term.kind) {
-      case TERM_INPUT:
-        printf("input\n");
-        break;
-      case TERM_INT:
-        printf("\'%d\'\n", instr.assign.expr.term.value.integer);
-        break;
-      case TERM_CHAR:
-        printf("\'%c\'\n", instr.assign.expr.term.value.character);
-        break;
-      case TERM_IDENTIFIER:
-        printf("%s\n", instr.assign.expr.term.identifier.name);
-        break;
-      }
-      break;
-    case EXPR_ADD:
-      check_terms_and_print(&instr.assign.expr.add.lhs, "+",
-                            &instr.assign.expr.add.rhs);
-      break;
-    case EXPR_SUBTRACT:
-      check_terms_and_print(&instr.assign.expr.subtract.lhs, "-",
-                            &instr.assign.expr.subtract.rhs);
-      break;
-    case EXPR_MULTIPLY:
-      check_terms_and_print(&instr.assign.expr.multiply.lhs, "*",
-                            &instr.assign.expr.multiply.rhs);
-      break;
-    case EXPR_DIVIDE:
-      check_terms_and_print(&instr.assign.expr.divide.lhs, "/",
-                            &instr.assign.expr.divide.rhs);
-      break;
-    case EXPR_MODULO:
-      check_terms_and_print(&instr.assign.expr.modulo.lhs, "%",
-                            &instr.assign.expr.modulo.rhs);
-      break;
-    }
+    printf("assign: ");
+    check_var_and_print(&instr.assign.identifier);
+    printf(" = ");
+    check_expr_and_print(&instr.assign.expr);
     break;
+
   case INSTR_IF:
     printf("if ");
     switch (instr.if_.rel.kind) {
     case REL_IS_EQUAL:
-      check_terms_and_print(&instr.if_.rel.is_equal.lhs,
-                            "==", &instr.if_.rel.is_equal.rhs);
+      check_binary_node_and_print(&instr.if_.rel.is_equal, "==");
       printf("\t then: ");
       print_instr(*instr.if_.instr);
       break;
     case REL_NOT_EQUAL:
-      check_terms_and_print(&instr.if_.rel.not_equal.lhs,
-                            "!=", &instr.if_.rel.not_equal.rhs);
+      check_binary_node_and_print(&instr.if_.rel.not_equal, "!=");
       printf("\t then: ");
       print_instr(*instr.if_.instr);
       break;
     case REL_LESS_THAN:
-      check_terms_and_print(&instr.if_.rel.less_than.lhs, "<",
-                            &instr.if_.rel.less_than.rhs);
+      check_binary_node_and_print(&instr.if_.rel.less_than, "<");
       printf("\t then: ");
       print_instr(*instr.if_.instr);
       break;
     case REL_LESS_THAN_OR_EQUAL:
-      check_terms_and_print(&instr.if_.rel.less_than_or_equal.lhs,
-                            "<=", &instr.if_.rel.less_than_or_equal.rhs);
+      check_binary_node_and_print(&instr.if_.rel.less_than_or_equal, "<=");
       printf("\t then: ");
       print_instr(*instr.if_.instr);
       break;
     case REL_GREATER_THAN:
-      check_terms_and_print(&instr.if_.rel.greater_than.lhs, ">",
-                            &instr.if_.rel.greater_than.rhs);
+      check_binary_node_and_print(&instr.if_.rel.greater_than, ">");
       printf("\t then: ");
       print_instr(*instr.if_.instr);
       break;
     case REL_GREATER_THAN_OR_EQUAL:
-      check_terms_and_print(&instr.if_.rel.greater_than_or_equal.lhs,
-                            ">=", &instr.if_.rel.greater_than_or_equal.rhs);
+      check_binary_node_and_print(&instr.if_.rel.greater_than_or_equal, ">=");
       printf("\t then: ");
       print_instr(*instr.if_.instr);
       break;
     }
     break;
+
   case INSTR_GOTO:
     printf("goto: %s\n", instr.goto_.label);
     break;
+
   case INSTR_OUTPUT:
     printf("output: ");
-    switch (instr.output.term.kind) {
-    case TERM_INPUT:
-      printf("input\n");
-      break;
-    case TERM_INT:
-      printf("\'%d\'\n", instr.output.term.value.integer);
-      break;
-    case TERM_CHAR:
-      printf("\'%c\'\n", instr.output.term.value.character);
-      break;
-    case TERM_IDENTIFIER:
-      printf("%s\n", instr.output.term.identifier.name);
-      break;
-    }
+    check_term_and_print(&instr.output.term);
+    printf("\n");
     break;
+
   case INSTR_LABEL:
     printf("label: %s\n", instr.label.label);
     break;

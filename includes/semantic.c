@@ -1,5 +1,4 @@
 #include "data_structures.h"
-#include "lexer.h"
 #include "parser.h"
 #include "utils.h"
 
@@ -7,14 +6,16 @@
 #include <string.h>
 
 // Variable tracking
-char *type_to_str(token_kind type) {
+char *type_to_str(type type) {
   switch (type) {
-  case TOKEN_TYPE_INT:
+  case TYPE_INT:
     return "int";
-  case TOKEN_TYPE_CHAR:
+  case TYPE_CHAR:
     return "char";
-  default:
-    return "unknown";
+  case TYPE_POINTER:
+    return "ptr";
+  case TYPE_VOID:
+    return "void";
   }
 }
 
@@ -219,8 +220,8 @@ void instrs_check_labels(dynamic_array *instrs, dynamic_array *labels,
 }
 
 // Typechecking
-token_kind var_type(char *name, unsigned int line, dynamic_array *variables,
-                    int *errors) {
+type var_type(char *name, unsigned int line, dynamic_array *variables,
+              int *errors) {
   for (unsigned int i = 0; i < variables->count; i++) {
     variable var;
     dynamic_array_get(variables, i, &var);
@@ -233,29 +234,26 @@ token_kind var_type(char *name, unsigned int line, dynamic_array *variables,
   return -1;
 }
 
-token_kind term_type(term_node *term, token_kind target_type, unsigned int line,
-                     dynamic_array *variables, int *errors) {
+type term_type(term_node *term, type target_type, unsigned int line,
+               dynamic_array *variables, int *errors) {
   switch (term->kind) {
   case TERM_INPUT:
     return target_type;
-    break;
   case TERM_INT:
-    return TOKEN_TYPE_INT;
-    break;
+    return TYPE_INT;
   case TERM_CHAR:
-    return TOKEN_TYPE_CHAR;
-    break;
+    return TYPE_CHAR;
+  case TERM_POINTER:
+  case TERM_DEREF:
+  case TERM_ADDOF:
   case TERM_IDENTIFIER:
     return var_type(term->identifier.name, line, variables, errors);
-    break;
-  default:
-    return -1;
   }
 }
 
-token_kind expr_type(expr_node *expr, token_kind target_type,
-                     dynamic_array *variables, int *errors) {
-  token_kind lhs, rhs;
+type expr_type(expr_node *expr, type target_type, dynamic_array *variables,
+               int *errors) {
+  type lhs, rhs;
 
   switch (expr->kind) {
   case EXPR_TERM:
@@ -301,43 +299,43 @@ token_kind expr_type(expr_node *expr, token_kind target_type,
 }
 
 void rel_typecheck(rel_node *rel, dynamic_array *variables, int *errors) {
-  token_kind lhs, rhs;
+  type lhs, rhs;
 
   switch (rel->kind) {
   case REL_IS_EQUAL:
     lhs =
-        term_type(&rel->is_equal.lhs, TOKEN_NULL, rel->line, variables, errors);
+        term_type(&rel->is_equal.lhs, TYPE_VOID, rel->line, variables, errors);
     rhs =
-        term_type(&rel->is_equal.rhs, TOKEN_NULL, rel->line, variables, errors);
+        term_type(&rel->is_equal.rhs, TYPE_VOID, rel->line, variables, errors);
     break;
   case REL_NOT_EQUAL:
-    lhs = term_type(&rel->not_equal.lhs, TOKEN_NULL, rel->line, variables,
-                    errors);
-    rhs = term_type(&rel->not_equal.rhs, TOKEN_NULL, rel->line, variables,
-                    errors);
+    lhs =
+        term_type(&rel->not_equal.lhs, TYPE_VOID, rel->line, variables, errors);
+    rhs =
+        term_type(&rel->not_equal.rhs, TYPE_VOID, rel->line, variables, errors);
     break;
   case REL_LESS_THAN:
-    lhs = term_type(&rel->less_than.lhs, TOKEN_NULL, rel->line, variables,
-                    errors);
-    rhs = term_type(&rel->less_than.rhs, TOKEN_NULL, rel->line, variables,
-                    errors);
+    lhs =
+        term_type(&rel->less_than.lhs, TYPE_VOID, rel->line, variables, errors);
+    rhs =
+        term_type(&rel->less_than.rhs, TYPE_VOID, rel->line, variables, errors);
     break;
   case REL_LESS_THAN_OR_EQUAL:
-    lhs = term_type(&rel->less_than_or_equal.lhs, TOKEN_NULL, rel->line,
+    lhs = term_type(&rel->less_than_or_equal.lhs, TYPE_VOID, rel->line,
                     variables, errors);
-    rhs = term_type(&rel->less_than_or_equal.rhs, TOKEN_NULL, rel->line,
+    rhs = term_type(&rel->less_than_or_equal.rhs, TYPE_VOID, rel->line,
                     variables, errors);
     break;
   case REL_GREATER_THAN:
-    lhs = term_type(&rel->greater_than.lhs, TOKEN_NULL, rel->line, variables,
+    lhs = term_type(&rel->greater_than.lhs, TYPE_VOID, rel->line, variables,
                     errors);
-    rhs = term_type(&rel->greater_than.rhs, TOKEN_NULL, rel->line, variables,
+    rhs = term_type(&rel->greater_than.rhs, TYPE_VOID, rel->line, variables,
                     errors);
     break;
   case REL_GREATER_THAN_OR_EQUAL:
-    lhs = term_type(&rel->greater_than_or_equal.lhs, TOKEN_NULL, rel->line,
+    lhs = term_type(&rel->greater_than_or_equal.lhs, TYPE_VOID, rel->line,
                     variables, errors);
-    rhs = term_type(&rel->greater_than_or_equal.rhs, TOKEN_NULL, rel->line,
+    rhs = term_type(&rel->greater_than_or_equal.rhs, TYPE_VOID, rel->line,
                     variables, errors);
     break;
   }
@@ -354,10 +352,12 @@ void rel_typecheck(rel_node *rel, dynamic_array *variables, int *errors) {
 void instr_typecheck(instr_node *instr, dynamic_array *variables, int *errors) {
   switch (instr->kind) {
   case INSTR_INITIALIZE: {
-    token_kind target_type = instr->initialize_variable.var.type;
-    token_kind expr_result = expr_type(&instr->initialize_variable.expr,
-                                       target_type, variables, errors);
-    if (target_type != expr_result) {
+    type target_type = instr->initialize_variable.var.type;
+    type expr_result = expr_type(&instr->initialize_variable.expr, target_type,
+                                 variables, errors);
+    if (target_type == TYPE_POINTER) {
+      return;
+    } else if (target_type != expr_result) {
       char *target_type_str = type_to_str(target_type);
       char *expr_result_str = type_to_str(expr_result);
       scu_perror(errors,
@@ -368,12 +368,13 @@ void instr_typecheck(instr_node *instr, dynamic_array *variables, int *errors) {
     break;
   }
   case INSTR_ASSIGN: {
-    token_kind target_type =
+    type target_type =
         var_type(instr->assign.identifier.name, instr->line, variables, errors);
-
-    token_kind expr_result =
+    type expr_result =
         expr_type(&instr->assign.expr, target_type, variables, errors);
-    if (target_type != expr_result) {
+    if (target_type == TYPE_POINTER) {
+      return;
+    } else if (target_type != expr_result) {
       char *target_type_str = type_to_str(target_type);
       char *expr_result_str = type_to_str(expr_result);
       scu_perror(errors,

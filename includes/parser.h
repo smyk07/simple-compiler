@@ -8,19 +8,25 @@
 #include "data_structures.h"
 #include "lexer.h"
 
+// Variable
+typedef enum type { TYPE_INT, TYPE_CHAR, TYPE_POINTER, TYPE_VOID } type;
+
+typedef struct variable {
+  type type;
+  char *name;
+  unsigned int line;
+} variable;
+
 // TERM
 typedef enum term_kind {
   TERM_INPUT,
   TERM_INT,
   TERM_CHAR,
-  TERM_IDENTIFIER
+  TERM_IDENTIFIER,
+  TERM_POINTER,
+  TERM_DEREF,
+  TERM_ADDOF
 } term_kind;
-
-typedef struct variable {
-  token_kind type;
-  char *name;
-  unsigned int line;
-} variable;
 
 typedef struct term_node {
   term_kind kind;

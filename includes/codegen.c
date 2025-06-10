@@ -31,6 +31,19 @@ void term_asm(term_node *term, dynamic_array *variables) {
     printf("    mov rax, qword [rbp - %d]\n", index * 8 + 8);
     break;
   }
+  case TERM_POINTER:
+    break;
+  case TERM_DEREF: {
+    int index = find_variables(variables, &term->identifier);
+    printf("    mov rbx, qword [rbp - %d]\n", index * 8 + 8);
+    printf("    mov rax, qword [rbx]\n");
+    break;
+  }
+  case TERM_ADDOF: {
+    int index = find_variables(variables, &term->identifier);
+    printf("    lea rax, [rbp - %d]\n", index * 8 + 8);
+    break;
+  }
   }
 }
 
@@ -146,7 +159,12 @@ void instr_asm(instr_node *instr, dynamic_array *variables, int *if_count) {
   case INSTR_ASSIGN: {
     int index = find_variables(variables, &instr->assign.identifier);
     expr_asm(&instr->assign.expr, variables);
-    printf("    mov qword [rbp - %d], rax\n", index * 8 + 8);
+    if (instr->assign.identifier.type == TYPE_POINTER) {
+      printf("    mov rbx, qword [rbp - %d]\n", index * 8 + 8);
+      printf("    mov qword [rbx], rax\n");
+    } else {
+      printf("    mov qword [rbp - %d], rax\n", index * 8 + 8);
+    }
     break;
   }
   case INSTR_IF: {
@@ -186,7 +204,7 @@ void instr_asm(instr_node *instr, dynamic_array *variables, int *if_count) {
       int index = find_variables(variables, &instr->output.term.identifier);
       variable var;
       dynamic_array_get(variables, index, &var);
-      if (var.type == TOKEN_TYPE_CHAR) {
+      if (var.type == TYPE_CHAR) {
         printf("    mov al, byte [rbp - %d]\n", index * 8 + 8);
         printf("    mov [char_buf], al\n");
         printf("    mov rdi, 1\n");
@@ -194,7 +212,7 @@ void instr_asm(instr_node *instr, dynamic_array *variables, int *if_count) {
         printf("    mov rdx, 2\n");
         printf("    mov rax, 1\n");
         printf("    syscall\n");
-      } else {
+      } else if (var.type == TYPE_INT) {
         printf("    mov rsi, qword [rbp - %d]\n", index * 8 + 8);
         printf("    mov rdi, 1\n");
         printf("    call write_uint\n");
@@ -202,6 +220,29 @@ void instr_asm(instr_node *instr, dynamic_array *variables, int *if_count) {
         printf("    mov rdi, 1\n");
         printf("    call write_cstr\n");
       }
+      break;
+    }
+    case TERM_POINTER:
+      break;
+    case TERM_DEREF: {
+      // Only prints ints for now
+      term_asm(&instr->output.term, variables);
+      printf("    mov rsi, rax\n");
+      printf("    mov rdi, 1\n");
+      printf("    call write_uint\n");
+      printf("    mov rsi, newline\n");
+      printf("    mov rdi, 1\n");
+      printf("    call write_cstr\n");
+      break;
+    }
+    case TERM_ADDOF: {
+      int index = find_variables(variables, &instr->output.term.identifier);
+      printf("    lea rsi, [rbp - %d]\n", index * 8 + 8);
+      printf("    mov rdi, 1\n");
+      printf("    call write_uint\n");
+      printf("    mov rsi, newline\n");
+      printf("    mov rdi, 1\n");
+      printf("    call write_cstr\n");
       break;
     }
     }

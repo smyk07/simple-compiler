@@ -18,6 +18,7 @@ typedef enum token_kind {
   TOKEN_LABEL,
   TOKEN_TYPE_INT,
   TOKEN_TYPE_CHAR,
+  TOKEN_POINTER,
 
   // Literals
   TOKEN_IDENTIFIER,
@@ -31,6 +32,7 @@ typedef enum token_kind {
   TOKEN_MULTIPLY,
   TOKEN_DIVIDE,
   TOKEN_MODULO,
+  TOKEN_ADDRESS_OF,
   TOKEN_IS_EQUAL,
   TOKEN_NOT_EQUAL,
   TOKEN_LESS_THAN,
@@ -39,7 +41,6 @@ typedef enum token_kind {
   TOKEN_GREATER_THAN_OR_EQUAL,
 
   // Special Tokens
-  TOKEN_NULL,
   TOKEN_INVALID,
   TOKEN_END
 } token_kind;

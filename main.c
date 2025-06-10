@@ -63,6 +63,10 @@ int main(int argc, char *argv[]) {
   // Semantic Analysis
   check_semantics(&program.instrs, &variables, &errors);
 
+  // Semantic Debug Statements
+  if (debug)
+    scu_pdebug("Semantic Analysis Complete\n");
+
   // Codegen & Assembler
   program_asm(&program, &variables, extracted_filename, &errors);
 
