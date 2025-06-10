@@ -245,7 +245,6 @@ type term_type(term_node *term, type target_type, unsigned int line,
     return TYPE_CHAR;
   case TERM_POINTER:
   case TERM_DEREF:
-    return TYPE_POINTER;
   case TERM_ADDOF:
   case TERM_IDENTIFIER:
     return var_type(term->identifier.name, line, variables, errors);
@@ -289,9 +288,7 @@ type expr_type(expr_node *expr, type target_type, dynamic_array *variables,
     break;
   }
 
-  if (lhs == TYPE_POINTER || rhs == TYPE_POINTER) {
-    return target_type;
-  } else if (lhs != rhs) {
+  if (lhs != rhs) {
     char *lhs_type_str = type_to_str(lhs);
     char *rhs_type_str = type_to_str(rhs);
     scu_perror(errors,
@@ -343,9 +340,7 @@ void rel_typecheck(rel_node *rel, dynamic_array *variables, int *errors) {
     break;
   }
 
-  if (lhs == TYPE_POINTER || rhs == TYPE_POINTER) {
-    return;
-  } else if (lhs != rhs) {
+  if (lhs != rhs) {
     char *lhs_type_str = type_to_str(lhs);
     char *rhs_type_str = type_to_str(rhs);
     scu_perror(errors,

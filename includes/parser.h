@@ -34,7 +34,6 @@ typedef struct term_node {
   union {
     token_value value;
     variable identifier;
-    struct term_node *deref;
   };
 } term_node;
 

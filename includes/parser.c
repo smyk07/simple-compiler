@@ -40,14 +40,12 @@ void parse_term(parser *p, term_node *term, int *errors) {
     term->identifier.name = token.value.str;
   } else if (token.kind == TOKEN_POINTER) {
     term->kind = TERM_DEREF;
-    term->deref = malloc(sizeof(term_node));
-    term->deref->kind = TERM_IDENTIFIER;
-    term->deref->identifier.name = token.value.str;
+    term->identifier.name = token.value.str;
   } else {
-    scu_perror(
-        errors,
-        "Expected a term (input, int, char, identifier), got %s [line %d]\n",
-        show_token_kind(token.kind), token.line);
+    scu_perror(errors,
+               "Expected a term (input, int, char, identifier, addof, "
+               "pointer), got %s [line %d]\n",
+               show_token_kind(token.kind), token.line);
   }
 
   parser_advance(p);
@@ -188,9 +186,6 @@ void parse_declare(parser *p, instr_node *instr, int *errors) {
   parser_advance(p);
 
   parser_current(p, &token, errors);
-  if (token.kind == TOKEN_POINTER) {
-    _type = TYPE_POINTER;
-  }
   _name = token.value.str;
   _line = token.line;
   parser_advance(p);
@@ -215,6 +210,9 @@ void parse_assign(parser *p, instr_node *instr, int *errors) {
   instr->line = token.line;
   instr->assign.identifier.name = token.value.str;
   instr->assign.identifier.line = token.line;
+  if (token.kind == TOKEN_POINTER) {
+    instr->assign.identifier.type = TYPE_POINTER;
+  }
   parser_advance(p);
 
   parser_current(p, &token, errors);
@@ -301,8 +299,6 @@ void parse_instr(parser *p, instr_node *instr, int *errors) {
     parse_declare(p, instr, errors);
     break;
   case TOKEN_IDENTIFIER:
-    parse_assign(p, instr, errors);
-    break;
   case TOKEN_POINTER:
     parse_assign(p, instr, errors);
     break;
@@ -368,10 +364,8 @@ void check_term_and_print(term_node *term) {
     printf("%s", term->identifier.name);
     break;
   case TERM_POINTER:
-    printf("p*%s", term->identifier.name);
-    break;
   case TERM_DEREF:
-    printf("d*%s", term->identifier.name);
+    printf("*%s", term->identifier.name);
     break;
   case TERM_ADDOF:
     printf("&%s", term->identifier.name);
@@ -443,7 +437,9 @@ void print_instr(instr_node instr) {
     break;
 
   case INSTR_ASSIGN:
-    printf("assign: %s = ", instr.assign.identifier.name);
+    printf("assign: ");
+    check_var_and_print(&instr.assign.identifier);
+    printf(" = ");
     check_expr_and_print(&instr.assign.expr);
     break;
 

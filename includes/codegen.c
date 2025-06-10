@@ -34,8 +34,9 @@ void term_asm(term_node *term, dynamic_array *variables) {
   case TERM_POINTER:
     break;
   case TERM_DEREF: {
-    term_asm(term->deref, variables);
-    printf("    mov rax, qword [rax]\n");
+    int index = find_variables(variables, &term->identifier);
+    printf("    mov rbx, qword [rbp - %d]\n", index * 8 + 8);
+    printf("    mov rax, qword [rbx]\n");
     break;
   }
   case TERM_ADDOF: {
@@ -158,7 +159,12 @@ void instr_asm(instr_node *instr, dynamic_array *variables, int *if_count) {
   case INSTR_ASSIGN: {
     int index = find_variables(variables, &instr->assign.identifier);
     expr_asm(&instr->assign.expr, variables);
-    printf("    mov qword [rbp - %d], rax\n", index * 8 + 8);
+    if (instr->assign.identifier.type == TYPE_POINTER) {
+      printf("    mov rbx, qword [rbp - %d]\n", index * 8 + 8);
+      printf("    mov qword [rbx], rax\n");
+    } else {
+      printf("    mov qword [rbp - %d], rax\n", index * 8 + 8);
+    }
     break;
   }
   case INSTR_IF: {
