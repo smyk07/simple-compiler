@@ -1,13 +1,13 @@
-CC = clang
 CFLAGS = -std=c11 -g -Wall -Wextra
+CC = clang
 
 SRC_DIR = ./includes
 OBJ_DIR = ./obj
 
-SRCS = main.c $(SRC_DIR)/data_structures.c $(SRC_DIR)/utils.c $(SRC_DIR)/lexer.c $(SRC_DIR)/parser.c $(SRC_DIR)/semantic.c $(SRC_DIR)/codegen.c
+SRCS = main.c $(SRC_DIR)/data_structures.c $(SRC_DIR)/utils.c $(SRC_DIR)/cstate.c $(SRC_DIR)/lexer.c $(SRC_DIR)/parser.c $(SRC_DIR)/semantic.c $(SRC_DIR)/codegen.c
 OBJS = $(SRCS:%.c=$(OBJ_DIR)/%.o)
 
-TARGET = compiler
+TARGET = sclc
 
 all: $(TARGET)
 
@@ -22,12 +22,9 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-clean-all:
+clean:
 	rm -rf $(OBJ_DIR) $(TARGET)
 
-clean-obj: 
-	rm -rf $(OBJ_DIR)
+clean: clean
 
-clean: clean-all
-
-.PHONY: all clean-all clean-obj
+.PHONY: all clean
