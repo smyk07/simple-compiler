@@ -20,7 +20,7 @@ char *type_to_str(type type) {
 }
 
 int find_variables(dynamic_array *variables, variable *var_to_find,
-                   int *errors) {
+                   unsigned int *errors) {
   for (unsigned int i = 0; i < variables->count; i++) {
     variable var;
     dynamic_array_get(variables, i, &var);
@@ -53,7 +53,7 @@ void declare_variables(variable *var_to_declare, dynamic_array *variables) {
 }
 
 void term_check_variables(term_node *term, dynamic_array *variables,
-                          int *errors) {
+                          unsigned int *errors) {
   switch (term->kind) {
   case TERM_IDENTIFIER:
     find_variables(variables, &term->identifier, errors);
@@ -64,7 +64,7 @@ void term_check_variables(term_node *term, dynamic_array *variables,
 }
 
 void expr_check_variables(expr_node *expr, dynamic_array *variables,
-                          int *errors) {
+                          unsigned int *errors) {
   switch (expr->kind) {
   case EXPR_TERM:
     term_check_variables(&expr->term, variables, errors);
@@ -92,7 +92,8 @@ void expr_check_variables(expr_node *expr, dynamic_array *variables,
   }
 }
 
-void rel_check_variables(rel_node *rel, dynamic_array *variables, int *errors) {
+void rel_check_variables(rel_node *rel, dynamic_array *variables,
+                         unsigned int *errors) {
   switch (rel->kind) {
   case REL_IS_EQUAL:
     term_check_variables(&rel->is_equal.lhs, variables, errors);
@@ -122,7 +123,7 @@ void rel_check_variables(rel_node *rel, dynamic_array *variables, int *errors) {
 }
 
 void instr_check_variables(instr_node *instr, dynamic_array *variables,
-                           int *errors) {
+                           unsigned int *errors) {
   switch (instr->kind) {
   case INSTR_DECLARE:
     declare_variables(&instr->declare_variable, variables);
@@ -147,7 +148,8 @@ void instr_check_variables(instr_node *instr, dynamic_array *variables,
 }
 
 // Label checking
-void check_label(dynamic_array *labels, instr_node *instr, int *errors) {
+void check_label(dynamic_array *labels, instr_node *instr,
+                 unsigned int *errors) {
   char *label_name = instr->label.label;
   for (unsigned int i = 0; i < labels->count; i++) {
     char *existing;
@@ -161,7 +163,8 @@ void check_label(dynamic_array *labels, instr_node *instr, int *errors) {
   dynamic_array_append(labels, &label_name);
 }
 
-void check_goto(dynamic_array *labels, instr_node *instr, int *errors) {
+void check_goto(dynamic_array *labels, instr_node *instr,
+                unsigned int *errors) {
   int found = 0;
   for (unsigned int i = 0; i < labels->count; i++) {
     char *label;
@@ -178,7 +181,7 @@ void check_goto(dynamic_array *labels, instr_node *instr, int *errors) {
 }
 
 void instrs_check_labels(dynamic_array *instrs, dynamic_array *labels,
-                         int *errors) {
+                         unsigned int *errors) {
   // check labels first
   for (unsigned int i = 0; i < instrs->count; i++) {
     instr_node instr;
@@ -221,7 +224,7 @@ void instrs_check_labels(dynamic_array *instrs, dynamic_array *labels,
 
 // Typechecking
 type var_type(char *name, unsigned int line, dynamic_array *variables,
-              int *errors) {
+              unsigned int *errors) {
   for (unsigned int i = 0; i < variables->count; i++) {
     variable var;
     dynamic_array_get(variables, i, &var);
@@ -235,7 +238,7 @@ type var_type(char *name, unsigned int line, dynamic_array *variables,
 }
 
 type term_type(term_node *term, type target_type, unsigned int line,
-               dynamic_array *variables, int *errors) {
+               dynamic_array *variables, unsigned int *errors) {
   switch (term->kind) {
   case TERM_INPUT:
     return target_type;
@@ -252,7 +255,7 @@ type term_type(term_node *term, type target_type, unsigned int line,
 }
 
 type expr_type(expr_node *expr, type target_type, dynamic_array *variables,
-               int *errors) {
+               unsigned int *errors) {
   type lhs, rhs;
 
   switch (expr->kind) {
@@ -298,7 +301,8 @@ type expr_type(expr_node *expr, type target_type, dynamic_array *variables,
   return lhs;
 }
 
-void rel_typecheck(rel_node *rel, dynamic_array *variables, int *errors) {
+void rel_typecheck(rel_node *rel, dynamic_array *variables,
+                   unsigned int *errors) {
   type lhs, rhs;
 
   switch (rel->kind) {
@@ -349,7 +353,8 @@ void rel_typecheck(rel_node *rel, dynamic_array *variables, int *errors) {
   }
 }
 
-void instr_typecheck(instr_node *instr, dynamic_array *variables, int *errors) {
+void instr_typecheck(instr_node *instr, dynamic_array *variables,
+                     unsigned int *errors) {
   switch (instr->kind) {
   case INSTR_INITIALIZE: {
     type target_type = instr->initialize_variable.var.type;
@@ -393,7 +398,7 @@ void instr_typecheck(instr_node *instr, dynamic_array *variables, int *errors) {
 }
 
 void check_semantics(dynamic_array *instrs, dynamic_array *variables,
-                     int *errors) {
+                     unsigned int *errors) {
   // Semantic Analysis - Check variables
   for (unsigned int i = 0; i < instrs->count; i++) {
     instr_node instr;

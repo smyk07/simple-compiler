@@ -254,7 +254,7 @@ void instr_asm(instr_node *instr, dynamic_array *variables, int *if_count) {
 }
 
 void program_asm(program_node *program, dynamic_array *variables,
-                 char *filename, int *errors) {
+                 char *filename, unsigned int *errors) {
   int if_count = 0;
 
   char *output_asm_file = scu_format_string("%s.asm", filename);

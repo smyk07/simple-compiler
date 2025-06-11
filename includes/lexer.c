@@ -264,7 +264,7 @@ token lexer_next_token(lexer *l) {
 }
 
 int lexer_tokenize(char *buffer, unsigned int buffer_len, dynamic_array *tokens,
-                   int *errors) {
+                   unsigned int *errors) {
   lexer lexer;
   lexer_init(&lexer, buffer, buffer_len);
 

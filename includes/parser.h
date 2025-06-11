@@ -151,9 +151,9 @@ typedef struct parser {
   unsigned int index;
 } parser;
 
-void parser_init(dynamic_array tokens, parser *p);
+void parser_init(dynamic_array *tokens, parser *p);
 
-void parse_program(parser *p, program_node *program, int *errors);
+void parse_program(parser *p, program_node *program, unsigned int *errors);
 
 void print_program(program_node *program);
 
