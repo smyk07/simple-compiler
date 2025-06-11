@@ -377,7 +377,8 @@ void free_tokens(dynamic_array *tokens) {
   for (unsigned int i = 0; i < tokens->count; i++) {
     token *token = tokens->items + (i * tokens->item_size);
     if (token->kind == TOKEN_IDENTIFIER || token->kind == TOKEN_LABEL ||
-        token->kind == TOKEN_INVALID) {
+        token->kind == TOKEN_INVALID || token->kind == TOKEN_ADDRESS_OF ||
+        token->kind == TOKEN_POINTER) {
       free(token->value.str);
     }
   }
