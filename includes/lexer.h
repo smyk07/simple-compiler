@@ -67,7 +67,7 @@ typedef struct lexer {
 } lexer;
 
 int lexer_tokenize(char *buffer, unsigned int buffer_len, dynamic_array *tokens,
-                   int *errors);
+                   unsigned int *errors);
 char *show_token_kind(token_kind kind);
 void print_tokens(dynamic_array *tokens);
 void free_tokens(dynamic_array *tokens);

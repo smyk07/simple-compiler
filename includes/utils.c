@@ -126,7 +126,7 @@ void scu_pwarning(char *__restrict __format, ...) {
   va_end(args);
 }
 
-void scu_perror(int *errors, char *__restrict __format, ...) {
+void scu_perror(unsigned int *errors, char *__restrict __format, ...) {
   (*errors)++;
   va_list args;
   va_start(args, __format);
@@ -137,14 +137,14 @@ void scu_perror(int *errors, char *__restrict __format, ...) {
   va_end(args);
 }
 
-void scu_check_errors(int *errors) {
+void scu_check_errors(unsigned int *errors) {
   if (*errors) {
     scu_pwarning("%d error(s) found\n", *errors);
     exit(1);
   }
 }
 
-void scu_assemble(char *asm_file, char *output_file, int *errors) {
+void scu_assemble(char *asm_file, char *output_file, unsigned int *errors) {
   char command[512];
   snprintf(command, sizeof(command), "fasm %s %s", asm_file, output_file);
   int result = system(command);

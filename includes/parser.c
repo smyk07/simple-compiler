@@ -5,12 +5,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void parser_init(dynamic_array tokens, parser *p) {
-  p->tokens = tokens;
+void parser_init(dynamic_array *tokens, parser *p) {
+  p->tokens = *tokens;
   p->index = 0;
 }
 
-void parser_current(parser *p, token *token, int *errors) {
+void parser_current(parser *p, token *token, unsigned int *errors) {
   dynamic_array_get(&p->tokens, p->index, token);
   if (token->kind == TOKEN_END) {
     scu_check_errors(errors);
@@ -19,7 +19,7 @@ void parser_current(parser *p, token *token, int *errors) {
 
 void parser_advance(parser *p) { p->index++; }
 
-void parse_term(parser *p, term_node *term, int *errors) {
+void parse_term(parser *p, term_node *term, unsigned int *errors) {
   token token;
 
   parser_current(p, &token, errors);
@@ -51,7 +51,7 @@ void parse_term(parser *p, term_node *term, int *errors) {
   parser_advance(p);
 }
 
-void parse_expr(parser *p, expr_node *expr, int *errors) {
+void parse_expr(parser *p, expr_node *expr, unsigned int *errors) {
   token token;
   term_node lhs, rhs;
 
@@ -100,7 +100,7 @@ void parse_expr(parser *p, expr_node *expr, int *errors) {
   }
 }
 
-void parse_rel(parser *p, rel_node *rel, int *errors) {
+void parse_rel(parser *p, rel_node *rel, unsigned int *errors) {
   token token;
   term_node lhs, rhs;
 
@@ -157,10 +157,10 @@ void parse_rel(parser *p, rel_node *rel, int *errors) {
   }
 }
 
-void parse_instr(parser *p, instr_node *instr, int *errors);
+void parse_instr(parser *p, instr_node *instr, unsigned int *errors);
 
 void parse_initialize(parser *p, instr_node *instr, type _type, char *_name,
-                      int *errors) {
+                      unsigned int *errors) {
   instr->kind = INSTR_INITIALIZE;
   instr->initialize_variable.var.type = _type;
   instr->initialize_variable.var.name = _name;
@@ -169,7 +169,7 @@ void parse_initialize(parser *p, instr_node *instr, type _type, char *_name,
   parse_expr(p, &instr->initialize_variable.expr, errors);
 }
 
-void parse_declare(parser *p, instr_node *instr, int *errors) {
+void parse_declare(parser *p, instr_node *instr, unsigned int *errors) {
   token token;
 
   type _type = TYPE_VOID;
@@ -201,7 +201,7 @@ void parse_declare(parser *p, instr_node *instr, int *errors) {
   }
 }
 
-void parse_assign(parser *p, instr_node *instr, int *errors) {
+void parse_assign(parser *p, instr_node *instr, unsigned int *errors) {
   token token;
 
   instr->kind = INSTR_ASSIGN;
@@ -225,7 +225,7 @@ void parse_assign(parser *p, instr_node *instr, int *errors) {
   parse_expr(p, &instr->assign.expr, errors);
 }
 
-void parse_if(parser *p, instr_node *instr, int *errors) {
+void parse_if(parser *p, instr_node *instr, unsigned int *errors) {
   token token;
 
   instr->kind = INSTR_IF;
@@ -246,7 +246,7 @@ void parse_if(parser *p, instr_node *instr, int *errors) {
   parse_instr(p, instr->if_.instr, errors);
 }
 
-void parse_goto(parser *p, instr_node *instr, int *errors) {
+void parse_goto(parser *p, instr_node *instr, unsigned int *errors) {
   token token;
 
   instr->kind = INSTR_GOTO;
@@ -264,7 +264,7 @@ void parse_goto(parser *p, instr_node *instr, int *errors) {
   instr->goto_.label = token.value.str;
 }
 
-void parse_output(parser *p, instr_node *instr, int *errors) {
+void parse_output(parser *p, instr_node *instr, unsigned int *errors) {
   term_node rhs;
 
   instr->kind = INSTR_OUTPUT;
@@ -276,7 +276,7 @@ void parse_output(parser *p, instr_node *instr, int *errors) {
   instr->output.term = rhs;
 }
 
-void parse_label(parser *p, instr_node *instr, int *errors) {
+void parse_label(parser *p, instr_node *instr, unsigned int *errors) {
   token token;
 
   instr->kind = INSTR_LABEL;
@@ -288,7 +288,7 @@ void parse_label(parser *p, instr_node *instr, int *errors) {
   parser_advance(p);
 }
 
-void parse_instr(parser *p, instr_node *instr, int *errors) {
+void parse_instr(parser *p, instr_node *instr, unsigned int *errors) {
   token token;
 
   parser_current(p, &token, errors);
@@ -321,7 +321,7 @@ void parse_instr(parser *p, instr_node *instr, int *errors) {
   }
 }
 
-void parse_program(parser *p, program_node *program, int *errors) {
+void parse_program(parser *p, program_node *program, unsigned int *errors) {
   dynamic_array_init(&program->instrs, sizeof(instr_node));
 
   token token;

@@ -264,7 +264,7 @@ token lexer_next_token(lexer *l) {
 }
 
 int lexer_tokenize(char *buffer, unsigned int buffer_len, dynamic_array *tokens,
-                   int *errors) {
+                   unsigned int *errors) {
   lexer lexer;
   lexer_init(&lexer, buffer, buffer_len);
 
@@ -377,7 +377,8 @@ void free_tokens(dynamic_array *tokens) {
   for (unsigned int i = 0; i < tokens->count; i++) {
     token *token = tokens->items + (i * tokens->item_size);
     if (token->kind == TOKEN_IDENTIFIER || token->kind == TOKEN_LABEL ||
-        token->kind == TOKEN_INVALID) {
+        token->kind == TOKEN_INVALID || token->kind == TOKEN_ADDRESS_OF ||
+        token->kind == TOKEN_POINTER) {
       free(token->value.str);
     }
   }
