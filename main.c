@@ -40,10 +40,6 @@ int main(int argc, char *argv[]) {
   if (state->debug)
     scu_pdebug("Semantic Analysis Complete\n");
 
-  // Semantic Debug Statements
-  if (debug)
-    scu_pdebug("Semantic Analysis Complete\n");
-
   // Codegen & Assembler
   program_asm(state->program, state->variables, state->extracted_filename,
               &state->error_count);
