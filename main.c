@@ -45,13 +45,13 @@ int main(int argc, char *argv[]) {
   program_asm(state->program, state->variables, state->extracted_filename,
               &state->error_count);
 
-  // Codegen & Assembler Debug Statements
-  if (state->debug)
-    scu_pdebug("Codegen & Assembling Complete\n");
-
   // Restore STDOUT
   stdout = fopen("/dev/tty", "w");
   scu_psuccess("%s\n", state->filename);
+
+  // Codegen & Assembler Debug Statements
+  if (state->debug)
+    scu_pdebug("Codegen & Assembling Complete\n");
 
   // Free memory
   fflush(stdout);
