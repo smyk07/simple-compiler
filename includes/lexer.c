@@ -105,6 +105,13 @@ token lexer_next_token(lexer *l) {
 
   else if (l->ch == '/') {
     lexer_read_char(l);
+    if (l->ch == '/') {
+      while (l->ch != '\n') {
+        lexer_read_char(l);
+      }
+      return (token){.kind = TOKEN_COMMENT, .value.str = NULL, .line = l->line};
+    }
+
     return (token){.kind = TOKEN_DIVIDE, .value.str = NULL, .line = l->line};
   }
 
@@ -334,6 +341,8 @@ char *show_token_kind(token_kind kind) {
     return "greater_than_or_equal";
   case TOKEN_INVALID:
     return "invalid";
+  case TOKEN_COMMENT:
+    return "comment";
   case TOKEN_END:
     return "end";
   }

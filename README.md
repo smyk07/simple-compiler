@@ -15,27 +15,26 @@ Check [example.scl](https://github.com/smyk07/simple-compiler/blob/main/example.
 
 ## Usage
 
-Compile the compiler:
+Build the compiler:
 
 ```
 make
 ```
 
-Compile the `example.scl` file:
+Compile the examples in `./examples` like so:
 
 ```
-./compiler example.scl
+./sclc ./examples/n_prime_numbers.scl
 ```
 
-Run the `./example` executable:
+Run the executable:
 
 ```
-./example
+./examples/n_prime_numbers
 ```
 
 Cleanup:
 
 ```
-make clean-all              # clean all compile files
-make clean-obj              # clean only the obj files
+make clean
 ```

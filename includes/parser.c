@@ -327,6 +327,11 @@ void parse_program(parser *p, program_node *program, unsigned int *errors) {
   token token;
   parser_current(p, &token, errors);
   while (token.kind != TOKEN_END) {
+    if (token.kind == TOKEN_COMMENT) {
+      parser_advance(p);
+      parser_current(p, &token, errors);
+      continue;
+    }
     instr_node *instr = malloc(sizeof(instr_node));
     parse_instr(p, instr, errors);
     dynamic_array_append(&program->instrs, instr);

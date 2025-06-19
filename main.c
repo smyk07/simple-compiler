@@ -10,6 +10,7 @@
 #include "includes/semantic.h"
 
 int main(int argc, char *argv[]) {
+  // Initialize compiler state
   cstate *state = cstate_init(argc, argv);
   if (!state) {
     fprintf(stderr, "Failed to allocate memory for compiler state\n");

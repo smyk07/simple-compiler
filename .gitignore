@@ -1,9 +1,10 @@
 sclc
-example
-example.asm
 
 test.scl
 test.asm
 test
 
 obj/
+
+examples/*
+!examples/*.scl
