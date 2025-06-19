@@ -1,0 +1,12 @@
+int n = input
+int result = 1
+
+if n == 0 then goto :end
+
+:main
+result = result * n
+n = n - 1
+if n > 1 then goto :main
+
+:end
+output result

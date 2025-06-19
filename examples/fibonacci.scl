@@ -1,0 +1,20 @@
+int n = input
+
+if n == 0 then output 0
+if n == 1 then output 1
+
+int a = 0
+int b = 1
+int count = 2
+int fib = 0
+
+:fib_loop
+if count > n then goto :end
+fib = a + b
+a = b
+b = fib
+count = count + 1
+goto :fib_loop
+
+:end
+output fib
