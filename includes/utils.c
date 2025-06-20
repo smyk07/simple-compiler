@@ -135,7 +135,9 @@ void scu_pwarning(char *__restrict __format, ...) {
 }
 
 void scu_perror(unsigned int *errors, char *__restrict __format, ...) {
-  (*errors)++;
+  if (errors != NULL) {
+    (*errors)++;
+  }
   va_list args;
   va_start(args, __format);
   fprintf(stderr, "\033[1;31m");

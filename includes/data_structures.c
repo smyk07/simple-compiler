@@ -1,4 +1,5 @@
 #include "data_structures.h"
+#include "utils.h"
 
 #include <stdint.h>
 #include <stdio.h>
@@ -35,7 +36,7 @@ void dynamic_array_init(dynamic_array *da, size_t size) {
 
 int dynamic_array_get(dynamic_array *da, unsigned int index, void *item) {
   if (!da || !item || index >= da->count || !da->items) {
-    perror("Invalid Dynamic array passed to function.\n");
+    scu_perror(NULL, "Invalid Dynamic array passed to function.\n");
     return -1;
   }
 
@@ -47,7 +48,7 @@ int dynamic_array_get(dynamic_array *da, unsigned int index, void *item) {
 int dynamic_array_set(dynamic_array *da, unsigned int index, void *item) {
   if (!da || !item || !da->items || da->item_size == 0 || index >= da->count ||
       da->capacity == 0) {
-    perror("Invalid dynamic array passed to function.\n");
+    scu_perror(NULL, "Invalid dynamic array passed to function.\n");
     return -1;
   }
 
@@ -58,7 +59,7 @@ int dynamic_array_set(dynamic_array *da, unsigned int index, void *item) {
 
 int dynamic_array_append(dynamic_array *da, void *item) {
   if (!da || !item || da->item_size == 0) {
-    perror("Invalid dynamic array passed to function.\n");
+    scu_perror(NULL, "Invalid dynamic array passed to function.\n");
     return -1;
   }
 
@@ -66,7 +67,7 @@ int dynamic_array_append(dynamic_array *da, void *item) {
     da->capacity = 4;
     da->items = malloc(da->item_size * da->capacity);
     if (!da->items) {
-      perror("Failed to allocate dynamic array.\n");
+      scu_perror(NULL, "Failed to allocate dynamic array\n");
       return -1;
     }
   }
@@ -89,7 +90,7 @@ int dynamic_array_append(dynamic_array *da, void *item) {
 
 int dynamic_array_insert(dynamic_array *da, unsigned int index, void *item) {
   if (!da || !item || da->item_size == 0 || index > da->count) {
-    perror("Invalid dynamic array passed to function.\n");
+    scu_perror(NULL, "Invalid dynamic array passed to function.\n");
     return -1;
   }
 
@@ -97,7 +98,7 @@ int dynamic_array_insert(dynamic_array *da, unsigned int index, void *item) {
     unsigned int new_capacity = da->capacity * 2;
     void *new_items = realloc(da->items, da->item_size * new_capacity);
     if (!new_items) {
-      perror("Failed to resize dynamic array.\n");
+      scu_perror(NULL, "Failed to resize dynamic array.\n");
       return -1;
     }
     da->items = new_items;
@@ -114,7 +115,7 @@ int dynamic_array_insert(dynamic_array *da, unsigned int index, void *item) {
 
 int dynamic_array_remove(dynamic_array *da, unsigned int index) {
   if (!da || da->item_size == 0 || index >= da->count) {
-    perror("Invalid dynamic array passed to function.\n");
+    scu_perror(NULL, "Invalid dynamic array passed to function.\n");
     return -1;
   }
 
@@ -130,7 +131,7 @@ int dynamic_array_remove(dynamic_array *da, unsigned int index) {
 
 int dynamic_array_pop(dynamic_array *da, void *item) {
   if (!da || da->item_size == 0 || da->count == 0) {
-    perror("Invalid dynamic array passed to function.\n");
+    scu_perror(NULL, "Invalid dynamic array passed to function.\n");
     return -1;
   }
 
