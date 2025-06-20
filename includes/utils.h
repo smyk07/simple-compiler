@@ -9,7 +9,7 @@
 
 char *scu_extract_name(const char *filename);
 
-int scu_read_file(char *path, char **buffer);
+int scu_read_file(char *path, char **buffer, unsigned int *error_count);
 
 char *scu_format_string(char *__restrict __format, ...);
 

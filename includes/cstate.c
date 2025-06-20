@@ -26,7 +26,7 @@ cstate *cstate_init(int argc, char *argv[]) {
   } else {
     printf("Simple Compiler - Just as the name suggests\n");
     printf("Usage: ./compiler [OPTIONS] <filename>\n\n");
-    printf("Options:\n");
+    printf("OPTIONS:\n");
     printf("--cdebug OR -cd \t Run in compiler debug mode - prints lexer\n");
     printf("                \t and parser debug statements.\n");
     exit(1);
@@ -38,7 +38,8 @@ cstate *cstate_init(int argc, char *argv[]) {
   }
 
   s->code_buffer = NULL;
-  s->code_buffer_len = scu_read_file(s->filename, &s->code_buffer);
+  s->code_buffer_len =
+      scu_read_file(s->filename, &s->code_buffer, &s->error_count);
   if (s->code_buffer == NULL) {
     scu_perror(&s->error_count, "Failed to read file: %s\n", s->filename);
     exit(1);

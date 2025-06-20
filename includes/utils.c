@@ -4,8 +4,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 
-int scu_read_file(char *path, char **buffer) {
+int scu_read_file(char *path, char **buffer, unsigned int *error_count) {
+  struct stat path_stat;
+  stat(path, &path_stat);
+  if (!S_ISREG(path_stat.st_mode)) {
+    scu_perror(error_count, "Given path is not a valid file.\n");
+    scu_check_errors(error_count);
+  }
+
   int tmp_capacity = MAX_LEN;
   char *tmp = malloc(tmp_capacity * sizeof(char));
 
