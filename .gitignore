@@ -1,10 +1,13 @@
-sclc
+.cache/
+
+obj/
+bin/
+
+examples/*
+!examples/*.scl
+
+compile_commands.json
 
 test.scl
 test.asm
 test
-
-obj/
-
-examples/*
-!examples/*.scl

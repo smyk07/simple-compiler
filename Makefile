@@ -1,30 +1,36 @@
-CFLAGS = -std=c11 -g -Wall -Wextra
+INC_DIR = ./includes
+SRC_DIR = ./src
+OBJ_DIR = ./obj
+BIN_DIR = ./bin
+
+CFLAGS = -std=c11 -g -Wall -Wextra -I$(INC_DIR)
 CC = clang
 
-SRC_DIR = ./includes
-OBJ_DIR = ./obj
-
-SRCS = main.c $(SRC_DIR)/data_structures.c $(SRC_DIR)/utils.c $(SRC_DIR)/cstate.c $(SRC_DIR)/lexer.c $(SRC_DIR)/parser.c $(SRC_DIR)/semantic.c $(SRC_DIR)/codegen.c
-OBJS = $(SRCS:%.c=$(OBJ_DIR)/%.o)
-
-TARGET = sclc
+SRCS = $(wildcard $(SRC_DIR)/*.c)
+OBJS = $(SRCS:$(SRC_DIR)/%.c=$(OBJ_DIR)/%.o)
+TARGET = $(BIN_DIR)/sclc
 
 all: $(TARGET)
 
-$(TARGET): $(OBJS)
-	$(CC) $(CFLAGS) -o $(TARGET) $(OBJS)
+$(TARGET): $(OBJS) | $(BIN_DIR)
+	$(CC) $(OBJS) -o $@
 
-$(OBJ_DIR)/%.o: %.c
-	@mkdir -p $(dir $@)
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c | $(OBJ_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
-	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) -c $< -o $@
+$(OBJ_DIR):
+	mkdir -p $(OBJ_DIR)
+
+$(BIN_DIR):
+	mkdir -p $(BIN_DIR)
 
 clean:
-	rm -rf $(OBJ_DIR) $(TARGET)
+	rm -rf $(OBJ_DIR) $(BIN_DIR)
 
-clean: clean
+clean-all: clean 
+	rm compile_commands.json
 
-.PHONY: all clean
+compile_commands.json:
+	bear -- $(MAKE) clean all
+
+.PHONY: all clean clean-all compile_commands.json

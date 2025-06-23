@@ -1,13 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "includes/cstate.h"
-#include "includes/utils.h"
+#include "cstate.h"
+#include "utils.h"
 
-#include "includes/codegen.h"
-#include "includes/lexer.h"
-#include "includes/parser.h"
-#include "includes/semantic.h"
+#include "codegen.h"
+#include "lexer.h"
+#include "parser.h"
+#include "semantic.h"
 
 int main(int argc, char *argv[]) {
   // Initialize compiler state
