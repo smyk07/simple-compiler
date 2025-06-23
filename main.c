@@ -41,7 +41,7 @@ int main(int argc, char *argv[]) {
     scu_pdebug("Semantic Analysis Complete\n");
 
   // Semantic Debug Statements
-  if (debug)
+  if (state->debug)
     scu_pdebug("Semantic Analysis Complete\n");
 
   // Codegen & Assembler
