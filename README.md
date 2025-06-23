@@ -2,16 +2,16 @@
 
 A Simple Compiler. (Compiles to x64 fasm assembly).
 
-Check [example.scl](https://github.com/smyk07/simple-compiler/blob/main/example.scl) for an example of how the language is written.
-
 ## Inspiration
 
 [How to build a compiler from scratch by Alex The Dev](https://youtu.be/HOe2YFnzO2I)
 
-## Prerequisites
+## Prerequisites (to build the compiler)
 
 - `make`
 - `clang`
+- `wildcard`
+- `bear`
 
 ## Usage
 
@@ -24,7 +24,7 @@ make
 Compile the examples in `./examples` like so:
 
 ```
-./sclc ./examples/n_prime_numbers.scl
+./bin/sclc ./examples/n_prime_numbers.scl
 ```
 
 Run the executable:
