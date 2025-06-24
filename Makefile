@@ -10,7 +10,7 @@ SRCS = $(wildcard $(SRC_DIR)/*.c)
 OBJS = $(SRCS:$(SRC_DIR)/%.c=$(OBJ_DIR)/%.o)
 TARGET = $(BIN_DIR)/sclc
 
-TARGET = sclc
+TARGET = $(BIN_DIR)/sclc
 
 all: $(TARGET)
 
