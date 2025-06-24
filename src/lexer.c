@@ -112,6 +112,25 @@ token lexer_next_token(lexer *l) {
       return (token){.kind = TOKEN_COMMENT, .value.str = NULL, .line = l->line};
     }
 
+    else if (l->ch == '*') {
+      while (l->ch != '\0') {
+        if (l->ch == '*') {
+          lexer_read_char(l);
+          if (l->ch == '/') {
+            lexer_read_char(l);
+            return (token){
+                .kind = TOKEN_COMMENT, .value.str = NULL, .line = l->line};
+          }
+          continue;
+        } else {
+          lexer_read_char(l);
+          continue;
+        }
+        return (token){
+            .kind = TOKEN_INVALID, .value.character = l->ch, .line = l->line};
+      }
+    }
+
     return (token){.kind = TOKEN_DIVIDE, .value.str = NULL, .line = l->line};
   }
 
