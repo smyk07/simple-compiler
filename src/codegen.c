@@ -53,42 +53,39 @@ void expr_asm(expr_node *expr, dynamic_array *variables) {
     term_asm(&expr->term, variables);
     break;
   case EXPR_ADD:
-    term_asm(&expr->add.lhs, variables);
-    printf("    mov rdx, rax\n");
-    term_asm(&expr->add.rhs, variables);
+    expr_asm(expr->binary.left, variables);
+    printf("    push rax\n");
+    expr_asm(expr->binary.right, variables);
+    printf("    pop rdx\n");
     printf("    add rax, rdx\n");
     break;
   case EXPR_SUBTRACT:
-    term_asm(&expr->subtract.lhs, variables);
+    expr_asm(expr->binary.left, variables);
+    printf("    push rax\n");
+    expr_asm(expr->binary.right, variables);
     printf("    mov rdx, rax\n");
-    term_asm(&expr->subtract.rhs, variables);
-    printf("    sub rdx, rax\n");
-    printf("    mov rax, rdx\n");
+    printf("    pop rax\n");
+    printf("    sub rax, rdx\n");
     break;
   case EXPR_MULTIPLY:
-    term_asm(&expr->multiply.lhs, variables);
-    printf("    mov rdx, rax\n");
-    term_asm(&expr->multiply.rhs, variables);
+    expr_asm(expr->binary.left, variables);
+    printf("    push rax\n");
+    expr_asm(expr->binary.right, variables);
+    printf("    pop rdx\n");
     printf("    imul rax, rdx\n");
     break;
   case EXPR_DIVIDE:
-    term_asm(&expr->divide.lhs, variables);
-    printf("    mov rdx, rax\n");
-    term_asm(&expr->divide.rhs, variables);
-    printf("    mov rcx, rax\n");
-    printf("    mov rax, rdx\n");
-    printf("    xor rdx, rdx\n");
-    printf("    div rcx\n");
-    break;
   case EXPR_MODULO:
-    term_asm(&expr->modulo.lhs, variables);
-    printf("    mov rdx, rax\n");
-    term_asm(&expr->modulo.rhs, variables);
+    expr_asm(expr->binary.left, variables);
+    printf("    push rax\n");
+    expr_asm(expr->binary.right, variables);
     printf("    mov rcx, rax\n");
-    printf("    mov rax, rdx\n");
-    printf("    xor rdx, rdx\n");
-    printf("    div rcx\n");
-    printf("    mov rax, rdx\n");
+    printf("    pop rax\n");
+    printf("    cqo\n");
+    printf("    idiv rcx\n");
+    if (expr->kind == EXPR_MODULO) {
+      printf("    mov rax, rdx\n");
+    }
     break;
   }
 }

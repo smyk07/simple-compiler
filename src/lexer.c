@@ -75,6 +75,18 @@ token lexer_next_token(lexer *l) {
     return (token){.kind = TOKEN_INVALID, .value.str = value, .line = l->line};
   }
 
+  else if (l->ch == '(') {
+    lexer_read_char(l);
+    return (token){
+        .kind = TOKEN_BRACKET_OPEN, .value.str = NULL, .line = l->line};
+  }
+
+  else if (l->ch == ')') {
+    lexer_read_char(l);
+    return (token){
+        .kind = TOKEN_BRACKET_CLOSE, .value.str = NULL, .line = l->line};
+  }
+
   else if (l->ch == '+') {
     lexer_read_char(l);
     return (token){.kind = TOKEN_ADD, .value.str = NULL, .line = l->line};
@@ -334,6 +346,10 @@ char *show_token_kind(token_kind kind) {
     return "char";
   case TOKEN_ASSIGN:
     return "assign";
+  case TOKEN_BRACKET_OPEN:
+    return "bracket open";
+  case TOKEN_BRACKET_CLOSE:
+    return "bracket close";
   case TOKEN_ADD:
     return "add";
   case TOKEN_SUBTRACT:

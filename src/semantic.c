@@ -70,24 +70,12 @@ void expr_check_variables(expr_node *expr, dynamic_array *variables,
     term_check_variables(&expr->term, variables, errors);
     break;
   case EXPR_ADD:
-    term_check_variables(&expr->add.lhs, variables, errors);
-    term_check_variables(&expr->add.rhs, variables, errors);
-    break;
   case EXPR_SUBTRACT:
-    term_check_variables(&expr->subtract.lhs, variables, errors);
-    term_check_variables(&expr->subtract.rhs, variables, errors);
-    break;
   case EXPR_MULTIPLY:
-    term_check_variables(&expr->multiply.lhs, variables, errors);
-    term_check_variables(&expr->multiply.rhs, variables, errors);
-    break;
   case EXPR_DIVIDE:
-    term_check_variables(&expr->divide.lhs, variables, errors);
-    term_check_variables(&expr->divide.rhs, variables, errors);
-    break;
   case EXPR_MODULO:
-    term_check_variables(&expr->modulo.lhs, variables, errors);
-    term_check_variables(&expr->modulo.rhs, variables, errors);
+    expr_check_variables(expr->binary.left, variables, errors);
+    expr_check_variables(expr->binary.right, variables, errors);
     break;
   }
 }
@@ -262,32 +250,12 @@ type expr_type(expr_node *expr, type target_type, dynamic_array *variables,
   case EXPR_TERM:
     return term_type(&expr->term, target_type, expr->line, variables, errors);
   case EXPR_ADD:
-    lhs = term_type(&expr->add.lhs, target_type, expr->line, variables, errors);
-    rhs = term_type(&expr->add.rhs, target_type, expr->line, variables, errors);
-    break;
   case EXPR_SUBTRACT:
-    lhs = term_type(&expr->subtract.lhs, target_type, expr->line, variables,
-                    errors);
-    rhs = term_type(&expr->subtract.rhs, target_type, expr->line, variables,
-                    errors);
-    break;
   case EXPR_MULTIPLY:
-    lhs = term_type(&expr->multiply.lhs, target_type, expr->line, variables,
-                    errors);
-    rhs = term_type(&expr->multiply.rhs, target_type, expr->line, variables,
-                    errors);
-    break;
   case EXPR_DIVIDE:
-    lhs = term_type(&expr->divide.lhs, target_type, expr->line, variables,
-                    errors);
-    rhs = term_type(&expr->divide.rhs, target_type, expr->line, variables,
-                    errors);
-    break;
   case EXPR_MODULO:
-    lhs = term_type(&expr->modulo.lhs, target_type, expr->line, variables,
-                    errors);
-    rhs = term_type(&expr->modulo.rhs, target_type, expr->line, variables,
-                    errors);
+    lhs = expr_type(expr->binary.left, target_type, variables, errors);
+    rhs = expr_type(expr->binary.right, target_type, variables, errors);
     break;
   }
 

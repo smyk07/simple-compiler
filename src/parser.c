@@ -19,7 +19,7 @@ void parser_current(parser *p, token *token, unsigned int *errors) {
 
 void parser_advance(parser *p) { p->index++; }
 
-void parse_term(parser *p, term_node *term, unsigned int *errors) {
+void parse_term_for_expr(parser *p, term_node *term, unsigned int *errors) {
   token token;
 
   parser_current(p, &token, errors);
@@ -51,101 +51,146 @@ void parse_term(parser *p, term_node *term, unsigned int *errors) {
   parser_advance(p);
 }
 
-void parse_expr(parser *p, expr_node *expr, unsigned int *errors) {
+expr_node *parse_expr(parser *p, unsigned int *errors);
+
+expr_node *parse_factor(parser *p, unsigned int *errors) {
   token token;
-  term_node lhs, rhs;
-
-  parse_term(p, &lhs, errors);
-
   parser_current(p, &token, errors);
-  expr->line = token.line;
-  if (token.kind == TOKEN_ADD) {
-    parser_advance(p);
-    parse_term(p, &rhs, errors);
+  if (token.kind == TOKEN_INT || token.kind == TOKEN_CHAR ||
+      token.kind == TOKEN_IDENTIFIER || token.kind == TOKEN_POINTER ||
+      token.kind == TOKEN_ADDRESS_OF) {
+    expr_node *node = malloc(sizeof(expr_node));
+    node->kind = EXPR_TERM;
 
-    expr->kind = EXPR_ADD;
-    expr->add.lhs = lhs;
-    expr->add.rhs = rhs;
-  } else if (token.kind == TOKEN_SUBTRACT) {
-    parser_advance(p);
-    parse_term(p, &rhs, errors);
+    if (token.kind == TOKEN_INT) {
+      node->term.kind = TERM_INT;
+    } else if (token.kind == TOKEN_CHAR) {
+      node->term.kind = TERM_CHAR;
+    } else if (token.kind == TOKEN_IDENTIFIER) {
+      node->term.kind = TERM_IDENTIFIER;
+    } else if (token.kind == TOKEN_POINTER) {
+      node->term.kind = TERM_DEREF;
+    } else if (token.kind == TOKEN_ADDRESS_OF) {
+      node->term.kind = TERM_ADDOF;
+    }
 
-    expr->kind = EXPR_SUBTRACT;
-    expr->subtract.lhs = lhs;
-    expr->subtract.rhs = rhs;
-  } else if (token.kind == TOKEN_MULTIPLY) {
+    node->term.value = token.value;
     parser_advance(p);
-    parse_term(p, &rhs, errors);
-
-    expr->kind = EXPR_MULTIPLY;
-    expr->multiply.lhs = lhs;
-    expr->multiply.rhs = rhs;
-  } else if (token.kind == TOKEN_DIVIDE) {
+    return node;
+  } else if (token.kind == TOKEN_BRACKET_OPEN) {
     parser_advance(p);
-    parse_term(p, &rhs, errors);
-
-    expr->kind = EXPR_DIVIDE;
-    expr->divide.lhs = lhs;
-    expr->divide.rhs = rhs;
-  } else if (token.kind == TOKEN_MODULO) {
+    expr_node *node = parse_expr(p, errors);
+    parser_current(p, &token, errors);
+    if (token.kind != TOKEN_BRACKET_CLOSE) {
+      scu_perror(errors, "Syntax error: expected ')'\n");
+      scu_check_errors(errors);
+    }
     parser_advance(p);
-    parse_term(p, &rhs, errors);
-
-    expr->kind = EXPR_MODULO;
-    expr->modulo.lhs = lhs;
-    expr->modulo.rhs = rhs;
+    return node;
   } else {
-    expr->kind = EXPR_TERM;
-    expr->term = lhs;
+    scu_perror(errors, "Syntax error: expected term or '('\n");
+    scu_check_errors(errors);
+    exit(1);
   }
+}
+
+expr_node *parse_term(parser *p, unsigned int *errors) {
+  expr_node *left = parse_factor(p, errors);
+  while (1) {
+    token token;
+    parser_current(p, &token, errors);
+
+    if (token.kind == TOKEN_MULTIPLY || token.kind == TOKEN_DIVIDE ||
+        token.kind == TOKEN_MODULO) {
+      parser_advance(p);
+      expr_node *right = parse_factor(p, errors);
+
+      expr_node *parent = malloc(sizeof(expr_node));
+      if (token.kind == TOKEN_MULTIPLY) {
+        parent->kind = EXPR_MULTIPLY;
+      } else if (token.kind == TOKEN_DIVIDE) {
+        parent->kind = EXPR_DIVIDE;
+      } else {
+        parent->kind = EXPR_MODULO;
+      }
+      parent->binary.left = left;
+      parent->binary.right = right;
+      left = parent;
+    } else {
+      break;
+    }
+  }
+  return left;
+}
+
+expr_node *parse_expr(parser *p, unsigned int *errors) {
+  expr_node *left = parse_term(p, errors);
+  while (1) {
+    token token;
+    parser_current(p, &token, errors);
+
+    if (token.kind == TOKEN_ADD || token.kind == TOKEN_SUBTRACT) {
+      parser_advance(p);
+      expr_node *right = parse_term(p, errors);
+
+      expr_node *parent = malloc(sizeof(expr_node));
+      parent->kind = (token.kind == TOKEN_ADD) ? EXPR_ADD : EXPR_SUBTRACT;
+      parent->binary.left = left;
+      parent->binary.right = right;
+      left = parent;
+    } else {
+      break;
+    }
+  }
+  return left;
 }
 
 void parse_rel(parser *p, rel_node *rel, unsigned int *errors) {
   token token;
   term_node lhs, rhs;
 
-  parse_term(p, &lhs, errors);
+  parse_term_for_expr(p, &lhs, errors);
 
   parser_current(p, &token, errors);
   rel->line = token.line;
   if (token.kind == TOKEN_IS_EQUAL) {
     parser_advance(p);
-    parse_term(p, &rhs, errors);
+    parse_term_for_expr(p, &rhs, errors);
 
     rel->kind = REL_IS_EQUAL;
     rel->is_equal.lhs = lhs;
     rel->is_equal.rhs = rhs;
   } else if (token.kind == TOKEN_NOT_EQUAL) {
     parser_advance(p);
-    parse_term(p, &rhs, errors);
+    parse_term_for_expr(p, &rhs, errors);
 
     rel->kind = REL_NOT_EQUAL;
     rel->not_equal.lhs = lhs;
     rel->not_equal.rhs = rhs;
   } else if (token.kind == TOKEN_LESS_THAN) {
     parser_advance(p);
-    parse_term(p, &rhs, errors);
+    parse_term_for_expr(p, &rhs, errors);
 
     rel->kind = REL_LESS_THAN;
     rel->less_than.lhs = lhs;
     rel->less_than.rhs = rhs;
   } else if (token.kind == TOKEN_LESS_THAN_OR_EQUAL) {
     parser_advance(p);
-    parse_term(p, &rhs, errors);
+    parse_term_for_expr(p, &rhs, errors);
 
     rel->kind = REL_LESS_THAN_OR_EQUAL;
     rel->less_than_or_equal.lhs = lhs;
     rel->less_than_or_equal.rhs = rhs;
   } else if (token.kind == TOKEN_GREATER_THAN) {
     parser_advance(p);
-    parse_term(p, &rhs, errors);
+    parse_term_for_expr(p, &rhs, errors);
 
     rel->kind = REL_GREATER_THAN;
     rel->greater_than.lhs = lhs;
     rel->greater_than.rhs = rhs;
   } else if (token.kind == TOKEN_GREATER_THAN_OR_EQUAL) {
     parser_advance(p);
-    parse_term(p, &rhs, errors);
+    parse_term_for_expr(p, &rhs, errors);
 
     rel->kind = REL_GREATER_THAN_OR_EQUAL;
     rel->greater_than_or_equal.lhs = lhs;
@@ -166,7 +211,7 @@ void parse_initialize(parser *p, instr_node *instr, type _type, char *_name,
   instr->initialize_variable.var.name = _name;
   parser_advance(p);
 
-  parse_expr(p, &instr->initialize_variable.expr, errors);
+  instr->initialize_variable.expr = *parse_expr(p, errors);
 }
 
 void parse_declare(parser *p, instr_node *instr, unsigned int *errors) {
@@ -222,7 +267,7 @@ void parse_assign(parser *p, instr_node *instr, unsigned int *errors) {
   }
   parser_advance(p);
 
-  parse_expr(p, &instr->assign.expr, errors);
+  instr->assign.expr = *parse_expr(p, errors);
 }
 
 void parse_if(parser *p, instr_node *instr, unsigned int *errors) {
@@ -270,7 +315,7 @@ void parse_output(parser *p, instr_node *instr, unsigned int *errors) {
   instr->kind = INSTR_OUTPUT;
 
   parser_advance(p);
-  parse_term(p, &rhs, errors);
+  parse_term_for_expr(p, &rhs, errors);
 
   instr->line = rhs.line;
   instr->output.term = rhs;
@@ -360,7 +405,7 @@ void check_term_and_print(term_node *term) {
     printf("input");
     break;
   case TERM_INT:
-    printf("\'%d\'", term->value.integer);
+    printf("%d", term->value.integer);
     break;
   case TERM_CHAR:
     printf("\'%c\'", term->value.character);
@@ -378,35 +423,54 @@ void check_term_and_print(term_node *term) {
   }
 }
 
+void check_expr_and_print(expr_node *expr) {
+  switch (expr->kind) {
+  case EXPR_TERM:
+    check_term_and_print(&expr->term);
+    break;
+  case EXPR_ADD:
+    printf("(");
+    check_expr_and_print(expr->binary.left);
+    printf(" + ");
+    check_expr_and_print(expr->binary.right);
+    printf(")");
+    break;
+  case EXPR_SUBTRACT:
+    printf("(");
+    check_expr_and_print(expr->binary.left);
+    printf(" - ");
+    check_expr_and_print(expr->binary.right);
+    printf(")");
+    break;
+  case EXPR_MULTIPLY:
+    printf("(");
+    check_expr_and_print(expr->binary.left);
+    printf(" * ");
+    check_expr_and_print(expr->binary.right);
+    printf(")");
+    break;
+  case EXPR_DIVIDE:
+    printf("(");
+    check_expr_and_print(expr->binary.left);
+    printf(" / ");
+    check_expr_and_print(expr->binary.right);
+    printf(")");
+    break;
+  case EXPR_MODULO:
+    printf("(");
+    check_expr_and_print(expr->binary.left);
+    printf(" %% ");
+    check_expr_and_print(expr->binary.right);
+    printf(")");
+    break;
+  }
+}
+
 void check_binary_node_and_print(term_binary_node *bnode, char *operator) {
   check_term_and_print(&bnode->lhs);
   printf(" %s ", operator);
   check_term_and_print(&bnode->rhs);
   printf("\n");
-}
-
-void check_expr_and_print(expr_node *expr) {
-  switch (expr->kind) {
-  case EXPR_TERM:
-    check_term_and_print(&expr->term);
-    printf("\n");
-    break;
-  case EXPR_ADD:
-    check_binary_node_and_print(&expr->add, "+");
-    break;
-  case EXPR_SUBTRACT:
-    check_binary_node_and_print(&expr->subtract, "-");
-    break;
-  case EXPR_MULTIPLY:
-    check_binary_node_and_print(&expr->multiply, "*");
-    break;
-  case EXPR_DIVIDE:
-    check_binary_node_and_print(&expr->divide, "/");
-    break;
-  case EXPR_MODULO:
-    check_binary_node_and_print(&expr->modulo, "%");
-    break;
-  }
 }
 
 void print_instr(instr_node instr) {
@@ -426,6 +490,7 @@ void print_instr(instr_node instr) {
     case TYPE_INT:
     case TYPE_POINTER:
       check_expr_and_print(&instr.initialize_variable.expr);
+      printf("\n");
       break;
     case TYPE_CHAR:
       switch (instr.initialize_variable.expr.kind) {
@@ -446,6 +511,7 @@ void print_instr(instr_node instr) {
     check_var_and_print(&instr.assign.identifier);
     printf(" = ");
     check_expr_and_print(&instr.assign.expr);
+    printf("\n");
     break;
 
   case INSTR_IF:

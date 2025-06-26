@@ -57,11 +57,10 @@ typedef struct expr_node {
   unsigned int line;
   union {
     term_node term;
-    term_binary_node add;
-    term_binary_node subtract;
-    term_binary_node multiply;
-    term_binary_node divide;
-    term_binary_node modulo;
+    struct {
+      struct expr_node *left;
+      struct expr_node *right;
+    } binary;
   };
 } expr_node;
 

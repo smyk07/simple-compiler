@@ -25,6 +25,10 @@ typedef enum token_kind {
   TOKEN_INT,
   TOKEN_CHAR,
 
+  // Brackets
+  TOKEN_BRACKET_OPEN,
+  TOKEN_BRACKET_CLOSE,
+
   // Operators
   TOKEN_ASSIGN,
   TOKEN_ADD,
