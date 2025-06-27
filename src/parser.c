@@ -26,28 +26,22 @@ void parse_term_for_expr(parser *p, term_node *term, unsigned int *errors) {
   term->line = token.line;
   if (token.kind == TOKEN_INPUT) {
     term->kind = TERM_INPUT;
-    term->line = token.line;
   } else if (token.kind == TOKEN_INT) {
     term->kind = TERM_INT;
-    term->line = token.line;
     term->value.integer = token.value.integer;
   } else if (token.kind == TOKEN_CHAR) {
     term->kind = TERM_CHAR;
-    term->line = token.line;
     term->value.character = token.value.character;
   } else if (token.kind == TOKEN_IDENTIFIER) {
     term->kind = TERM_IDENTIFIER;
-    term->line = token.line;
     term->identifier.line = token.line;
     term->identifier.name = token.value.str;
   } else if (token.kind == TOKEN_ADDRESS_OF) {
     term->kind = TERM_ADDOF;
-    term->line = token.line;
     term->identifier.line = token.line;
     term->identifier.name = token.value.str;
   } else if (token.kind == TOKEN_POINTER) {
     term->kind = TERM_DEREF;
-    term->line = token.line;
     term->identifier.line = token.line;
     term->identifier.name = token.value.str;
   } else {
