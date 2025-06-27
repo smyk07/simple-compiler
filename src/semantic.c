@@ -367,17 +367,11 @@ void instr_typecheck(instr_node *instr, dynamic_array *variables,
 
 void check_semantics(dynamic_array *instrs, dynamic_array *variables,
                      unsigned int *errors) {
-  // Semantic Analysis - Check variables
+  // Semantic Analysis - Check variables and their types
   for (unsigned int i = 0; i < instrs->count; i++) {
     instr_node instr;
     dynamic_array_get(instrs, i, &instr);
     instr_check_variables(&instr, variables, errors);
-  }
-
-  // Semantic Analysis - Check variable types
-  for (unsigned int i = 0; i < instrs->count; i++) {
-    instr_node instr;
-    dynamic_array_get(instrs, i, &instr);
     instr_typecheck(&instr, variables, errors);
   }
 
