@@ -58,7 +58,7 @@ expr_node *parse_factor(parser *p, unsigned int *errors) {
   parser_current(p, &token, errors);
   if (token.kind == TOKEN_INT || token.kind == TOKEN_CHAR ||
       token.kind == TOKEN_IDENTIFIER || token.kind == TOKEN_POINTER ||
-      token.kind == TOKEN_ADDRESS_OF) {
+      token.kind == TOKEN_ADDRESS_OF || token.kind == TOKEN_INPUT) {
     expr_node *node = malloc(sizeof(expr_node));
     node->kind = EXPR_TERM;
 
@@ -72,6 +72,8 @@ expr_node *parse_factor(parser *p, unsigned int *errors) {
       node->term.kind = TERM_DEREF;
     } else if (token.kind == TOKEN_ADDRESS_OF) {
       node->term.kind = TERM_ADDOF;
+    } else if (token.kind == TOKEN_INPUT) {
+      node->term.kind = TERM_INPUT;
     }
 
     node->term.value = token.value;
