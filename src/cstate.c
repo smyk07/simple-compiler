@@ -70,6 +70,7 @@ void cstate_free(cstate *s) {
   free(s->parser);
 
   free_if_instrs(s->program);
+  free_expressions(s->program);
   dynamic_array_free(&s->program->instrs);
   free(s->program);
 

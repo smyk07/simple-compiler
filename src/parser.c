@@ -584,3 +584,44 @@ void free_if_instrs(program_node *program) {
     }
   }
 }
+
+void free_expr(expr_node *expr) {
+  switch (expr->kind) {
+  case EXPR_ADD:
+  case EXPR_SUBTRACT:
+  case EXPR_MULTIPLY:
+  case EXPR_DIVIDE:
+  case EXPR_MODULO:
+    free_expr(expr->binary.left);
+    free_expr(expr->binary.right);
+  case EXPR_TERM:
+    free(expr);
+    break;
+  }
+}
+
+void free_expr_contents(expr_node *expr) {
+  switch (expr->kind) {
+  case EXPR_TERM:
+    break;
+  case EXPR_ADD:
+  case EXPR_SUBTRACT:
+  case EXPR_MULTIPLY:
+  case EXPR_DIVIDE:
+  case EXPR_MODULO:
+    free_expr(expr->binary.left);
+    free_expr(expr->binary.right);
+    break;
+  }
+}
+
+void free_expressions(program_node *program) {
+  for (unsigned int i = 0; i < program->instrs.count; i++) {
+    instr_node *instr = program->instrs.items + (i * program->instrs.item_size);
+    if (instr->kind == INSTR_ASSIGN) {
+      free_expr_contents(&instr->assign.expr);
+    } else if (instr->kind == INSTR_INITIALIZE) {
+      free_expr_contents(&instr->initialize_variable.expr);
+    }
+  }
+}

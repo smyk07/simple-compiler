@@ -158,4 +158,6 @@ void print_program(program_node *program);
 
 void free_if_instrs(program_node *program);
 
+void free_expressions(program_node *program);
+
 #endif
