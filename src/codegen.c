@@ -250,6 +250,115 @@ void instr_asm(instr_node *instr, dynamic_array *variables, int *if_count) {
   }
 }
 
+void embed_runtime() {
+  printf("\n");
+
+  printf("SYS_read equ 0\n");
+  printf("SYS_write equ 1\n");
+
+  printf("macro syscall3 number, a, b, c\n");
+  printf("{\n");
+  printf("    mov rax, number\n");
+  printf("    mov rdi, a\n");
+  printf("    mov rsi, b\n");
+  printf("    mov rdx, c\n");
+  printf("    syscall\n");
+  printf("}\n");
+
+  printf("macro read fd, buf, count\n");
+  printf("{\n");
+  printf("    syscall3 SYS_read, fd, buf, count\n");
+  printf("}\n");
+  printf("\n");
+
+  printf("macro write fd, buf, count\n");
+  printf("{\n");
+  printf("    syscall3 1, fd, buf, count\n");
+  printf("}\n");
+
+  printf("strlen:\n");
+  printf("    push rdi\n");
+  printf("    xor rax, rax\n");
+  printf(".next_char:\n");
+  printf("    mov al, byte [rdi]\n");
+  printf("    cmp rax, 0\n");
+  printf("    je .done\n");
+  printf("\n");
+  printf("    inc rdi\n");
+  printf("    jmp .next_char\n");
+  printf(".done:\n");
+  printf("    pop rsi\n");
+  printf("    sub rdi, rsi\n");
+  printf("    mov rax, rdi\n");
+  printf("    ret\n");
+
+  printf("parse_uint:\n");
+  printf("    xor rax, rax\n");
+  printf("    xor rbx, rbx\n");
+  printf("    mov rcx, 10\n");
+  printf(".next_digit:\n");
+  printf("    cmp rsi, 0\n");
+  printf("    jle .done\n");
+  printf("\n");
+  printf("    mov bl, byte [rdi]\n");
+  printf("    cmp rbx, '0'\n");
+  printf("    jl .done\n");
+  printf("    cmp rbx, '9'\n");
+  printf("    jg .done\n");
+  printf("    sub rbx, '0'\n");
+  printf("\n");
+  printf("    mul rcx\n");
+  printf("    add rax, rbx\n");
+  printf("\n");
+  printf("    inc rdi\n");
+  printf("    dec rsi\n");
+  printf("    jmp .next_digit\n");
+  printf(".done:\n");
+  printf("    ret\n");
+
+  printf("write_uint:\n");
+  printf("    test rsi, rsi\n");
+  printf("    jz .base_zero\n");
+  printf("\n");
+  printf("    mov rcx, 10\n");
+  printf("    mov rax, rsi\n");
+  printf("    mov r10, 0\n");
+  printf(".next_digit:\n");
+  printf("    test rax, rax\n");
+  printf("    jz .done\n");
+  printf("    mov rdx, 0\n");
+  printf("    div rcx\n");
+  printf("    add rdx, '0'\n");
+  printf("    dec rsp\n");
+  printf("    mov byte [rsp], dl\n");
+  printf("    inc r10\n");
+  printf("    jmp .next_digit\n");
+  printf(".done:\n");
+  printf("    write rdi, rsp, r10\n");
+  printf("    add rsp, r10\n");
+  printf("    ret\n");
+  printf(".base_zero:\n");
+  printf("    dec rsp\n");
+  printf("    mov byte [rsp], '0'\n");
+  printf("    write rdi, rsp, 1\n");
+  printf("    inc rsp\n");
+  printf("    ret\n");
+
+  printf("write_cstr:\n");
+  printf("    push rsi\n");
+  printf("    push rdi\n");
+  printf("    mov rdi, rsi\n");
+  printf("    call strlen\n");
+  printf("\n");
+  printf("    mov rdx, rax\n");
+  printf("    mov rax, SYS_write\n");
+  printf("    pop rdi\n");
+  printf("    pop rsi\n");
+  printf("    syscall\n");
+  printf("    ret\n");
+  printf("\n");
+}
+
 void program_asm(program_node *program, dynamic_array *variables,
                  char *filename, unsigned int *errors) {
   int if_count = 0;
@@ -260,8 +369,10 @@ void program_asm(program_node *program, dynamic_array *variables,
   printf("format ELF64 executable\n");
   printf("LINE_MAX equ 1024\n");
   printf("segment readable executable\n");
-  printf("include \"linux.inc\"\n");
-  printf("include \"utils.inc\"\n");
+
+  // embed runtime needed for the input and output instructions
+  embed_runtime();
+
   printf("entry _start\n");
 
   printf("segment readable writeable\n");
