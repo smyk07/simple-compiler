@@ -32,6 +32,7 @@ int find_variables(dynamic_array *variables, variable *var_to_find,
 
   scu_perror(errors, "Use of undeclared variable: %s [line %u]\n",
              var_to_find->name, var_to_find->line);
+  scu_check_errors(errors);
   return -1;
 }
 
