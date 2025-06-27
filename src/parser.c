@@ -61,6 +61,7 @@ expr_node *parse_factor(parser *p, unsigned int *errors) {
       token.kind == TOKEN_ADDRESS_OF || token.kind == TOKEN_INPUT) {
     expr_node *node = malloc(sizeof(expr_node));
     node->kind = EXPR_TERM;
+    node->line = token.line;
 
     if (token.kind == TOKEN_INT) {
       node->term.kind = TERM_INT;
@@ -108,6 +109,9 @@ expr_node *parse_term(parser *p, unsigned int *errors) {
       expr_node *right = parse_factor(p, errors);
 
       expr_node *parent = malloc(sizeof(expr_node));
+
+      parent->line = token.line;
+
       if (token.kind == TOKEN_MULTIPLY) {
         parent->kind = EXPR_MULTIPLY;
       } else if (token.kind == TOKEN_DIVIDE) {
@@ -137,6 +141,7 @@ expr_node *parse_expr(parser *p, unsigned int *errors) {
 
       expr_node *parent = malloc(sizeof(expr_node));
       parent->kind = (token.kind == TOKEN_ADD) ? EXPR_ADD : EXPR_SUBTRACT;
+      parent->line = token.line;
       parent->binary.left = left;
       parent->binary.right = right;
       left = parent;
