@@ -26,20 +26,29 @@ void parse_term_for_expr(parser *p, term_node *term, unsigned int *errors) {
   term->line = token.line;
   if (token.kind == TOKEN_INPUT) {
     term->kind = TERM_INPUT;
+    term->line = token.line;
   } else if (token.kind == TOKEN_INT) {
     term->kind = TERM_INT;
+    term->line = token.line;
     term->value.integer = token.value.integer;
   } else if (token.kind == TOKEN_CHAR) {
     term->kind = TERM_CHAR;
+    term->line = token.line;
     term->value.character = token.value.character;
   } else if (token.kind == TOKEN_IDENTIFIER) {
     term->kind = TERM_IDENTIFIER;
+    term->line = token.line;
+    term->identifier.line = token.line;
     term->identifier.name = token.value.str;
   } else if (token.kind == TOKEN_ADDRESS_OF) {
     term->kind = TERM_ADDOF;
+    term->line = token.line;
+    term->identifier.line = token.line;
     term->identifier.name = token.value.str;
   } else if (token.kind == TOKEN_POINTER) {
     term->kind = TERM_DEREF;
+    term->line = token.line;
+    term->identifier.line = token.line;
     term->identifier.name = token.value.str;
   } else {
     scu_perror(errors,
@@ -65,19 +74,26 @@ expr_node *parse_factor(parser *p, unsigned int *errors) {
 
     if (token.kind == TOKEN_INT) {
       node->term.kind = TERM_INT;
+      node->term.value.integer = token.value.integer;
     } else if (token.kind == TOKEN_CHAR) {
       node->term.kind = TERM_CHAR;
+      node->term.value.character = token.value.character;
     } else if (token.kind == TOKEN_IDENTIFIER) {
       node->term.kind = TERM_IDENTIFIER;
+      node->term.identifier.line = token.line;
+      node->term.identifier.name = token.value.str;
     } else if (token.kind == TOKEN_POINTER) {
       node->term.kind = TERM_DEREF;
+      node->term.identifier.line = token.line;
+      node->term.identifier.name = token.value.str;
     } else if (token.kind == TOKEN_ADDRESS_OF) {
       node->term.kind = TERM_ADDOF;
+      node->term.identifier.line = token.line;
+      node->term.identifier.name = token.value.str;
     } else if (token.kind == TOKEN_INPUT) {
       node->term.kind = TERM_INPUT;
     }
 
-    node->term.value = token.value;
     parser_advance(p);
     return node;
   } else if (token.kind == TOKEN_BRACKET_OPEN) {
@@ -218,7 +234,9 @@ void parse_initialize(parser *p, instr_node *instr, type _type, char *_name,
   instr->initialize_variable.var.name = _name;
   parser_advance(p);
 
-  instr->initialize_variable.expr = *parse_expr(p, errors);
+  expr_node *expr = parse_expr(p, errors);
+  instr->initialize_variable.expr = *expr;
+  free(expr);
 }
 
 void parse_declare(parser *p, instr_node *instr, unsigned int *errors) {
@@ -274,7 +292,9 @@ void parse_assign(parser *p, instr_node *instr, unsigned int *errors) {
   }
   parser_advance(p);
 
-  instr->assign.expr = *parse_expr(p, errors);
+  expr_node *expr = parse_expr(p, errors);
+  instr->assign.expr = *expr;
+  free(expr);
 }
 
 void parse_if(parser *p, instr_node *instr, unsigned int *errors) {
