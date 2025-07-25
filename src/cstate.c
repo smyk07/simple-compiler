@@ -7,6 +7,10 @@
 
 cstate *cstate_init(int argc, char *argv[]) {
   cstate *s = malloc(sizeof(cstate));
+  if (!s) {
+    scu_perror(NULL, "Failed to allocate memory for compiler state\n");
+    exit(1);
+  }
 
   s->debug = 0;
   s->error_count = 0;

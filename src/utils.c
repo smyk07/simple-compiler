@@ -107,9 +107,7 @@ char *scu_format_string(char *__restrict __format, ...) {
 void scu_psuccess(char *__restrict __format, ...) {
   va_list args;
   va_start(args, __format);
-  fprintf(stdout, "\033[1;32m");
-  fprintf(stdout, "\t[SUCCESS] ");
-  fprintf(stdout, "\033[0m");
+  fprintf(stdout, "\033[1;32m[SUCCESS] \033[0m");
   vfprintf(stdout, __format, args);
   va_end(args);
 }
@@ -117,9 +115,7 @@ void scu_psuccess(char *__restrict __format, ...) {
 void scu_pdebug(char *__restrict __format, ...) {
   va_list args;
   va_start(args, __format);
-  fprintf(stdout, "\033[1;32m");
-  fprintf(stdout, "\t[DEBUG] ");
-  fprintf(stdout, "\033[0m");
+  fprintf(stdout, "\033[1;32m[DEBUG] \033[0m");
   vfprintf(stdout, __format, args);
   va_end(args);
 }
@@ -127,9 +123,7 @@ void scu_pdebug(char *__restrict __format, ...) {
 void scu_pwarning(char *__restrict __format, ...) {
   va_list args;
   va_start(args, __format);
-  fprintf(stderr, "\033[1;33m");
-  fprintf(stderr, "\t[WARNING] ");
-  fprintf(stderr, "\033[0m");
+  fprintf(stderr, "\033[1;33m[WARNING] \033[0m");
   vfprintf(stderr, __format, args);
   va_end(args);
 }
@@ -140,9 +134,7 @@ void scu_perror(unsigned int *errors, char *__restrict __format, ...) {
   }
   va_list args;
   va_start(args, __format);
-  fprintf(stderr, "\033[1;31m");
-  fprintf(stderr, "\t[ERROR] ");
-  fprintf(stderr, "\033[0m");
+  fprintf(stderr, "\033[1;31m[ERROR] \033[0m");
   vfprintf(stderr, __format, args);
   va_end(args);
 }

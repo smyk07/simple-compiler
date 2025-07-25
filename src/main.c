@@ -1,6 +1,3 @@
-#include <stdio.h>
-#include <stdlib.h>
-
 #include "cstate.h"
 #include "utils.h"
 
@@ -9,13 +6,11 @@
 #include "parser.h"
 #include "semantic.h"
 
+#include <stdio.h>
+
 int main(int argc, char *argv[]) {
   // Initialize compiler state
   cstate *state = cstate_init(argc, argv);
-  if (!state) {
-    scu_perror(NULL, "Failed to allocate memory for compiler state\n");
-    exit(1);
-  }
 
   // Lexing
   lexer_tokenize(state->code_buffer, state->code_buffer_len, state->tokens,

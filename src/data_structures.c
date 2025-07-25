@@ -6,13 +6,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-typedef struct allocator {
-  uint8_t *start;
-  uint8_t *prev;
-  uint8_t *top;
-  uint64_t size;
-} allocator;
-
 int string_slice_to_owned(string_slice *ss, char **str) {
   if (!ss || !ss->str || !str)
     return -1;

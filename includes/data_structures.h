@@ -8,8 +8,6 @@
 
 #include <stddef.h>
 
-typedef struct allocator allocator;
-
 typedef struct string_slice {
   char *str;
   unsigned int len;

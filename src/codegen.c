@@ -251,11 +251,8 @@ void instr_asm(instr_node *instr, dynamic_array *variables, int *if_count) {
 }
 
 void embed_runtime() {
-  printf("\n");
-
   printf("SYS_read equ 0\n");
   printf("SYS_write equ 1\n");
-
   printf("macro syscall3 number, a, b, c\n");
   printf("{\n");
   printf("    mov rax, number\n");
@@ -264,18 +261,14 @@ void embed_runtime() {
   printf("    mov rdx, c\n");
   printf("    syscall\n");
   printf("}\n");
-
   printf("macro read fd, buf, count\n");
   printf("{\n");
   printf("    syscall3 SYS_read, fd, buf, count\n");
   printf("}\n");
-  printf("\n");
-
   printf("macro write fd, buf, count\n");
   printf("{\n");
   printf("    syscall3 1, fd, buf, count\n");
   printf("}\n");
-
   printf("strlen:\n");
   printf("    push rdi\n");
   printf("    xor rax, rax\n");
@@ -283,7 +276,6 @@ void embed_runtime() {
   printf("    mov al, byte [rdi]\n");
   printf("    cmp rax, 0\n");
   printf("    je .done\n");
-  printf("\n");
   printf("    inc rdi\n");
   printf("    jmp .next_char\n");
   printf(".done:\n");
@@ -291,7 +283,6 @@ void embed_runtime() {
   printf("    sub rdi, rsi\n");
   printf("    mov rax, rdi\n");
   printf("    ret\n");
-
   printf("parse_uint:\n");
   printf("    xor rax, rax\n");
   printf("    xor rbx, rbx\n");
@@ -299,27 +290,22 @@ void embed_runtime() {
   printf(".next_digit:\n");
   printf("    cmp rsi, 0\n");
   printf("    jle .done\n");
-  printf("\n");
   printf("    mov bl, byte [rdi]\n");
   printf("    cmp rbx, '0'\n");
   printf("    jl .done\n");
   printf("    cmp rbx, '9'\n");
   printf("    jg .done\n");
   printf("    sub rbx, '0'\n");
-  printf("\n");
   printf("    mul rcx\n");
   printf("    add rax, rbx\n");
-  printf("\n");
   printf("    inc rdi\n");
   printf("    dec rsi\n");
   printf("    jmp .next_digit\n");
   printf(".done:\n");
   printf("    ret\n");
-
   printf("write_uint:\n");
   printf("    test rsi, rsi\n");
   printf("    jz .base_zero\n");
-  printf("\n");
   printf("    mov rcx, 10\n");
   printf("    mov rax, rsi\n");
   printf("    mov r10, 0\n");
