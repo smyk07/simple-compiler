@@ -8,6 +8,7 @@ CC = clang
 
 SRCS = $(wildcard $(SRC_DIR)/*.c)
 OBJS = $(SRCS:$(SRC_DIR)/%.c=$(OBJ_DIR)/%.o)
+DEPS = $(SRCS:$(SRC_DIR)/%.c=$(OBJ_DIR)/%.d)
 TARGET = $(BIN_DIR)/sclc
 
 TARGET = $(BIN_DIR)/sclc
@@ -18,7 +19,7 @@ $(TARGET): $(OBJS) | $(BIN_DIR)
 	$(CC) $(OBJS) -o $@
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c | $(OBJ_DIR)
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) -MMD -MF $(OBJ_DIR)/$*.d -c $< -o $@
 
 $(OBJ_DIR):
 	mkdir -p $(OBJ_DIR)
@@ -34,5 +35,7 @@ clean-all: clean
 
 compile_commands.json:
 	bear -- $(MAKE) clean all
+
+-include $(DEPS)
 
 .PHONY: all clean clean-all compile_commands.json
