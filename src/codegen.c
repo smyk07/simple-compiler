@@ -343,27 +343,34 @@ void embed_runtime() {
   printf("    write rdi, rsp, 1\n");
   printf("    inc rsp\n");
   printf("    ret\n");
-
   printf("write_cstr:\n");
   printf("    push rsi\n");
   printf("    push rdi\n");
   printf("    mov rdi, rsi\n");
   printf("    call strlen\n");
-  printf("\n");
   printf("    mov rdx, rax\n");
   printf("    mov rax, SYS_write\n");
   printf("    pop rdi\n");
   printf("    pop rsi\n");
   printf("    syscall\n");
   printf("    ret\n");
-  printf("\n");
+}
+
+void fasm_assemble(char *asm_file, char *output_file, unsigned int *errors) {
+  char command[512];
+  snprintf(command, sizeof(command), "fasm %s %s", asm_file, output_file);
+  int result = system(command);
+  if (result != 0) {
+    scu_perror(errors, "Assembly failed with code %d\n", result);
+    exit(1);
+  }
 }
 
 void program_asm(program_node *program, dynamic_array *variables,
                  char *filename, unsigned int *errors) {
   int if_count = 0;
 
-  char *output_asm_file = scu_format_string("%s.asm", filename);
+  char *output_asm_file = scu_format_string("%s.s", filename);
   freopen(output_asm_file, "w", stdout);
 
   printf("format ELF64 executable\n");
@@ -403,6 +410,6 @@ void program_asm(program_node *program, dynamic_array *variables,
   fflush(stdout);
   fclose(stdout);
 
-  scu_assemble(output_asm_file, filename, errors);
+  fasm_assemble(output_asm_file, filename, errors);
   free(output_asm_file);
 }

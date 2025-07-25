@@ -20,6 +20,4 @@ void scu_perror(unsigned int *errors, char *__restrict __format, ...);
 
 void scu_check_errors(unsigned int *errors);
 
-void scu_assemble(char *asm_file, char *output_file, unsigned int *errors);
-
 #endif

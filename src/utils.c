@@ -153,13 +153,3 @@ void scu_check_errors(unsigned int *errors) {
     exit(1);
   }
 }
-
-void scu_assemble(char *asm_file, char *output_file, unsigned int *errors) {
-  char command[512];
-  snprintf(command, sizeof(command), "fasm %s %s", asm_file, output_file);
-  int result = system(command);
-  if (result != 0) {
-    scu_perror(errors, "Assembly failed with code %d\n", result);
-    exit(1);
-  }
-}

@@ -9,5 +9,5 @@ examples/*
 compile_commands.json
 
 test.scl
-test.asm
+test.s
 test
