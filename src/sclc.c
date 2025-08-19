@@ -1,23 +1,42 @@
-#include "cstate.h"
-#include "utils.h"
+/*
+ * sclc: a simple compiler, don't have a specific goal for it yet, just to
+ * practice my programming compiler design and development skills.
+ *
+ * Copyright (C) 2025 Samyak Bambole <bambole@duck.com>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
 
 #include "codegen.h"
+#include "cstate.h"
 #include "lexer.h"
 #include "parser.h"
 #include "semantic.h"
+#include "utils.h"
 
 #include <stdio.h>
 
 int main(int argc, char *argv[]) {
   // Initialize compiler state
-  cstate *state = cstate_init(argc, argv);
+  cstate *state = cstate_create_from_args(argc, argv);
 
   // Lexing
   lexer_tokenize(state->code_buffer, state->code_buffer_len, state->tokens,
                  &state->error_count);
 
   // Lexing test function
-  if (state->debug)
+  if (state->options.verbose)
     print_tokens(state->tokens);
 
   // Parsing
@@ -25,7 +44,7 @@ int main(int argc, char *argv[]) {
   parse_program(state->parser, state->program, &state->error_count);
 
   // Parsing test function
-  if (state->debug)
+  if (state->options.verbose)
     print_program(state->program);
 
   // Semantic Analysis
@@ -33,11 +52,11 @@ int main(int argc, char *argv[]) {
                   &state->error_count);
 
   // Semantic Debug Statements
-  if (state->debug)
+  if (state->options.verbose)
     scu_pdebug("Semantic Analysis Complete\n");
 
   // Codegen & Assembler
-  program_asm(state->program, state->variables, state->extracted_filename,
+  program_asm(state->program, state->variables, state->output_filename,
               &state->error_count);
 
   // Restore STDOUT
@@ -45,7 +64,7 @@ int main(int argc, char *argv[]) {
   scu_psuccess("%s\n", state->filename);
 
   // Codegen & Assembler Debug Statements
-  if (state->debug)
+  if (state->options.verbose)
     scu_pdebug("Codegen & Assembling Complete\n");
 
   // Free memory
