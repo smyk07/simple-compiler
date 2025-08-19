@@ -7,6 +7,36 @@
 #include <stdlib.h>
 #include <string.h>
 
+/*
+ * @brief: Read the next character.
+ *
+ * @param l: pointer to lexer struct object.
+ */
+char lexer_read_char(lexer *l);
+
+/*
+ * Initialize Lexer
+ *
+ * @param l: pointer to lexer struct object.
+ * @param buffer: const char* which is the source buffer to be lexed.
+ * @param buffer_len: size of buffer.
+ */
+void lexer_init(lexer *l, const char *buffer, size_t buffer_len) {
+  l->buffer = buffer;
+  l->buffer_len = buffer_len;
+  l->line = 1;
+  l->pos = 0;
+  l->read_pos = 0;
+  l->ch = 0;
+
+  lexer_read_char(l);
+}
+
+/*
+ * Peek ahead
+ *
+ * @param l: pointer to lexer struct object.
+ */
 char lexer_peek_char(lexer *l) {
   if (l->read_pos >= l->buffer_len) {
     return EOF;
@@ -27,23 +57,22 @@ char lexer_read_char(lexer *l) {
   return l->ch;
 }
 
-void lexer_init(lexer *l, char *buffer, unsigned int buffer_len) {
-  l->buffer = buffer;
-  l->buffer_len = buffer_len;
-  l->line = 1;
-  l->pos = 0;
-  l->read_pos = 0;
-  l->ch = 0;
-
-  lexer_read_char(l);
-}
-
+/*
+ * Move lexer forward until it encounters another character.
+ *
+ * @param l: pointer to lexer struct object.
+ */
 void skip_whitespaces(lexer *l) {
   while (isspace(l->ch)) {
     lexer_read_char(l);
   }
 }
 
+/*
+ * Scans the buffer ahead and returns the next token.
+ *
+ * @param l: pointer to lexer struct object.
+ */
 token lexer_next_token(lexer *l) {
   skip_whitespaces(l);
 
@@ -301,8 +330,8 @@ token lexer_next_token(lexer *l) {
   }
 }
 
-int lexer_tokenize(char *buffer, unsigned int buffer_len, dynamic_array *tokens,
-                   unsigned int *errors) {
+void lexer_tokenize(const char *buffer, size_t buffer_len,
+                    dynamic_array *tokens, unsigned int *errors) {
   lexer lexer;
   lexer_init(&lexer, buffer, buffer_len);
 
@@ -314,11 +343,9 @@ int lexer_tokenize(char *buffer, unsigned int buffer_len, dynamic_array *tokens,
       exit(1);
     }
   } while (token.kind != TOKEN_END);
-
-  return 0;
 }
 
-char *show_token_kind(token_kind kind) {
+const char *token_kind_to_str(token_kind kind) {
   switch (kind) {
   case TOKEN_INPUT:
     return "input";
@@ -390,9 +417,9 @@ void print_tokens(dynamic_array *tokens) {
     token token;
     dynamic_array_get(tokens, i, &token);
 
-    printf("[line %d] ", token.line);
+    printf("[line %zu] ", token.line);
 
-    const char *kind = show_token_kind(token.kind);
+    const char *kind = token_kind_to_str(token.kind);
     printf("%s", kind);
 
     switch (token.kind) {
