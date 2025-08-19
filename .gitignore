@@ -8,6 +8,6 @@ examples/*
 
 compile_commands.json
 
-test.scl
-test.s
-test
+test*
+
+TODO
