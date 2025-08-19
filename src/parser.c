@@ -48,7 +48,7 @@ void parse_term_for_expr(parser *p, term_node *term, unsigned int *errors) {
     scu_perror(errors,
                "Expected a term (input, int, char, identifier, addof, "
                "pointer), got %s [line %d]\n",
-               show_token_kind(token.kind), token.line);
+               token_kind_to_str(token.kind), token.line);
   }
 
   parser_advance(p);
@@ -215,7 +215,7 @@ void parse_rel(parser *p, rel_node *rel, unsigned int *errors) {
   } else {
     scu_perror(errors,
                "Expected a relation (==, !=, <, <=, >, >=), got %s [line %d]\n",
-               show_token_kind(token.kind), token.line);
+               token_kind_to_str(token.kind), token.line);
   }
 }
 
@@ -282,7 +282,7 @@ void parse_assign(parser *p, instr_node *instr, unsigned int *errors) {
   parser_current(p, &token, errors);
   if (token.kind != TOKEN_ASSIGN) {
     scu_perror(errors, "Expected assign, found %s [line %d]\n",
-               show_token_kind(token.kind), token.line);
+               token_kind_to_str(token.kind), token.line);
   }
   parser_advance(p);
 
@@ -304,7 +304,7 @@ void parse_if(parser *p, instr_node *instr, unsigned int *errors) {
   instr->line = token.line;
   if (token.kind != TOKEN_THEN) {
     scu_perror(errors, "Expected then, found %s [line %d]\n",
-               show_token_kind(token.kind), token.line);
+               token_kind_to_str(token.kind), token.line);
   }
   parser_advance(p);
 
@@ -323,7 +323,7 @@ void parse_goto(parser *p, instr_node *instr, unsigned int *errors) {
   instr->line = token.line;
   if (token.kind != TOKEN_LABEL) {
     scu_perror(errors, "Expected label, found %s [line %d]\n",
-               show_token_kind(token.kind), token.line);
+               token_kind_to_str(token.kind), token.line);
   }
   parser_advance(p);
 
@@ -382,7 +382,7 @@ void parse_instr(parser *p, instr_node *instr, unsigned int *errors) {
     break;
   default:
     scu_perror(errors, "unexpected token: %s [line %d]\n",
-               show_token_kind(token.kind), token.line);
+               token_kind_to_str(token.kind), token.line);
     scu_check_errors(errors);
   }
 }
