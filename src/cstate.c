@@ -5,41 +5,87 @@
 #include <stdlib.h>
 #include <string.h>
 
-cstate *cstate_init(int argc, char *argv[]) {
+cstate *cstate_create_from_args(int argc, char *argv[]) {
   cstate *s = malloc(sizeof(cstate));
   if (!s) {
-    scu_perror(NULL, "Failed to allocate memory for compiler state\n");
+    scu_perror(NULL, "Failed to allocate memory for cstate\n");
     exit(1);
   }
 
-  s->debug = 0;
-  s->error_count = 0;
-
-  if (argc > 1) {
-    if (strcmp(argv[1], "--cdebug") == 0 || strcmp(argv[1], "-cd") == 0) {
-      if (argc > 2) {
-        s->debug = 1;
-        s->filename = argv[2];
-      } else {
-        scu_perror(&s->error_count, "Missing filename after %s\n", argv[1]);
-        exit(1);
-      }
-    } else {
-      s->filename = argv[1];
-    }
-  } else {
+  if (argc <= 1) {
+    /*
+     * Default output.
+     * Should list out each option and a short description.
+     * Take care of wrapping after ~80 characters.
+     */
     printf("Simple Compiler - Just as the name suggests\n");
     printf("Usage: ./compiler [OPTIONS] <filename>\n\n");
     printf("OPTIONS:\n");
-    printf("--cdebug OR -cd \t Run in compiler debug mode - prints lexer\n");
-    printf("                \t and parser debug statements.\n");
+    printf("--verbose OR -v \t Print progress messages for various stages.\n");
     exit(1);
   }
-  s->extracted_filename = scu_extract_name(s->filename);
-  if (!s->extracted_filename) {
-    scu_perror(&s->error_count, "Failed to extract filename.\n");
+
+  int i = 1;
+  char *positional_filename = NULL;
+
+  while (i < argc) {
+    char *arg = argv[i];
+
+    if (strcmp(arg, "--verbose") == 0 || strcmp(arg, "-v") == 0) {
+      s->options.verbose = true;
+      i++;
+      continue;
+    }
+
+    if (strcmp(arg, "--output") == 0 || strcmp(arg, "-o") == 0) {
+      if (i + 1 >= argc) {
+        scu_perror(&s->error_count, "Missing filename after %s\n", arg);
+        exit(1);
+      }
+
+      if (s->output_filename != NULL) {
+        scu_perror(&s->error_count, "Output specified more than once: %s\n",
+                   argv[i + 1]);
+        exit(1);
+      }
+
+      s->output_filename = argv[i + 1];
+      s->options.output = true;
+      i += 2;
+      continue;
+    }
+
+    if (arg[0] != '-') {
+      if (positional_filename != NULL) {
+        scu_perror(&s->error_count, "Multiple input files specified: %s\n",
+                   arg);
+        exit(1);
+      }
+
+      positional_filename = arg;
+      i++;
+      continue;
+    }
+
+    scu_perror(&s->error_count, "Unknown option: %s\n", arg);
     exit(1);
   }
+
+  if (positional_filename == NULL) {
+    scu_perror(&s->error_count, "Missing input filename\n");
+    exit(1);
+  }
+  s->filename = positional_filename;
+
+  if (s->output_filename == NULL) {
+    s->output_filename = scu_extract_name(s->filename);
+    if (!s->output_filename) {
+      scu_perror(&s->error_count, "Failed to extract filename.\n");
+      exit(1);
+    }
+  }
+
+  s->error_count = 0;
 
   s->code_buffer = NULL;
   s->code_buffer_len =
@@ -63,8 +109,6 @@ cstate *cstate_init(int argc, char *argv[]) {
 }
 
 void cstate_free(cstate *s) {
-  free(s->extracted_filename);
-
   free(s->code_buffer);
 
   free_tokens(s->tokens);

@@ -1,30 +1,85 @@
 /*
- * file: cstate.h
- * brief: State for the compiler, so that all variables are in one place.
+ * cstate: Per-binary compilation state, groups all variables and options for
+ * one build unit.
+ *
+ * Usage:
+ * cstate *state = cstate_create_from_args(argc, argv);
+ * ...
+ * cstate_free(state);
  */
-#ifndef CSTATE
-#define CSTATE
+
+#ifndef CSTATE_H
+#define CSTATE_H
 
 #include "data_structures.h"
 #include "parser.h"
 
-typedef struct cstate {
-  char *filename;
-  char *extracted_filename;
+#include <stdbool.h>
+#include <stddef.h>
 
-  int debug;
+typedef struct coptions {
+  /*
+   * Print progress messages for various stages.
+   */
+  bool verbose;
+
+  /*
+   * Write output to output_filename instead of the default filename.
+   */
+  bool output;
+} coptions;
+
+typedef struct cstate {
+  /*
+   * Stores the name of the file to be compiled.
+   * Ex: main.sclc
+   */
+  const char *filename;
+
+  /*
+   * Name of the output file. default is extracted from filename.
+   * Ex: main.sclc => main
+   */
+  char *output_filename;
+
+  /*
+   * Options for the compilation process.
+   */
+  coptions options;
+
+  /*
+   * Main error count for the whole compilation process.
+   */
   unsigned int error_count;
 
+  /*
+   * Source buffer.
+   */
   char *code_buffer;
-  unsigned int code_buffer_len;
+  size_t code_buffer_len;
 
+  /*
+   * Variables / artifacts for the whole compiler pipeline.
+   */
   dynamic_array *tokens;
   parser *parser;
   program_node *program;
   dynamic_array *variables;
 } cstate;
 
-cstate *cstate_init(int argc, char *argv[]);
+/*
+ * Create compiler state from CLI arguments.
+ *
+ * @param argc: count of args
+ * @param argv: array of arguments (string)
+ */
+cstate *cstate_create_from_args(int argc, char *argv[]);
+
+/*
+ * Free / Destroy the compiler state after it is used.
+ *
+ * @param s: pointer to malloc'd cstate.
+ */
 void cstate_free(cstate *s);
 
-#endif // !CSTATE
+#endif // !CSTATE_H
