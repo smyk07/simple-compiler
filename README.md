@@ -15,16 +15,16 @@ A Simple Compiler. (Compiles to x64 fasm assembly).
 
 ## Usage
 
-Build the compiler:
+Build  and install the compiler:
 
 ```
-make
+make install
 ```
 
 Compile the examples in `./examples` like so:
 
 ```
-./bin/sclc ./examples/n_prime_numbers.scl
+sclc ./examples/n_prime_numbers.scl
 ```
 
 Run the executable:
