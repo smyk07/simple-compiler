@@ -68,15 +68,17 @@ typedef struct cstate {
 } cstate;
 
 /*
- * Create compiler state from CLI arguments.
+ * @brief: Create compiler state from CLI arguments.
  *
  * @param argc: count of args
  * @param argv: array of arguments (string)
+ * @return: malloc'd cstate struct object pointer which the caller would have to
+ * manually free.
  */
 cstate *cstate_create_from_args(int argc, char *argv[]);
 
 /*
- * Free / Destroy the compiler state after it is used.
+ * @brief: Free / Destroy the compiler state after it is used.
  *
  * @param s: pointer to malloc'd cstate.
  */
