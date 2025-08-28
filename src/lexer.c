@@ -12,7 +12,7 @@
  *
  * @param l: pointer to lexer struct object.
  */
-char lexer_read_char(lexer *l);
+static char lexer_read_char(lexer *l);
 
 /*
  * Initialize Lexer
@@ -21,7 +21,7 @@ char lexer_read_char(lexer *l);
  * @param buffer: const char* which is the source buffer to be lexed.
  * @param buffer_len: size of buffer.
  */
-void lexer_init(lexer *l, const char *buffer, size_t buffer_len) {
+static void lexer_init(lexer *l, const char *buffer, size_t buffer_len) {
   l->buffer = buffer;
   l->buffer_len = buffer_len;
   l->line = 1;
@@ -33,11 +33,11 @@ void lexer_init(lexer *l, const char *buffer, size_t buffer_len) {
 }
 
 /*
- * Peek ahead
+ * @brief: Peek ahead
  *
  * @param l: pointer to lexer struct object.
  */
-char lexer_peek_char(lexer *l) {
+static char lexer_peek_char(lexer *l) {
   if (l->read_pos >= l->buffer_len) {
     return EOF;
   }
@@ -45,7 +45,12 @@ char lexer_peek_char(lexer *l) {
   return l->buffer[l->read_pos];
 }
 
-char lexer_read_char(lexer *l) {
+/*
+ * @brief: Read and return the character at read position.
+ *
+ * @param l: pointer to lexer struct object.
+ */
+static char lexer_read_char(lexer *l) {
   if (l->ch == '\n') {
     l->line++;
   }
@@ -58,22 +63,22 @@ char lexer_read_char(lexer *l) {
 }
 
 /*
- * Move lexer forward until it encounters another character.
+ * @brief: Move lexer forward until it encounters another character.
  *
  * @param l: pointer to lexer struct object.
  */
-void skip_whitespaces(lexer *l) {
+static void skip_whitespaces(lexer *l) {
   while (isspace(l->ch)) {
     lexer_read_char(l);
   }
 }
 
 /*
- * Scans the buffer ahead and returns the next token.
+ * @brief: Scans the buffer ahead and returns the next token.
  *
  * @param l: pointer to lexer struct object.
  */
-token lexer_next_token(lexer *l) {
+static token lexer_next_token(lexer *l) {
   skip_whitespaces(l);
 
   if (l->ch == EOF) {
@@ -345,7 +350,7 @@ void lexer_tokenize(const char *buffer, size_t buffer_len,
   } while (token.kind != TOKEN_END);
 }
 
-const char *token_kind_to_str(token_kind kind) {
+const char *lexer_token_kind_to_str(token_kind kind) {
   switch (kind) {
   case TOKEN_INPUT:
     return "input";
@@ -410,7 +415,7 @@ const char *token_kind_to_str(token_kind kind) {
   }
 }
 
-void print_tokens(dynamic_array *tokens) {
+void lexer_print_tokens(dynamic_array *tokens) {
   scu_pdebug("Lexing Debug Statements:\n");
 
   for (unsigned int i = 0; i < tokens->count; i++) {
@@ -419,7 +424,7 @@ void print_tokens(dynamic_array *tokens) {
 
     printf("[line %zu] ", token.line);
 
-    const char *kind = token_kind_to_str(token.kind);
+    const char *kind = lexer_token_kind_to_str(token.kind);
     printf("%s", kind);
 
     switch (token.kind) {
