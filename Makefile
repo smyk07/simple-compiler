@@ -4,7 +4,7 @@ OBJ_DIR = ./obj
 BIN_DIR = ./bin
 
 CC = clang
-CFLAGS = -std=c11 -g -Wall -Wextra -I$(INC_DIR)
+CFLAGS = -std=c23 -g -Wall -Wextra -I$(INC_DIR)
 
 SRCS = $(wildcard $(SRC_DIR)/*.c)
 OBJS = $(SRCS:$(SRC_DIR)/%.c=$(OBJ_DIR)/%.o)
@@ -14,30 +14,37 @@ TARGET = $(BIN_DIR)/sclc
 TARGET = $(BIN_DIR)/sclc
 
 all: $(TARGET)
+	@echo "[INFO] Build Successful"
 
 install: all
-	sudo cp $(BIN_DIR)/sclc /usr/local/bin
+	@echo "[INSTALL] $(TARGET) -> /usr/local/bin"
+	@sudo cp $(BIN_DIR)/sclc /usr/local/bin
 
 $(TARGET): $(OBJS) | $(BIN_DIR)
-	$(CC) $(OBJS) -o $@
+	@echo "[LD] $@"
+	@$(CC) $(OBJS) -o $@
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c | $(OBJ_DIR)
-	$(CC) $(CFLAGS) -MMD -MF $(OBJ_DIR)/$*.d -c $< -o $@
+	@echo "[CC] $@"
+	@$(CC) $(CFLAGS) -MMD -MF $(OBJ_DIR)/$*.d -c $< -o $@
 
 $(OBJ_DIR):
-	mkdir -p $(OBJ_DIR)
+	@mkdir -p $(OBJ_DIR)
 
 $(BIN_DIR):
-	mkdir -p $(BIN_DIR)
+	@mkdir -p $(BIN_DIR)
 
 compile_commands.json:
-	bear -- $(MAKE) clean all
+	@echo "[BEAR] Generating compile_commands.json"
+	@bear -- $(MAKE) clean all
 
 clean:
-	rm -rf $(OBJ_DIR) $(BIN_DIR)
+	@echo "[CLEAN] Removing $(OBJ_DIR) $(BIN_DIR)"
+	@rm -rf $(OBJ_DIR) $(BIN_DIR)
 
 clean-all: clean
-	rm compile_commands.json
+	@echo "[CLEAN] Removing compile_commands.json"
+	@rm compile_commands.json
 
 -include $(DEPS)
 
