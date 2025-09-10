@@ -1,23 +1,10 @@
+#include "semantic.h"
 #include "data_structures.h"
 #include "parser.h"
 #include "utils.h"
 
 #define _POSIX_C_SOURCE 200809L
 #include <string.h>
-
-// Variable tracking
-char *type_to_str(type type) {
-  switch (type) {
-  case TYPE_INT:
-    return "int";
-  case TYPE_CHAR:
-    return "char";
-  case TYPE_POINTER:
-    return "ptr";
-  case TYPE_VOID:
-    return "void";
-  }
-}
 
 int find_variables(dynamic_array *variables, variable *var_to_find,
                    unsigned int *errors) {
@@ -36,7 +23,14 @@ int find_variables(dynamic_array *variables, variable *var_to_find,
   return -1;
 }
 
-void declare_variables(variable *var_to_declare, dynamic_array *variables) {
+/*
+ * @brief: append a new variable to the variables dynamic_array.
+ *
+ * @param var_to_declare: the variable struct to append.
+ * @param variables: pointer to the variables dynamic_array.
+ */
+static void declare_variables(variable *var_to_declare,
+                              dynamic_array *variables) {
   if (!var_to_declare || !var_to_declare->name || !variables)
     return;
 
@@ -53,8 +47,15 @@ void declare_variables(variable *var_to_declare, dynamic_array *variables) {
   dynamic_array_append(variables, var_to_declare);
 }
 
-void term_check_variables(term_node *term, dynamic_array *variables,
-                          unsigned int *errors) {
+/*
+ * @brief: check variables in terms
+ *
+ * @param term: pointer to a term_node.
+ * @param variables: pointer to the variables dynamic_array.
+ * @param errors: counter variable to increment when an error is encountered.
+ */
+static void term_check_variables(term_node *term, dynamic_array *variables,
+                                 unsigned int *errors) {
   switch (term->kind) {
   case TERM_IDENTIFIER:
     find_variables(variables, &term->identifier, errors);
@@ -64,8 +65,15 @@ void term_check_variables(term_node *term, dynamic_array *variables,
   }
 }
 
-void expr_check_variables(expr_node *expr, dynamic_array *variables,
-                          unsigned int *errors) {
+/*
+ * @brief: check variables in expressions
+ *
+ * @param expr: pointer to an expr_node.
+ * @param variables: pointer to the variables dynamic_array.
+ * @param errors: counter variable to increment when an error is encountered.
+ */
+static void expr_check_variables(expr_node *expr, dynamic_array *variables,
+                                 unsigned int *errors) {
   switch (expr->kind) {
   case EXPR_TERM:
     term_check_variables(&expr->term, variables, errors);
@@ -81,8 +89,15 @@ void expr_check_variables(expr_node *expr, dynamic_array *variables,
   }
 }
 
-void rel_check_variables(rel_node *rel, dynamic_array *variables,
-                         unsigned int *errors) {
+/*
+ * @brief: check variables in relational expressions
+ *
+ * @param rel: pointer to a rel_node.
+ * @param variables: pointer to the variables dynamic_array.
+ * @param errors: counter variable to increment when an error is encountered.
+ */
+static void rel_check_variables(rel_node *rel, dynamic_array *variables,
+                                unsigned int *errors) {
   switch (rel->kind) {
   case REL_IS_EQUAL:
     term_check_variables(&rel->is_equal.lhs, variables, errors);
@@ -111,8 +126,15 @@ void rel_check_variables(rel_node *rel, dynamic_array *variables,
   }
 }
 
-void instr_check_variables(instr_node *instr, dynamic_array *variables,
-                           unsigned int *errors) {
+/*
+ * @brief: check variables in an individual instruction
+ *
+ * @param instr: pointer to an instr_node.
+ * @param variables: pointer to the variables dynamic_array.
+ * @param errors: counter variable to increment when an error is encountered.
+ */
+static void instr_check_variables(instr_node *instr, dynamic_array *variables,
+                                  unsigned int *errors) {
   switch (instr->kind) {
   case INSTR_DECLARE:
     declare_variables(&instr->declare_variable, variables);
@@ -136,10 +158,16 @@ void instr_check_variables(instr_node *instr, dynamic_array *variables,
   }
 }
 
-// Label checking
-void check_label(dynamic_array *labels, instr_node *instr,
-                 unsigned int *errors) {
-  char *label_name = instr->label.label;
+/*
+ * @brief: make sure labels are properly declared and not duplicated
+ *
+ * @param labels: pointer to the labels dynamic_array.
+ * @param instr: pointer to an instr_node.
+ * @param errors: counter variable to increment when an error is encountered.
+ */
+static void check_label(dynamic_array *labels, instr_node *instr,
+                        unsigned int *errors) {
+  const char *label_name = instr->label.label;
   for (unsigned int i = 0; i < labels->count; i++) {
     char *existing;
     dynamic_array_get(labels, i, &existing);
@@ -152,8 +180,15 @@ void check_label(dynamic_array *labels, instr_node *instr,
   dynamic_array_append(labels, &label_name);
 }
 
-void check_goto(dynamic_array *labels, instr_node *instr,
-                unsigned int *errors) {
+/*
+ * @brief: make sure labels are properly used in goto instructions
+ *
+ * @param labels: pointer to the labels dynamic_array.
+ * @param instr: pointer to an instr_node.
+ * @param errors: counter variable to increment when an error is encountered.
+ */
+static void check_goto(dynamic_array *labels, instr_node *instr,
+                       unsigned int *errors) {
   int found = 0;
   for (unsigned int i = 0; i < labels->count; i++) {
     char *label;
@@ -169,8 +204,16 @@ void check_goto(dynamic_array *labels, instr_node *instr,
   }
 }
 
-void instrs_check_labels(dynamic_array *instrs, dynamic_array *labels,
-                         unsigned int *errors) {
+/*
+ * @brief: check for declaration of labels AND the use of labels in goto
+ * instructions
+ *
+ * @param instr: pointer to an instr_node.
+ * @param labels: pointer to the labels dynamic_array.
+ * @param errors: counter variable to increment when an error is encountered.
+ */
+static void instrs_check_labels(dynamic_array *instrs, dynamic_array *labels,
+                                unsigned int *errors) {
   // check labels first
   for (unsigned int i = 0; i < instrs->count; i++) {
     instr_node instr;
@@ -211,8 +254,7 @@ void instrs_check_labels(dynamic_array *instrs, dynamic_array *labels,
   }
 }
 
-// Typechecking
-type var_type(char *name, unsigned int line, dynamic_array *variables,
+type var_type(const char *name, size_t line, dynamic_array *variables,
               unsigned int *errors) {
   for (unsigned int i = 0; i < variables->count; i++) {
     variable var;
@@ -226,8 +268,18 @@ type var_type(char *name, unsigned int line, dynamic_array *variables,
   return -1;
 }
 
-type term_type(term_node *term, type target_type, unsigned int line,
-               dynamic_array *variables, unsigned int *errors) {
+/*
+ * @brief: check for types in a term_node
+ *
+ * @param term: pointer to a term_node.
+ * @param target_type: type enumeration for the type which is required in the
+ * instruction.
+ * @param variables: pointer to the variables dynamic_array.
+ * @param errors: counter variable to increment when an error is encountered.
+ * @param line: where the term is situated in the source buffer.
+ */
+static type term_type(term_node *term, type target_type, size_t line,
+                      dynamic_array *variables, unsigned int *errors) {
   switch (term->kind) {
   case TERM_INPUT:
     return target_type;
@@ -243,8 +295,33 @@ type term_type(term_node *term, type target_type, unsigned int line,
   }
 }
 
-type expr_type(expr_node *expr, type target_type, dynamic_array *variables,
-               unsigned int *errors) {
+/*
+ * @brief: convert a type enumeration to its string representation.
+ */
+static const char *type_to_str(type type) {
+  switch (type) {
+  case TYPE_INT:
+    return "int";
+  case TYPE_CHAR:
+    return "char";
+  case TYPE_POINTER:
+    return "ptr";
+  case TYPE_VOID:
+    return "void";
+  }
+}
+
+/*
+ * @brief: check for types in an expr_node
+ *
+ * @param expr: pointer to an expr_node.
+ * @param target_type: type enumeration for the type which is required in the
+ * instruction.
+ * @param variables: pointer to the variables dynamic_array.
+ * @param errors: counter variable to increment when an error is encountered.
+ */
+static type expr_type(expr_node *expr, type target_type,
+                      dynamic_array *variables, unsigned int *errors) {
   type lhs, rhs;
 
   switch (expr->kind) {
@@ -261,8 +338,8 @@ type expr_type(expr_node *expr, type target_type, dynamic_array *variables,
   }
 
   if (lhs != rhs) {
-    char *lhs_type_str = type_to_str(lhs);
-    char *rhs_type_str = type_to_str(rhs);
+    const char *lhs_type_str = type_to_str(lhs);
+    const char *rhs_type_str = type_to_str(rhs);
     scu_perror(errors,
                "Type mismatch in arithmetic expression: %s vs %s [line %u]\n",
                lhs_type_str, rhs_type_str, expr->line);
@@ -270,8 +347,15 @@ type expr_type(expr_node *expr, type target_type, dynamic_array *variables,
   return lhs;
 }
 
-void rel_typecheck(rel_node *rel, dynamic_array *variables,
-                   unsigned int *errors) {
+/*
+ * @brief: check for types in a rel_node
+ *
+ * @param rel: pointer to a rel_node.
+ * @param variables: pointer to the variables dynamic_array.
+ * @param errors: counter variable to increment when an error is encountered.
+ */
+static void rel_typecheck(rel_node *rel, dynamic_array *variables,
+                          unsigned int *errors) {
   type lhs, rhs;
 
   switch (rel->kind) {
@@ -314,16 +398,23 @@ void rel_typecheck(rel_node *rel, dynamic_array *variables,
   }
 
   if (lhs != rhs) {
-    char *lhs_type_str = type_to_str(lhs);
-    char *rhs_type_str = type_to_str(rhs);
+    const char *lhs_type_str = type_to_str(lhs);
+    const char *rhs_type_str = type_to_str(rhs);
     scu_perror(errors,
                "Type mismatch in conditional statement: %s vs %s [line %u]\n",
                lhs_type_str, rhs_type_str, rel->line);
   }
 }
 
-void instr_typecheck(instr_node *instr, dynamic_array *variables,
-                     unsigned int *errors) {
+/*
+ * @brief: check for types in an instr_node
+ *
+ * @param instr: pointer to an instr_node.
+ * @param variables: pointer to the variables dynamic_array.
+ * @param errors: counter variable to increment when an error is encountered.
+ */
+static void instr_typecheck(instr_node *instr, dynamic_array *variables,
+                            unsigned int *errors) {
   switch (instr->kind) {
   case INSTR_INITIALIZE: {
     type target_type = instr->initialize_variable.var.type;
@@ -332,8 +423,8 @@ void instr_typecheck(instr_node *instr, dynamic_array *variables,
     if (target_type == TYPE_POINTER) {
       return;
     } else if (target_type != expr_result) {
-      char *target_type_str = type_to_str(target_type);
-      char *expr_result_str = type_to_str(expr_result);
+      const char *target_type_str = type_to_str(target_type);
+      const char *expr_result_str = type_to_str(expr_result);
       scu_perror(errors,
                  "Type mismatch in initialization to %s - %s to %s [line %u]\n",
                  instr->assign.identifier.name, expr_result_str,
@@ -349,8 +440,8 @@ void instr_typecheck(instr_node *instr, dynamic_array *variables,
     if (target_type == TYPE_POINTER) {
       return;
     } else if (target_type != expr_result) {
-      char *target_type_str = type_to_str(target_type);
-      char *expr_result_str = type_to_str(expr_result);
+      const char *target_type_str = type_to_str(target_type);
+      const char *expr_result_str = type_to_str(expr_result);
       scu_perror(errors,
                  "Type mismatch in assignment to %s - %s to %s [line %u]\n",
                  instr->assign.identifier.name, expr_result_str,

@@ -6,7 +6,7 @@
 #include <string.h>
 #include <sys/stat.h>
 
-int scu_read_file(char *path, char **buffer, unsigned int *error_count) {
+int scu_read_file(const char *path, char **buffer, unsigned int *error_count) {
   struct stat path_stat;
   stat(path, &path_stat);
   if (!S_ISREG(path_stat.st_mode)) {

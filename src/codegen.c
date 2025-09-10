@@ -8,7 +8,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void term_asm(term_node *term, dynamic_array *variables) {
+/*
+ * @brief: generate assembly for terms.
+ *
+ * @param term: pointer to a term_node.
+ * @param variables: dynamic_array of variables.
+ */
+static void term_asm(term_node *term, dynamic_array *variables) {
   switch (term->kind) {
   case TERM_INPUT: {
     printf("    read 0, line, LINE_MAX\n");
@@ -27,27 +33,33 @@ void term_asm(term_node *term, dynamic_array *variables) {
     break;
   }
   case TERM_IDENTIFIER: {
-    int index = find_variables(variables, &term->identifier);
+    int index = find_variables(variables, &term->identifier, NULL);
     printf("    mov rax, qword [rbp - %d]\n", index * 8 + 8);
     break;
   }
   case TERM_POINTER:
     break;
   case TERM_DEREF: {
-    int index = find_variables(variables, &term->identifier);
+    int index = find_variables(variables, &term->identifier, NULL);
     printf("    mov rbx, qword [rbp - %d]\n", index * 8 + 8);
     printf("    mov rax, qword [rbx]\n");
     break;
   }
   case TERM_ADDOF: {
-    int index = find_variables(variables, &term->identifier);
+    int index = find_variables(variables, &term->identifier, NULL);
     printf("    lea rax, [rbp - %d]\n", index * 8 + 8);
     break;
   }
   }
 }
 
-void expr_asm(expr_node *expr, dynamic_array *variables) {
+/*
+ * @brief: generate assembly for arithmetic expressions.
+ *
+ * @param expr: pointer to an expr_node.
+ * @param variables: dynamic_array of variables.
+ */
+static void expr_asm(expr_node *expr, dynamic_array *variables) {
   switch (expr->kind) {
   case EXPR_TERM:
     term_asm(&expr->term, variables);
@@ -90,7 +102,13 @@ void expr_asm(expr_node *expr, dynamic_array *variables) {
   }
 }
 
-void rel_asm(rel_node *rel, dynamic_array *variables) {
+/*
+ * @brief: generate assembly for relational expressions
+ *
+ * @param rel: pointer to a rel_node.
+ * @param variables: dynamic_array of variables.
+ */
+static void rel_asm(rel_node *rel, dynamic_array *variables) {
   switch (rel->kind) {
   case REL_IS_EQUAL:
     term_asm(&rel->is_equal.lhs, variables);
@@ -143,18 +161,27 @@ void rel_asm(rel_node *rel, dynamic_array *variables) {
   }
 }
 
-void instr_asm(instr_node *instr, dynamic_array *variables, int *if_count) {
+/*
+ * @brief: generate assembly for individual expressions.
+ *
+ * @param instr: pointer ot an instr_node.
+ * @param variables: dynamic_array of variables.
+ * @param if_count: counter for if instructions.
+ */
+static void instr_asm(instr_node *instr, dynamic_array *variables,
+                      unsigned int *if_count) {
   switch (instr->kind) {
   case INSTR_DECLARE:
     break;
   case INSTR_INITIALIZE: {
-    int index = find_variables(variables, &instr->initialize_variable.var);
+    int index =
+        find_variables(variables, &instr->initialize_variable.var, NULL);
     expr_asm(&instr->initialize_variable.expr, variables);
     printf("    mov qword [rbp - %d], rax\n", index * 8 + 8);
     break;
   }
   case INSTR_ASSIGN: {
-    int index = find_variables(variables, &instr->assign.identifier);
+    int index = find_variables(variables, &instr->assign.identifier, NULL);
     expr_asm(&instr->assign.expr, variables);
     if (instr->assign.identifier.type == TYPE_POINTER) {
       printf("    mov rbx, qword [rbp - %d]\n", index * 8 + 8);
@@ -198,7 +225,8 @@ void instr_asm(instr_node *instr, dynamic_array *variables, int *if_count) {
       printf("    syscall\n");
       break;
     case TERM_IDENTIFIER: {
-      int index = find_variables(variables, &instr->output.term.identifier);
+      int index =
+          find_variables(variables, &instr->output.term.identifier, NULL);
       variable var;
       dynamic_array_get(variables, index, &var);
       if (var.type == TYPE_CHAR) {
@@ -233,7 +261,8 @@ void instr_asm(instr_node *instr, dynamic_array *variables, int *if_count) {
       break;
     }
     case TERM_ADDOF: {
-      int index = find_variables(variables, &instr->output.term.identifier);
+      int index =
+          find_variables(variables, &instr->output.term.identifier, NULL);
       printf("    lea rsi, [rbp - %d]\n", index * 8 + 8);
       printf("    mov rdi, 1\n");
       printf("    call write_uint\n");
@@ -250,7 +279,13 @@ void instr_asm(instr_node *instr, dynamic_array *variables, int *if_count) {
   }
 }
 
-void embed_runtime() {
+/*
+ * @brief: embeds a minimal reuntime which is needed for terminal input and
+ * output for the programming language, input and output instructions will be
+ * eventually replaced with a standard library, thus this is temporary. I want
+ * this to have no runtime at all.
+ */
+static void embed_runtime() {
   printf("SYS_read equ 0\n");
   printf("SYS_write equ 1\n");
   printf("macro syscall3 number, a, b, c\n");
@@ -342,7 +377,16 @@ void embed_runtime() {
   printf("    ret\n");
 }
 
-void fasm_assemble(char *asm_file, char *output_file, unsigned int *errors) {
+/*
+ * @brief: helper function to assemble the generated assembly '.s' file to an
+ * executable binary.
+ *
+ * @param asm_file: name of the generated assembly file.
+ * @param output_file: name to be given to the output executable binary.
+ * @param errors: counter variable to increment when an error is encountered.
+ */
+static void fasm_assemble(const char *asm_file, const char *output_file,
+                          unsigned int *errors) {
   char command[512];
   snprintf(command, sizeof(command), "fasm %s %s", asm_file, output_file);
   int result = system(command);
@@ -352,9 +396,9 @@ void fasm_assemble(char *asm_file, char *output_file, unsigned int *errors) {
   }
 }
 
-void program_asm(program_node *program, dynamic_array *variables,
-                 char *filename, unsigned int *errors) {
-  int if_count = 0;
+void instrs_to_asm(program_node *program, dynamic_array *variables,
+                   const char *filename, unsigned int *errors) {
+  unsigned int if_count = 0;
 
   char *output_asm_file = scu_format_string("%s.s", filename);
   freopen(output_asm_file, "w", stdout);
@@ -373,7 +417,7 @@ void program_asm(program_node *program, dynamic_array *variables,
   printf("segment readable executable\n");
   printf("_start:\n");
   printf("    mov rbp, rsp\n");
-  printf("    sub rsp, %d\n", variables->count * 8);
+  printf("    sub rsp, %zu\n", variables->count * 8);
 
   for (unsigned int i = 0; i < program->instrs.count; i++) {
     struct instr_node instr;
@@ -382,7 +426,7 @@ void program_asm(program_node *program, dynamic_array *variables,
     instr_asm(&instr, variables, &if_count);
   }
 
-  printf("    add rsp, %d\n", variables->count * 8);
+  printf("    add rsp, %zu\n", variables->count * 8);
 
   printf("    mov rax, 60\n");
   printf("    xor rdi, rdi\n");

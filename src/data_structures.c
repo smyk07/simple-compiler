@@ -27,7 +27,7 @@ void dynamic_array_init(dynamic_array *da, size_t size) {
   da->capacity = 0;
 }
 
-int dynamic_array_get(dynamic_array *da, unsigned int index, void *item) {
+int dynamic_array_get(dynamic_array *da, size_t index, void *item) {
   if (!da || !item || index >= da->count || !da->items) {
     scu_perror(NULL, "Invalid Dynamic array passed to function.\n");
     return -1;
@@ -38,7 +38,7 @@ int dynamic_array_get(dynamic_array *da, unsigned int index, void *item) {
   return 0;
 }
 
-int dynamic_array_set(dynamic_array *da, unsigned int index, void *item) {
+int dynamic_array_set(dynamic_array *da, size_t index, void *item) {
   if (!da || !item || !da->items || da->item_size == 0 || index >= da->count ||
       da->capacity == 0) {
     scu_perror(NULL, "Invalid dynamic array passed to function.\n");
@@ -81,7 +81,7 @@ int dynamic_array_append(dynamic_array *da, void *item) {
   return 0;
 }
 
-int dynamic_array_insert(dynamic_array *da, unsigned int index, void *item) {
+int dynamic_array_insert(dynamic_array *da, size_t index, void *item) {
   if (!da || !item || da->item_size == 0 || index > da->count) {
     scu_perror(NULL, "Invalid dynamic array passed to function.\n");
     return -1;
@@ -106,7 +106,7 @@ int dynamic_array_insert(dynamic_array *da, unsigned int index, void *item) {
   return 0;
 }
 
-int dynamic_array_remove(dynamic_array *da, unsigned int index) {
+int dynamic_array_remove(dynamic_array *da, size_t index) {
   if (!da || da->item_size == 0 || index >= da->count) {
     scu_perror(NULL, "Invalid dynamic array passed to function.\n");
     return -1;

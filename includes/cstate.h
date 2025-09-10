@@ -17,6 +17,10 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+/*
+ * @struct coptions: represents the options described in the command when the
+ * binary is executed.
+ */
 typedef struct coptions {
   /*
    * Print progress messages for various stages.
@@ -29,6 +33,9 @@ typedef struct coptions {
   bool output;
 } coptions;
 
+/*
+ * @struct cstate: represents the compiler state.
+ */
 typedef struct cstate {
   /*
    * Stores the name of the file to be compiled.
@@ -53,7 +60,7 @@ typedef struct cstate {
   unsigned int error_count;
 
   /*
-   * Source buffer.
+   * Source buffer and its size in bytes.
    */
   char *code_buffer;
   size_t code_buffer_len;
@@ -72,6 +79,7 @@ typedef struct cstate {
  *
  * @param argc: count of args
  * @param argv: array of arguments (string)
+ *
  * @return: malloc'd cstate struct object pointer which the caller would have to
  * manually free.
  */

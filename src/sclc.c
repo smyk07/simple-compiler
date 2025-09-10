@@ -37,15 +37,15 @@ int main(int argc, char *argv[]) {
 
   // Lexing test function
   if (state->options.verbose)
-    print_tokens(state->tokens);
+    lexer_print_tokens(state->tokens);
 
   // Parsing
   parser_init(state->tokens, state->parser);
-  parse_program(state->parser, state->program, &state->error_count);
+  parser_parse_program(state->parser, state->program, &state->error_count);
 
   // Parsing test function
   if (state->options.verbose)
-    print_program(state->program);
+    parser_print_program(state->program);
 
   // Semantic Analysis
   check_semantics(&state->program->instrs, state->variables,
@@ -56,8 +56,8 @@ int main(int argc, char *argv[]) {
     scu_pdebug("Semantic Analysis Complete\n");
 
   // Codegen & Assembler
-  program_asm(state->program, state->variables, state->output_filename,
-              &state->error_count);
+  instrs_to_asm(state->program, state->variables, state->output_filename,
+                &state->error_count);
 
   // Restore STDOUT
   stdout = fopen("/dev/tty", "w");
