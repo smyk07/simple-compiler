@@ -1,5 +1,5 @@
 #include "semantic.h"
-#include "data_structures.h"
+#include "ds/dynamic_array.h"
 #include "parser.h"
 #include "utils.h"
 

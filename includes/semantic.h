@@ -6,7 +6,7 @@
 #ifndef SEMANTIC
 #define SEMANTIC
 
-#include "data_structures.h"
+#include "ds/dynamic_array.h"
 #include "parser.h"
 
 /*

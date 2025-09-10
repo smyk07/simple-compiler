@@ -1,11 +1,41 @@
 #include "lexer.h"
-#include "data_structures.h"
+#include "ds/dynamic_array.h"
 #include "utils.h"
 
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+/*
+ * @struct string_slice: represents a slice of strings with a specified length,
+ * does not need null termination.
+ */
+typedef struct string_slice {
+  const char *str;
+  size_t len;
+} string_slice;
+
+/*
+ * @brief: Converts a string_slice to a null terminated owned string.
+ *
+ * @param ss: pointer to a string_slice.
+ * @param str: pointer to a char pointer where the allocated string will be
+ * stored.
+ */
+static int string_slice_to_owned(string_slice *ss, char **str) {
+  if (!ss || !ss->str || !str)
+    return -1;
+
+  *str = (char *)malloc(ss->len + 1);
+  if (!*str)
+    return -1;
+
+  memcpy(*str, ss->str, ss->len);
+  (*str)[ss->len] = '\0';
+
+  return 0;
+}
 
 /*
  * @brief: Read the next character.

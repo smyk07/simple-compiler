@@ -1,24 +1,8 @@
-#include "data_structures.h"
+#include "ds/dynamic_array.h"
 #include "utils.h"
 
-#include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-int string_slice_to_owned(string_slice *ss, char **str) {
-  if (!ss || !ss->str || !str)
-    return -1;
-
-  *str = (char *)malloc(ss->len + 1);
-  if (!*str)
-    return -1;
-
-  memcpy(*str, ss->str, ss->len);
-  (*str)[ss->len] = '\0';
-
-  return 0;
-}
 
 void dynamic_array_init(dynamic_array *da, size_t size) {
   da->items = NULL;
@@ -69,7 +53,7 @@ int dynamic_array_append(dynamic_array *da, void *item) {
     unsigned int new_capacity = da->capacity * 2;
     void *new_items = realloc(da->items, da->item_size * new_capacity);
     if (!new_items) {
-      perror("Failed to resize dynamic array.\n");
+      scu_perror(NULL, "Failed to resize dynamic array.\n");
       return -1;
     }
     da->items = new_items;

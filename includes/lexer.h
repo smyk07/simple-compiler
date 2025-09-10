@@ -5,7 +5,8 @@
 #ifndef LEXER_H
 #define LEXER_H
 
-#include "data_structures.h"
+#include "ds/dynamic_array.h"
+
 #include <stddef.h>
 
 /*

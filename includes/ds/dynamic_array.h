@@ -1,17 +1,7 @@
-/*
- * file: data_structures.h
- * brief: contains data structures and functions related to them for the
- * simple-compiler.
- */
-#ifndef DATA_STRUCTURES
-#define DATA_STRUCTURES
+#ifndef DYNAMIC_ARRAY
+#define DYNAMIC_ARRAY
 
 #include <stddef.h>
-
-typedef struct string_slice {
-  const char *str;
-  size_t len;
-} string_slice;
 
 typedef struct dynamic_array {
   void *items;
@@ -19,8 +9,6 @@ typedef struct dynamic_array {
   size_t count;
   size_t capacity;
 } dynamic_array;
-
-int string_slice_to_owned(string_slice *ss, char **str);
 
 void dynamic_array_init(dynamic_array *da, size_t size);
 
@@ -40,4 +28,4 @@ void dynamic_array_free(dynamic_array *da);
 
 void dynamic_array_free_items(dynamic_array *da);
 
-#endif
+#endif // !DYNAMIC_ARRAY

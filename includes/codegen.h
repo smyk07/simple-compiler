@@ -5,7 +5,7 @@
 #ifndef CODEGEN
 #define CODEGEN
 
-#include "data_structures.h"
+#include "ds/dynamic_array.h"
 #include "parser.h"
 
 /*

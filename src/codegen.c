@@ -1,5 +1,5 @@
 #include "codegen.h"
-#include "data_structures.h"
+#include "ds/dynamic_array.h"
 #include "lexer.h"
 #include "parser.h"
 #include "semantic.h"

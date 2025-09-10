@@ -11,7 +11,7 @@
 #ifndef CSTATE_H
 #define CSTATE_H
 
-#include "data_structures.h"
+#include "ds/dynamic_array.h"
 #include "parser.h"
 
 #include <stdbool.h>

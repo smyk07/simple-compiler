@@ -5,8 +5,9 @@
 #ifndef PARSER
 #define PARSER
 
-#include "data_structures.h"
+#include "ds/dynamic_array.h"
 #include "lexer.h"
+
 #include <stddef.h>
 
 /*
