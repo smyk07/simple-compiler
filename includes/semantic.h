@@ -6,8 +6,8 @@
 #ifndef SEMANTIC
 #define SEMANTIC
 
+#include "ast.h"
 #include "ds/dynamic_array.h"
-#include "parser.h"
 
 /*
  * @brief: check if a certain variable exists in a dynamic_array of variables.

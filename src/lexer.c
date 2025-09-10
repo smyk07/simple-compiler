@@ -1,5 +1,6 @@
 #include "lexer.h"
 #include "ds/dynamic_array.h"
+#include "token.h"
 #include "utils.h"
 
 #include <ctype.h>

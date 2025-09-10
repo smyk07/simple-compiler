@@ -1,4 +1,6 @@
 #include "cstate.h"
+#include "lexer.h"
+#include "token.h"
 #include "utils.h"
 
 #include <stdio.h>

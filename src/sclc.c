@@ -21,7 +21,6 @@
 #include "codegen.h"
 #include "cstate.h"
 #include "lexer.h"
-#include "parser.h"
 #include "semantic.h"
 #include "utils.h"
 

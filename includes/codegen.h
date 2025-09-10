@@ -5,8 +5,8 @@
 #ifndef CODEGEN
 #define CODEGEN
 
+#include "ast.h"
 #include "ds/dynamic_array.h"
-#include "parser.h"
 
 /*
  * @brief: convert a dynamic_array of instructions to FASM assembly.

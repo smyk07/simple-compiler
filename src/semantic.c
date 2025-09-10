@@ -1,6 +1,6 @@
 #include "semantic.h"
+#include "ast.h"
 #include "ds/dynamic_array.h"
-#include "parser.h"
 #include "utils.h"
 
 #define _POSIX_C_SOURCE 200809L
