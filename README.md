@@ -10,8 +10,7 @@ A Simple Compiler. (Compiles to x64 fasm assembly).
 
 - `make`
 - `clang`
-- `wildcard`
-- `bear`
+- `bear` (for `compile_commands.json`)
 
 ## Usage
 
