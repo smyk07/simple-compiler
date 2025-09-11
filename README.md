@@ -14,7 +14,7 @@ A Simple Compiler. (Compiles to x64 fasm assembly).
 
 ## Usage
 
-Build  and install the compiler:
+Build and install the compiler:
 
 ```
 make install
