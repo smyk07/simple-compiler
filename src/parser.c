@@ -124,11 +124,11 @@ static expr_node *parse_factor(parser *p, unsigned int *errors) {
 
     parser_advance(p);
     return node;
-  } else if (token.kind == TOKEN_BRACKET_OPEN) {
+  } else if (token.kind == TOKEN_LPAREN) {
     parser_advance(p);
     expr_node *node = parse_expr(p, errors);
     parser_current(p, &token, errors);
-    if (token.kind != TOKEN_BRACKET_CLOSE) {
+    if (token.kind != TOKEN_RPAREN) {
       scu_perror(errors, "Syntax error: expected ')'\n");
       scu_check_errors(errors);
     }

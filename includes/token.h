@@ -36,8 +36,8 @@ typedef enum token_kind {
   /*
    * Brackets
    */
-  TOKEN_BRACKET_OPEN,
-  TOKEN_BRACKET_CLOSE,
+  TOKEN_LPAREN,
+  TOKEN_RPAREN,
 
   /*
    * Arithmetic Operators

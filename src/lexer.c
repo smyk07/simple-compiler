@@ -143,13 +143,13 @@ static token lexer_next_token(lexer *l) {
   else if (l->ch == '(') {
     lexer_read_char(l);
     return (token){
-        .kind = TOKEN_BRACKET_OPEN, .value.str = NULL, .line = l->line};
+        .kind = TOKEN_LPAREN, .value.str = NULL, .line = l->line};
   }
 
   else if (l->ch == ')') {
     lexer_read_char(l);
     return (token){
-        .kind = TOKEN_BRACKET_CLOSE, .value.str = NULL, .line = l->line};
+        .kind = TOKEN_RPAREN, .value.str = NULL, .line = l->line};
   }
 
   else if (l->ch == '+') {
@@ -409,9 +409,9 @@ const char *lexer_token_kind_to_str(token_kind kind) {
     return "char";
   case TOKEN_ASSIGN:
     return "assign";
-  case TOKEN_BRACKET_OPEN:
+  case TOKEN_LPAREN:
     return "bracket open";
-  case TOKEN_BRACKET_CLOSE:
+  case TOKEN_RPAREN:
     return "bracket close";
   case TOKEN_ADD:
     return "add";
