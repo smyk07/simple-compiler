@@ -1,0 +1,16 @@
+int number = input
+int count = 0
+
+if number == 0 then goto :special_case
+
+:count_loop
+if number == 0 then goto :end
+number = number / 10
+count = count + 1
+goto :count_loop
+
+:special_case
+count = 1
+
+:end
+output count
