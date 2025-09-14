@@ -8,11 +8,7 @@
 #include <string.h>
 
 cstate *cstate_create_from_args(int argc, char *argv[]) {
-  cstate *s = malloc(sizeof(cstate));
-  if (!s) {
-    scu_perror(NULL, "Failed to allocate memory for cstate\n");
-    exit(1);
-  }
+  cstate *s = scu_checked_malloc(sizeof(cstate));
 
   if (argc <= 1) {
     /*
@@ -21,7 +17,7 @@ cstate *cstate_create_from_args(int argc, char *argv[]) {
      * Take care of wrapping after ~80 characters.
      */
     printf("Simple Compiler - Just as the name suggests\n");
-    printf("Usage: ./compiler [OPTIONS] <filename>\n\n");
+    printf("Usage: sclc [OPTIONS] <filename>\n\n");
     printf("OPTIONS:\n");
     printf("--verbose OR -v \t Print progress messages for various stages.\n");
     exit(1);
@@ -97,14 +93,14 @@ cstate *cstate_create_from_args(int argc, char *argv[]) {
     exit(1);
   }
 
-  s->tokens = malloc(sizeof(dynamic_array));
+  s->tokens = scu_checked_malloc(sizeof(dynamic_array));
   dynamic_array_init(s->tokens, sizeof(token));
 
-  s->parser = malloc(sizeof(parser));
+  s->parser = scu_checked_malloc(sizeof(parser));
 
-  s->program = malloc(sizeof(program_node));
+  s->program = scu_checked_malloc(sizeof(program_node));
 
-  s->variables = malloc(sizeof(dynamic_array));
+  s->variables = scu_checked_malloc(sizeof(dynamic_array));
   dynamic_array_init(s->variables, sizeof(variable));
 
   return s;

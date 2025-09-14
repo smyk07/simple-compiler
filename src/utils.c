@@ -1,10 +1,52 @@
 #include "utils.h"
 
+#include <assert.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+
+void *scu_checked_malloc(size_t size) {
+  if (size == 0)
+    size = 1;
+  void *ptr = malloc(size);
+  if (ptr == NULL) {
+    scu_perror(NULL, "Memory allocation failed.");
+    exit(1);
+  }
+  return ptr;
+}
+
+void *scu_checked_realloc(void *ptr, size_t size) {
+  if (size == 0)
+    size = 1;
+  void *newptr = realloc(ptr, size);
+  if (newptr == NULL) {
+    scu_perror(NULL, "Memory re-allocation failed.");
+    exit(1);
+  }
+  return newptr;
+}
+
+char *scu_extract_name(const char *filename) {
+  const char *dot = strrchr(filename, '.');
+  size_t len;
+
+  if (dot != NULL) {
+    len = dot - filename;
+  } else {
+    len = strlen(filename);
+  }
+
+  char *name = (char *)scu_checked_malloc(len + 1);
+  strncpy(name, filename, len);
+  name[len] = '\0';
+
+  return name;
+}
+
+#define MAX_LEN 4096
 
 int scu_read_file(const char *path, char **buffer, unsigned int *error_count) {
   struct stat path_stat;
@@ -15,12 +57,7 @@ int scu_read_file(const char *path, char **buffer, unsigned int *error_count) {
   }
 
   int tmp_capacity = MAX_LEN;
-  char *tmp = malloc(tmp_capacity * sizeof(char));
-
-  if (tmp == NULL) {
-    perror("malloc failed");
-    exit(1);
-  }
+  char *tmp = scu_checked_malloc(tmp_capacity * sizeof(char));
 
   int tmp_size = 0;
 
@@ -37,13 +74,7 @@ int scu_read_file(const char *path, char **buffer, unsigned int *error_count) {
   do {
     if (tmp_size + MAX_LEN >= tmp_capacity) {
       tmp_capacity *= 2;
-      tmp = realloc(tmp, tmp_capacity * sizeof(char));
-
-      if (tmp == NULL) {
-        perror("realloc failed");
-        fclose(f);
-        exit(1);
-      }
+      tmp = scu_checked_realloc(tmp, tmp_capacity * sizeof(char));
     }
 
     size = fread(tmp + tmp_size, sizeof(char), MAX_LEN, f);
@@ -57,26 +88,7 @@ int scu_read_file(const char *path, char **buffer, unsigned int *error_count) {
   return tmp_size;
 }
 
-char *scu_extract_name(const char *filename) {
-  const char *dot = strrchr(filename, '.');
-  size_t len;
-
-  if (dot != NULL) {
-    len = dot - filename;
-  } else {
-    len = strlen(filename);
-  }
-
-  char *name = (char *)malloc(len + 1);
-  if (name == NULL) {
-    return NULL;
-  }
-
-  strncpy(name, filename, len);
-  name[len] = '\0';
-
-  return name;
-}
+#undef MAX_LEN
 
 char *scu_format_string(char *__restrict __format, ...) {
   va_list args;
@@ -92,11 +104,7 @@ char *scu_format_string(char *__restrict __format, ...) {
     return NULL;
   }
 
-  char *result = malloc(length + 1);
-  if (!result) {
-    va_end(args);
-    return NULL;
-  }
+  char *result = scu_checked_malloc(length + 1);
 
   vsnprintf(result, length + 1, __format, args);
   va_end(args);

@@ -42,7 +42,7 @@ int dynamic_array_append(dynamic_array *da, void *item) {
 
   if (da->capacity == 0) {
     da->capacity = 4;
-    da->items = malloc(da->item_size * da->capacity);
+    da->items = scu_checked_malloc(da->item_size * da->capacity);
     if (!da->items) {
       scu_perror(NULL, "Failed to allocate dynamic array\n");
       return -1;
@@ -51,11 +51,8 @@ int dynamic_array_append(dynamic_array *da, void *item) {
 
   if (da->count == da->capacity) {
     unsigned int new_capacity = da->capacity * 2;
-    void *new_items = realloc(da->items, da->item_size * new_capacity);
-    if (!new_items) {
-      scu_perror(NULL, "Failed to resize dynamic array.\n");
-      return -1;
-    }
+    void *new_items =
+        scu_checked_realloc(da->items, da->item_size * new_capacity);
     da->items = new_items;
     da->capacity = new_capacity;
   }
@@ -73,11 +70,8 @@ int dynamic_array_insert(dynamic_array *da, size_t index, void *item) {
 
   if (da->count == da->capacity) {
     unsigned int new_capacity = da->capacity * 2;
-    void *new_items = realloc(da->items, da->item_size * new_capacity);
-    if (!new_items) {
-      scu_perror(NULL, "Failed to resize dynamic array.\n");
-      return -1;
-    }
+    void *new_items =
+        scu_checked_realloc(da->items, da->item_size * new_capacity);
     da->items = new_items;
     da->capacity = new_capacity;
   }

@@ -28,7 +28,7 @@ static int string_slice_to_owned(string_slice *ss, char **str) {
   if (!ss || !ss->str || !str)
     return -1;
 
-  *str = (char *)malloc(ss->len + 1);
+  *str = (char *)scu_checked_malloc(ss->len + 1);
   if (!*str)
     return -1;
 

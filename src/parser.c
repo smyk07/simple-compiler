@@ -96,7 +96,7 @@ static expr_node *parse_factor(parser *p, unsigned int *errors) {
   if (token.kind == TOKEN_INT || token.kind == TOKEN_CHAR ||
       token.kind == TOKEN_IDENTIFIER || token.kind == TOKEN_POINTER ||
       token.kind == TOKEN_ADDRESS_OF || token.kind == TOKEN_INPUT) {
-    expr_node *node = malloc(sizeof(expr_node));
+    expr_node *node = scu_checked_malloc(sizeof(expr_node));
     node->kind = EXPR_TERM;
     node->line = token.line;
 
@@ -158,7 +158,7 @@ static expr_node *parse_term(parser *p, unsigned int *errors) {
       parser_advance(p);
       expr_node *right = parse_factor(p, errors);
 
-      expr_node *parent = malloc(sizeof(expr_node));
+      expr_node *parent = scu_checked_malloc(sizeof(expr_node));
 
       parent->line = token.line;
 
@@ -195,7 +195,7 @@ static expr_node *parse_expr(parser *p, unsigned int *errors) {
       parser_advance(p);
       expr_node *right = parse_term(p, errors);
 
-      expr_node *parent = malloc(sizeof(expr_node));
+      expr_node *parent = scu_checked_malloc(sizeof(expr_node));
       parent->kind = (token.kind == TOKEN_ADD) ? EXPR_ADD : EXPR_SUBTRACT;
       parent->line = token.line;
       parent->binary.left = left;
@@ -396,7 +396,7 @@ static void parse_if(parser *p, instr_node *instr, unsigned int *errors) {
   }
   parser_advance(p);
 
-  instr->if_.instr = malloc(sizeof(instr_node));
+  instr->if_.instr = scu_checked_malloc(sizeof(instr_node));
   parse_instr(p, instr->if_.instr, errors);
 }
 
@@ -497,8 +497,8 @@ static void parse_instr(parser *p, instr_node *instr, unsigned int *errors) {
     parse_label(p, instr, errors);
     break;
   default:
-    scu_perror(errors, "unexpected token: %s [line %d]\n",
-               lexer_token_kind_to_str(token.kind), token.line);
+    scu_perror(errors, "unexpected token: %s - '%s' [line %d]\n",
+               lexer_token_kind_to_str(token.kind), token.value, token.line);
     scu_check_errors(errors);
   }
 }
@@ -515,7 +515,7 @@ void parser_parse_program(parser *p, program_node *program,
       parser_current(p, &token, errors);
       continue;
     }
-    instr_node *instr = malloc(sizeof(instr_node));
+    instr_node *instr = scu_checked_malloc(sizeof(instr_node));
     parse_instr(p, instr, errors);
     dynamic_array_append(&program->instrs, instr);
     free(instr);
