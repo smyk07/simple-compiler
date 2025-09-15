@@ -55,8 +55,7 @@ int main(int argc, char *argv[]) {
     scu_pdebug("Semantic Analysis Complete\n");
 
   // Codegen & Assembler
-  instrs_to_asm(state->program, state->variables, state->output_filename,
-                &state->error_count);
+  instrs_to_asm(state->program, state->variables, state->output_filename);
 
   // Restore STDOUT
   stdout = fopen("/dev/tty", "w");

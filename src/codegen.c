@@ -1,6 +1,7 @@
 #include "codegen.h"
 #include "ast.h"
 #include "ds/dynamic_array.h"
+#include "fasm.h"
 #include "semantic.h"
 #include "utils.h"
 
@@ -376,27 +377,8 @@ static void embed_runtime() {
   printf("    ret\n");
 }
 
-/*
- * @brief: helper function to assemble the generated assembly '.s' file to an
- * executable binary.
- *
- * @param asm_file: name of the generated assembly file.
- * @param output_file: name to be given to the output executable binary.
- * @param errors: counter variable to increment when an error is encountered.
- */
-static void fasm_assemble(const char *asm_file, const char *output_file,
-                          unsigned int *errors) {
-  char command[512];
-  snprintf(command, sizeof(command), "fasm %s %s", asm_file, output_file);
-  int result = system(command);
-  if (result != 0) {
-    scu_perror(errors, "Assembly failed with code %d\n", result);
-    exit(1);
-  }
-}
-
 void instrs_to_asm(program_node *program, dynamic_array *variables,
-                   const char *filename, unsigned int *errors) {
+                   const char *filename) {
   unsigned int if_count = 0;
 
   char *output_asm_file = scu_format_string("%s.s", filename);
@@ -439,6 +421,6 @@ void instrs_to_asm(program_node *program, dynamic_array *variables,
   fflush(stdout);
   fclose(stdout);
 
-  fasm_assemble(output_asm_file, filename, errors);
+  fasm_assemble(output_asm_file, filename);
   free(output_asm_file);
 }

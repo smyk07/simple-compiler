@@ -17,6 +17,6 @@
  * @param errors: counter variable to increment when an error is encountered.
  */
 void instrs_to_asm(program_node *program, dynamic_array *variables,
-                   const char *filename, unsigned int *errors);
+                   const char *filename);
 
 #endif // !CODEGEN
