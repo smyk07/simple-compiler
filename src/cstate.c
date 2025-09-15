@@ -107,6 +107,7 @@ cstate *cstate_create_from_args(int argc, char *argv[]) {
 }
 
 void cstate_free(cstate *s) {
+  free(s->output_filename);
   free(s->code_buffer);
 
   free_tokens(s->tokens);
