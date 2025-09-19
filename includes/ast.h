@@ -125,6 +125,8 @@ typedef enum instr_kind {
   INSTR_GOTO,
   INSTR_OUTPUT,
   INSTR_LABEL,
+  INSTR_FASM_DEFINE,
+  INSTR_FASM,
 } instr_kind;
 
 /*
@@ -161,6 +163,18 @@ typedef struct label_node {
   const char *label;
 } label_node;
 
+typedef struct fasm_define_node {
+  const char *content;
+} fasm_define_node;
+
+typedef enum fasm_node_kind { ARG, NON_ARG } fasm_node_kind;
+
+typedef struct fasm_node {
+  fasm_node_kind kind;
+  variable argument;
+  const char *content;
+} fasm_node;
+
 /*
  * @struct instr_node: represents an instruction. (definition)
  */
@@ -175,6 +189,8 @@ typedef struct instr_node {
     goto_node goto_;
     output_node output;
     label_node label;
+    fasm_define_node fasm_def;
+    fasm_node fasm;
   };
 } instr_node;
 

@@ -21,23 +21,31 @@ typedef enum token_kind {
   TOKEN_GOTO,
   TOKEN_IF,
   TOKEN_THEN,
-  TOKEN_LABEL,
   TOKEN_TYPE_INT,
   TOKEN_TYPE_CHAR,
+  TOKEN_FASM_DEFINE, // fasm definitions, goes before _start
+  TOKEN_FASM,        // inline fasm copy and paste
   TOKEN_POINTER,
 
   /*
    * Literals
    */
   TOKEN_IDENTIFIER,
+  TOKEN_LABEL,
   TOKEN_INT,
   TOKEN_CHAR,
+  TOKEN_STRING,
 
   /*
    * Brackets
    */
   TOKEN_LPAREN,
   TOKEN_RPAREN,
+
+  /*
+   * Delimiters
+   */
+  TOKEN_COMMA,
 
   /*
    * Arithmetic Operators

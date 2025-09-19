@@ -142,24 +142,50 @@ static token lexer_next_token(lexer *l) {
 
   else if (l->ch == '(') {
     lexer_read_char(l);
-    return (token){
-        .kind = TOKEN_LPAREN, .value.str = NULL, .line = l->line};
+    return (token){.kind = TOKEN_LPAREN, .value.str = NULL, .line = l->line};
   }
 
   else if (l->ch == ')') {
     lexer_read_char(l);
-    return (token){
-        .kind = TOKEN_RPAREN, .value.str = NULL, .line = l->line};
+    return (token){.kind = TOKEN_RPAREN, .value.str = NULL, .line = l->line};
+  }
+
+  else if (l->ch == ',') {
+    lexer_read_char(l);
+    return (token){.kind = TOKEN_COMMA, .value.str = NULL, .line = l->line};
+  }
+
+  else if (l->ch == '-') {
+    lexer_read_char(l);
+    if (l->ch == '-') {
+      while (l->ch != '\n') {
+        lexer_read_char(l);
+      }
+      return (token){.kind = TOKEN_COMMENT, .value.str = NULL, .line = l->line};
+    } else if (l->ch == '*') {
+      while (l->ch != '\0') {
+        if (l->ch == '*') {
+          lexer_read_char(l);
+          if (l->ch == '-') {
+            lexer_read_char(l);
+            return (token){
+                .kind = TOKEN_COMMENT, .value.str = NULL, .line = l->line};
+          }
+          continue;
+        } else {
+          lexer_read_char(l);
+          continue;
+        }
+        return (token){
+            .kind = TOKEN_INVALID, .value.character = l->ch, .line = l->line};
+      }
+    }
+    return (token){.kind = TOKEN_SUBTRACT, .value.str = NULL, .line = l->line};
   }
 
   else if (l->ch == '+') {
     lexer_read_char(l);
     return (token){.kind = TOKEN_ADD, .value.str = NULL, .line = l->line};
-  }
-
-  else if (l->ch == '-') {
-    lexer_read_char(l);
-    return (token){.kind = TOKEN_SUBTRACT, .value.str = NULL, .line = l->line};
   }
 
   else if (l->ch == '*') {
@@ -182,32 +208,6 @@ static token lexer_next_token(lexer *l) {
 
   else if (l->ch == '/') {
     lexer_read_char(l);
-    if (l->ch == '/') {
-      while (l->ch != '\n') {
-        lexer_read_char(l);
-      }
-      return (token){.kind = TOKEN_COMMENT, .value.str = NULL, .line = l->line};
-    }
-
-    else if (l->ch == '*') {
-      while (l->ch != '\0') {
-        if (l->ch == '*') {
-          lexer_read_char(l);
-          if (l->ch == '/') {
-            lexer_read_char(l);
-            return (token){
-                .kind = TOKEN_COMMENT, .value.str = NULL, .line = l->line};
-          }
-          continue;
-        } else {
-          lexer_read_char(l);
-          continue;
-        }
-        return (token){
-            .kind = TOKEN_INVALID, .value.character = l->ch, .line = l->line};
-      }
-    }
-
     return (token){.kind = TOKEN_DIVIDE, .value.str = NULL, .line = l->line};
   }
 
@@ -320,6 +320,84 @@ static token lexer_next_token(lexer *l) {
         .kind = TOKEN_CHAR, .value.character = char_value, .line = l->line};
   }
 
+  else if (l->ch == '"') {
+    lexer_read_char(l);
+
+    size_t capacity = 16;
+    size_t length = 0;
+    char *string_value = scu_checked_malloc(capacity);
+    if (!string_value) {
+      return (token){.kind = TOKEN_INVALID, .value.str = NULL, .line = l->line};
+    }
+
+    if (l->ch == '"') {
+      lexer_read_char(l);
+      string_value[0] = '\0';
+      return (token){
+          .kind = TOKEN_STRING, .value.str = string_value, .line = l->line};
+    }
+
+    while (l->ch != '"' && l->ch != '\0' && l->ch != EOF) {
+      if (length >= capacity - 1) {
+        capacity *= 2;
+        char *new_buffer = scu_checked_realloc(string_value, capacity);
+        if (!new_buffer) {
+          free(string_value);
+          return (token){
+              .kind = TOKEN_INVALID, .value.str = NULL, .line = l->line};
+        }
+        string_value = new_buffer;
+      }
+
+      if (l->ch == '\\') {
+        lexer_read_char(l);
+        char escaped_char;
+        switch (l->ch) {
+        case 'n':
+          escaped_char = '\n';
+          break;
+        case 't':
+          escaped_char = '\t';
+          break;
+        case 'r':
+          escaped_char = '\r';
+          break;
+        case '\\':
+          escaped_char = '\\';
+          break;
+        case '"':
+          escaped_char = '"';
+          break;
+        case '0':
+          escaped_char = '\0';
+          break;
+        default:
+          free(string_value);
+          return (token){
+              .kind = TOKEN_INVALID, .value.character = l->ch, .line = l->line};
+        }
+        string_value[length++] = escaped_char;
+      } else if (l->ch == '\n') {
+        string_value[length++] = '\n';
+        l->line++;
+      } else {
+        string_value[length++] = l->ch;
+      }
+      lexer_read_char(l);
+    }
+
+    if (l->ch != '"') {
+      free(string_value);
+      return (token){.kind = TOKEN_INVALID, .value.str = NULL, .line = l->line};
+    }
+
+    lexer_read_char(l);
+    string_value[length] = '\0';
+
+    return (token){
+        .kind = TOKEN_STRING, .value.str = string_value, .line = l->line};
+  }
+
   else if (isalnum(l->ch) || l->ch == '_') {
     string_slice slice = {.str = l->buffer + l->pos, .len = 0};
     while (isalnum(l->ch) || l->ch == '_') {
@@ -351,6 +429,13 @@ static token lexer_next_token(lexer *l) {
       free(value);
       return (token){
           .kind = TOKEN_TYPE_CHAR, .value.str = NULL, .line = l->line};
+    } else if (strcmp(value, "fasm_define") == 0) {
+      free(value);
+      return (token){
+          .kind = TOKEN_FASM_DEFINE, .value.str = NULL, .line = l->line};
+    } else if (strcmp(value, "fasm") == 0) {
+      free(value);
+      return (token){.kind = TOKEN_FASM, .value.str = NULL, .line = l->line};
     } else {
       return (token){
           .kind = TOKEN_IDENTIFIER, .value.str = value, .line = l->line};
@@ -395,6 +480,10 @@ const char *lexer_token_kind_to_str(token_kind kind) {
     return "then";
   case TOKEN_LABEL:
     return "label";
+  case TOKEN_FASM_DEFINE:
+    return "fasm_define";
+  case TOKEN_FASM:
+    return "fasm";
   case TOKEN_TYPE_INT:
     return "type_int";
   case TOKEN_TYPE_CHAR:
@@ -407,12 +496,16 @@ const char *lexer_token_kind_to_str(token_kind kind) {
     return "int";
   case TOKEN_CHAR:
     return "char";
+  case TOKEN_STRING:
+    return "string";
   case TOKEN_ASSIGN:
     return "assign";
   case TOKEN_LPAREN:
     return "bracket open";
   case TOKEN_RPAREN:
     return "bracket close";
+  case TOKEN_COMMA:
+    return "comma";
   case TOKEN_ADD:
     return "add";
   case TOKEN_SUBTRACT:
@@ -464,6 +557,9 @@ void lexer_print_tokens(dynamic_array *tokens) {
       break;
     case TOKEN_CHAR:
       printf("(%c)", token.value.character);
+      break;
+    case TOKEN_STRING:
+      printf(" \"%s\"", token.value.str);
       break;
     case TOKEN_POINTER:
     case TOKEN_ADDRESS_OF:

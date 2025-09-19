@@ -173,6 +173,7 @@ static void instr_asm(instr_node *instr, dynamic_array *variables,
   switch (instr->kind) {
   case INSTR_DECLARE:
     break;
+
   case INSTR_INITIALIZE: {
     int index =
         find_variables(variables, &instr->initialize_variable.var, NULL);
@@ -180,6 +181,7 @@ static void instr_asm(instr_node *instr, dynamic_array *variables,
     printf("    mov qword [rbp - %d], rax\n", index * 8 + 8);
     break;
   }
+
   case INSTR_ASSIGN: {
     int index = find_variables(variables, &instr->assign.identifier, NULL);
     expr_asm(&instr->assign.expr, variables);
@@ -191,6 +193,7 @@ static void instr_asm(instr_node *instr, dynamic_array *variables,
     }
     break;
   }
+
   case INSTR_IF: {
     rel_asm(&instr->if_.rel, variables);
     int label = (*if_count)++;
@@ -200,9 +203,11 @@ static void instr_asm(instr_node *instr, dynamic_array *variables,
     printf("    .endif%d:\n", label);
     break;
   }
+
   case INSTR_GOTO:
     printf("    jmp .%s\n", instr->goto_.label);
     break;
+
   case INSTR_OUTPUT: {
     switch (instr->output.term.kind) {
     case TERM_INPUT:
@@ -273,8 +278,19 @@ static void instr_asm(instr_node *instr, dynamic_array *variables,
     }
     }
   } break;
+
   case INSTR_LABEL:
     printf(".%s:\n", instr->label.label);
+    break;
+
+  case INSTR_FASM_DEFINE:
+    // This is supposed to do nothing as it is already handled
+    break;
+
+  case INSTR_FASM:
+    int index = find_variables(variables, &instr->fasm.argument, NULL);
+    char *stmt = scu_format_string((char *)instr->fasm.content, index * 8 + 8);
+    printf("%s\n", stmt);
     break;
   }
 }
@@ -287,7 +303,9 @@ static void instr_asm(instr_node *instr, dynamic_array *variables,
  */
 static void embed_runtime() {
   printf("SYS_read equ 0\n");
+
   printf("SYS_write equ 1\n");
+
   printf("macro syscall3 number, a, b, c\n");
   printf("{\n");
   printf("    mov rax, number\n");
@@ -296,14 +314,17 @@ static void embed_runtime() {
   printf("    mov rdx, c\n");
   printf("    syscall\n");
   printf("}\n");
+
   printf("macro read fd, buf, count\n");
   printf("{\n");
   printf("    syscall3 SYS_read, fd, buf, count\n");
   printf("}\n");
+
   printf("macro write fd, buf, count\n");
   printf("{\n");
   printf("    syscall3 1, fd, buf, count\n");
   printf("}\n");
+
   printf("strlen:\n");
   printf("    push rdi\n");
   printf("    xor rax, rax\n");
@@ -318,6 +339,7 @@ static void embed_runtime() {
   printf("    sub rdi, rsi\n");
   printf("    mov rax, rdi\n");
   printf("    ret\n");
+
   printf("parse_uint:\n");
   printf("    xor rax, rax\n");
   printf("    xor rbx, rbx\n");
@@ -338,6 +360,7 @@ static void embed_runtime() {
   printf("    jmp .next_digit\n");
   printf(".done:\n");
   printf("    ret\n");
+
   printf("write_uint:\n");
   printf("    test rsi, rsi\n");
   printf("    jz .base_zero\n");
@@ -364,6 +387,7 @@ static void embed_runtime() {
   printf("    write rdi, rsp, 1\n");
   printf("    inc rsp\n");
   printf("    ret\n");
+
   printf("write_cstr:\n");
   printf("    push rsi\n");
   printf("    push rdi\n");
@@ -390,6 +414,17 @@ void instrs_to_asm(program_node *program, dynamic_array *variables,
 
   // embed runtime needed for the input and output instructions
   embed_runtime();
+
+  // fasm definitions
+  for (unsigned int i = 0; i < program->instrs.count; i++) {
+    struct instr_node instr;
+    dynamic_array_get(&program->instrs, i, &instr);
+
+    if (instr.kind == INSTR_FASM_DEFINE) {
+      printf("%s\n", instr.fasm_def.content);
+      dynamic_array_remove(&program->instrs, i);
+    }
+  }
 
   printf("entry _start\n");
 

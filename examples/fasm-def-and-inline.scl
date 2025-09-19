@@ -1,0 +1,119 @@
+int x = 67
+char c = 'S'
+
+-*
+ * commented to avoid re-definition of symbols
+
+fasm_define "
+  SYS_read equ 0
+  SYS_write equ 1
+  macro syscall3 number, a, b, c
+  {
+      mov rax, number
+      mov rdi, a
+      mov rsi, b
+      mov rdx, c
+      syscall
+  }
+  macro read fd, buf, count
+  {
+      syscall3 SYS_read, fd, buf, count
+  }
+  macro write fd, buf, count
+  {
+      syscall3 1, fd, buf, count
+  }
+  strlen:
+      push rdi
+      xor rax, rax
+  .next_char:
+      mov al, byte [rdi]
+      cmp rax, 0
+      je .done
+      inc rdi
+      jmp .next_char
+  .done:
+      pop rsi
+      sub rdi, rsi
+      mov rax, rdi
+      ret
+  parse_uint:
+      xor rax, rax
+      xor rbx, rbx
+      mov rcx, 10
+  .next_digit:
+      cmp rsi, 0
+      jle .done
+      mov bl, byte [rdi]
+      cmp rbx, '0'
+      jl .done
+      cmp rbx, '9'
+      jg .done
+      sub rbx, '0'
+      mul rcx
+      add rax, rbx
+      inc rdi
+      dec rsi
+      jmp .next_digit
+  .done:
+      ret
+  write_uint:
+      test rsi, rsi
+      jz .base_zero
+      mov rcx, 10
+      mov rax, rsi
+      mov r10, 0
+  .next_digit:
+      test rax, rax
+      jz .done
+      mov rdx, 0
+      div rcx
+      add rdx, '0'
+      dec rsp
+      mov byte [rsp], dl
+      inc r10
+      jmp .next_digit
+  .done:
+      write rdi, rsp, r10
+      add rsp, r10
+      ret
+  .base_zero:
+      dec rsp
+      mov byte [rsp], '0'
+      write rdi, rsp, 1
+      inc rsp
+      ret
+  write_cstr:
+      push rsi
+      push rdi
+      mov rdi, rsi
+      call strlen
+      mov rdx, rax
+      mov rax, SYS_write
+      pop rdi
+      pop rsi
+      syscall
+      ret
+"
+
+*-
+
+fasm "mov rsi, qword [rbp - %d]", x
+fasm "mov rdi, 1"
+fasm "call write_uint"
+
+fasm "mov rsi, newline"
+fasm "mov rdi, 1"
+fasm "call write_cstr"
+
+fasm "mov al, byte [rbp - %d]", c
+fasm "mov [char_buf], al"
+fasm "mov rdi, 1"
+fasm "mov rsi, char_buf"
+fasm "mov rdx, 2"
+fasm "mov rax, 1"
+fasm "syscall"
+
+fasm "mov rsi, newline"
+fasm "mov rdi, 1"
+fasm "call write_cstr"
