@@ -5,10 +5,11 @@
 #ifndef TOKEN
 #define TOKEN
 
+#include <stddef.h>
+
 /*
  * @enum token_kind: enumeration of all kinds of tokens supported by the lexer.
  */
-#include <stddef.h>
 typedef enum token_kind {
   /*
    * Keywords
@@ -25,7 +26,11 @@ typedef enum token_kind {
   TOKEN_TYPE_CHAR,
   TOKEN_FASM_DEFINE, // fasm definitions, goes before _start
   TOKEN_FASM,        // inline fasm copy and paste
-  TOKEN_POINTER,
+
+  /*
+   * Preprocessor Directives
+   */
+  TOKEN_PDIR_INCLUDE,
 
   /*
    * Literals
@@ -35,6 +40,7 @@ typedef enum token_kind {
   TOKEN_INT,
   TOKEN_CHAR,
   TOKEN_STRING,
+  TOKEN_POINTER,
 
   /*
    * Brackets

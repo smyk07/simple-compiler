@@ -1,7 +1,12 @@
-int base = input
-int exponent = input
+-include "io.scl"
+
+int base
+int exponent
 int result = 1
 int counter = 0
+
+fasm "input %d", base
+fasm "input %d", exponent
 
 if exponent == 0 then goto :end
 
@@ -11,4 +16,4 @@ counter = counter + 1
 if counter < exponent then goto :power_loop
 
 :end
-output result
+fasm "output_int %d", result

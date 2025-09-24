@@ -1,12 +1,21 @@
-int x = 67
-char c = 'S'
-
 -*
- * commented to avoid re-definition of symbols
+ * fasm definitions for basic IO in scl
+ * Usage:
+ *
+ * for input:
+ *   fasm "input %d", x
+ *
+ * for integer output:
+ *   fasm "output_int %d", x
+ *
+ * for character ouytput:
+ *   fasm "output_char %d", c
+ *-
 
 fasm_define "
   SYS_read equ 0
   SYS_write equ 1
+
   macro syscall3 number, a, b, c
   {
       mov rax, number
@@ -15,14 +24,17 @@ fasm_define "
       mov rdx, c
       syscall
   }
+
   macro read fd, buf, count
   {
       syscall3 SYS_read, fd, buf, count
   }
+
   macro write fd, buf, count
   {
       syscall3 1, fd, buf, count
   }
+
   strlen:
       push rdi
       xor rax, rax
@@ -57,6 +69,7 @@ fasm_define "
       jmp .next_digit
   .done:
       ret
+
   write_uint:
       test rsi, rsi
       jz .base_zero
@@ -83,6 +96,7 @@ fasm_define "
       write rdi, rsp, 1
       inc rsp
       ret
+
   write_cstr:
       push rsi
       push rdi
@@ -94,26 +108,41 @@ fasm_define "
       pop rsi
       syscall
       ret
+
+  macro input ptr
+  {
+    read 0, line, LINE_MAX
+    mov rdi, line
+    call strlen
+    mov rdi, line
+    mov rsi, rax
+    call parse_uint
+    mov [rbp - ptr], rax
+  }
+
+  macro output_int ptr
+  {
+    mov rsi, qword [rbp - ptr]
+    mov rdi, 1
+    call write_uint
+
+    mov rsi, newline
+    mov rdi, 1
+    call write_cstr
+  }
+
+  macro output_char ptr
+  {
+    mov al, byte [rbp - ptr]
+    mov [char_buf], al
+    mov rdi, 1
+    mov rsi, char_buf
+    mov rdx, 2
+    mov rax, 1
+    syscall
+
+    mov rsi, newline
+    mov rdi, 1
+    call write_cstr
+  }
 "
-
-*-
-
-fasm "mov rsi, qword [rbp - %d]", x
-fasm "mov rdi, 1"
-fasm "call write_uint"
-
-fasm "mov rsi, newline"
-fasm "mov rdi, 1"
-fasm "call write_cstr"
-
-fasm "mov al, byte [rbp - %d]", c
-fasm "mov [char_buf], al"
-fasm "mov rdi, 1"
-fasm "mov rsi, char_buf"
-fasm "mov rdx, 2"
-fasm "mov rax, 1"
-fasm "syscall"
-
-fasm "mov rsi, newline"
-fasm "mov rdi, 1"
-fasm "call write_cstr"

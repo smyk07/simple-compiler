@@ -1,7 +1,13 @@
-int n = input
+-include "io.scl"
 
-if n == 0 then output 0
-if n == 1 then output 1
+int const_zero = 0
+int const_one = 1
+
+int n
+fasm "input %d", n
+
+if n == 0 then fasm "output_int %d", const_zero
+if n == 1 then fasm "output_int %d", const_one
 
 int a = 0
 int b = 1
@@ -17,4 +23,4 @@ count = count + 1
 goto :fib_loop
 
 :end
-output fib
+fasm "output_int %d", fib

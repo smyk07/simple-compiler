@@ -179,6 +179,18 @@ static token lexer_next_token(lexer *l) {
         return (token){
             .kind = TOKEN_INVALID, .value.character = l->ch, .line = l->line};
       }
+    } else if (isalnum(l->ch)) {
+      string_slice slice = {.str = l->buffer + l->pos, .len = 0};
+      while (isalnum(l->ch) || l->ch == '_') {
+        slice.len += 1;
+        lexer_read_char(l);
+      }
+      char *directive = NULL;
+      string_slice_to_owned(&slice, &directive);
+      if (strcmp(directive, "include") == 0) {
+        return (token){
+            .kind = TOKEN_PDIR_INCLUDE, .value.str = NULL, .line = l->line};
+      }
     }
     return (token){.kind = TOKEN_SUBTRACT, .value.str = NULL, .line = l->line};
   }
@@ -456,14 +468,34 @@ void lexer_tokenize(const char *buffer, size_t buffer_len,
   lexer lexer;
   lexer_init(&lexer, buffer, buffer_len);
 
-  token token;
+  token tok;
   do {
-    token = lexer_next_token(&lexer);
-    if (dynamic_array_append(tokens, &token) != 0) {
+    tok = lexer_next_token(&lexer);
+
+    if (tok.kind == TOKEN_PDIR_INCLUDE) {
+      token file_to_incl = lexer_next_token(&lexer);
+      char *incl_buffer = NULL;
+      int incl_buffer_len =
+          scu_read_file(file_to_incl.value.str, &incl_buffer, errors);
+
+      if (incl_buffer == NULL) {
+        scu_perror(errors, "Failed to read file: %s\n", file_to_incl.value.str);
+        exit(1);
+      }
+
+      lexer_tokenize(incl_buffer, incl_buffer_len, tokens, errors);
+
+      token temp;
+      dynamic_array_pop(tokens, &temp);
+
+      continue;
+    }
+
+    if (dynamic_array_append(tokens, &tok) != 0) {
       scu_perror(errors, "Failed to append token to array\n");
       exit(1);
     }
-  } while (token.kind != TOKEN_END);
+  } while (tok.kind != TOKEN_END);
 }
 
 const char *lexer_token_kind_to_str(token_kind kind) {
@@ -484,12 +516,12 @@ const char *lexer_token_kind_to_str(token_kind kind) {
     return "fasm_define";
   case TOKEN_FASM:
     return "fasm";
+  case TOKEN_PDIR_INCLUDE:
+    return "pdir_include";
   case TOKEN_TYPE_INT:
     return "type_int";
   case TOKEN_TYPE_CHAR:
     return "type_char";
-  case TOKEN_POINTER:
-    return "pointer";
   case TOKEN_IDENTIFIER:
     return "identifier";
   case TOKEN_INT:
@@ -498,6 +530,8 @@ const char *lexer_token_kind_to_str(token_kind kind) {
     return "char";
   case TOKEN_STRING:
     return "string";
+  case TOKEN_POINTER:
+    return "pointer";
   case TOKEN_ASSIGN:
     return "assign";
   case TOKEN_LPAREN:

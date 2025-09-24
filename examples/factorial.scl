@@ -1,4 +1,8 @@
-int n = input
+-include "io.scl"
+
+int n
+fasm "input %d", n
+
 int result = 1
 
 if n == 0 then goto :end
@@ -9,4 +13,4 @@ n = n - 1
 if n > 1 then goto :main
 
 :end
-output result
+fasm "output_int %d", result

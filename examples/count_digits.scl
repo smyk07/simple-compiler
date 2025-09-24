@@ -1,4 +1,8 @@
-int number = input
+-include "io.scl"
+
+int number
+fasm "input %d", number
+
 int count = 0
 
 if number == 0 then goto :special_case
@@ -13,4 +17,4 @@ goto :count_loop
 count = 1
 
 :end
-output count
+fasm "output_int %d", count

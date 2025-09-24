@@ -1,9 +1,14 @@
-int n = input - 1
+-include "io.scl"
+
+int n
+fasm "input %d", n
+n = n - 1
+
 int count = 0
 
 int num = 2
 
-output num
+fasm "output_int %d", num
 
 :main
 if count == n then goto :end
@@ -32,7 +37,7 @@ if is_prime == 1 then goto :print_prime
 goto :next_num
 
 :print_prime
-output num
+fasm "output_int %d", num
 count = count + 1
 
 :next_num
