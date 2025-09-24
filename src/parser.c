@@ -798,7 +798,7 @@ static void print_instr(instr_node *instr) {
   case INSTR_FASM:
     printf("fasm: %s", instr->fasm.content);
     if (instr->fasm.kind == ARG)
-      printf(", %s\n", instr->fasm.argument.name);
+      printf(", %s", instr->fasm.argument.name);
     printf("\n");
     break;
   }
