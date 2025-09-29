@@ -38,7 +38,8 @@ typedef struct lexer {
  * @param errors: error counter to increment whenever an errror is encountered.
  */
 void lexer_tokenize(const char *buffer, size_t buffer_len,
-                    dynamic_array *tokens, unsigned int *errors);
+                    dynamic_array *tokens, char *include_dir,
+                    unsigned int *errors);
 
 /*
  * @brief: Converts a token_kind enum value to its string representation.

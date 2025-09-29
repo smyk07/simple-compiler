@@ -31,6 +31,11 @@ typedef struct coptions {
    * Write output to output_filename instead of the default filename.
    */
   bool output;
+
+  /*
+   * Weather an include directory was specified in the command.
+   */
+  bool include_dir_specified;
 } coptions;
 
 /*
@@ -42,6 +47,11 @@ typedef struct cstate {
    * Ex: main.sclc
    */
   const char *filename;
+
+  /*
+   * State in which directory the scl files to be included are located
+   */
+  char *include_dir;
 
   /*
    * Name of the output file. default is extracted from filename.

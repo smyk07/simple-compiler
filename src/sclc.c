@@ -32,7 +32,7 @@ int main(int argc, char *argv[]) {
 
   // Lexing
   lexer_tokenize(state->code_buffer, state->code_buffer_len, state->tokens,
-                 &state->error_count);
+                 state->include_dir, &state->error_count);
 
   // Lexing test function
   if (state->options.verbose)

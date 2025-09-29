@@ -293,6 +293,7 @@ static void instr_asm(instr_node *instr, dynamic_array *variables,
       char *stmt =
           scu_format_string((char *)instr->fasm.content, index * 8 + 8);
       printf("    %s\n", stmt);
+      free(stmt);
     } else {
       printf("    %s\n", instr->fasm.content);
     }

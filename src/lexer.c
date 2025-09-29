@@ -4,6 +4,7 @@
 #include "utils.h"
 
 #include <ctype.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -188,6 +189,7 @@ static token lexer_next_token(lexer *l) {
       char *directive = NULL;
       string_slice_to_owned(&slice, &directive);
       if (strcmp(directive, "include") == 0) {
+        free(directive);
         return (token){
             .kind = TOKEN_PDIR_INCLUDE, .value.str = NULL, .line = l->line};
       }
@@ -338,9 +340,6 @@ static token lexer_next_token(lexer *l) {
     size_t capacity = 16;
     size_t length = 0;
     char *string_value = scu_checked_malloc(capacity);
-    if (!string_value) {
-      return (token){.kind = TOKEN_INVALID, .value.str = NULL, .line = l->line};
-    }
 
     if (l->ch == '"') {
       lexer_read_char(l);
@@ -352,13 +351,7 @@ static token lexer_next_token(lexer *l) {
     while (l->ch != '"' && l->ch != '\0' && l->ch != EOF) {
       if (length >= capacity - 1) {
         capacity *= 2;
-        char *new_buffer = scu_checked_realloc(string_value, capacity);
-        if (!new_buffer) {
-          free(string_value);
-          return (token){
-              .kind = TOKEN_INVALID, .value.str = NULL, .line = l->line};
-        }
-        string_value = new_buffer;
+        string_value = scu_checked_realloc(string_value, capacity);
       }
 
       if (l->ch == '\\') {
@@ -464,7 +457,8 @@ static token lexer_next_token(lexer *l) {
 }
 
 void lexer_tokenize(const char *buffer, size_t buffer_len,
-                    dynamic_array *tokens, unsigned int *errors) {
+                    dynamic_array *tokens, char *include_dir,
+                    unsigned int *errors) {
   lexer lexer;
   lexer_init(&lexer, buffer, buffer_len);
 
@@ -473,20 +467,18 @@ void lexer_tokenize(const char *buffer, size_t buffer_len,
     tok = lexer_next_token(&lexer);
 
     if (tok.kind == TOKEN_PDIR_INCLUDE) {
-      token file_to_incl = lexer_next_token(&lexer);
+      token incl_str_token = lexer_next_token(&lexer);
+      char *filepath_to_include =
+          strcat(strcat(include_dir, "/"), incl_str_token.value.str);
       char *incl_buffer = NULL;
-      int incl_buffer_len =
-          scu_read_file(file_to_incl.value.str, &incl_buffer, errors);
+      size_t incl_buffer_len =
+          scu_read_file(filepath_to_include, &incl_buffer, errors);
 
-      if (incl_buffer == NULL) {
-        scu_perror(errors, "Failed to read file: %s\n", file_to_incl.value.str);
-        exit(1);
-      }
+      lexer_tokenize(incl_buffer, incl_buffer_len, tokens, include_dir, errors);
 
-      lexer_tokenize(incl_buffer, incl_buffer_len, tokens, errors);
-
-      token temp;
-      dynamic_array_pop(tokens, &temp);
+      dynamic_array_remove(tokens, tokens->count - 1);
+      free(incl_str_token.value.str);
+      free(incl_buffer);
 
       continue;
     }
@@ -615,7 +607,7 @@ void free_tokens(dynamic_array *tokens) {
     token *token = tokens->items + (i * tokens->item_size);
     if (token->kind == TOKEN_IDENTIFIER || token->kind == TOKEN_LABEL ||
         token->kind == TOKEN_INVALID || token->kind == TOKEN_ADDRESS_OF ||
-        token->kind == TOKEN_POINTER) {
+        token->kind == TOKEN_POINTER || token->kind == TOKEN_STRING) {
       free(token->value.str);
     }
   }

@@ -10,7 +10,7 @@
 void *scu_checked_malloc(size_t size) {
   if (size == 0)
     size = 1;
-  void *ptr = malloc(size);
+  void *ptr = calloc(1, size);
   if (ptr == NULL) {
     scu_perror(NULL, "Memory allocation failed.");
     exit(1);
@@ -51,6 +51,7 @@ char *scu_extract_name(const char *filename) {
 int scu_read_file(const char *path, char **buffer, unsigned int *error_count) {
   struct stat path_stat;
   stat(path, &path_stat);
+
   if (!S_ISREG(path_stat.st_mode)) {
     scu_perror(error_count, "Given path is not a valid file.\n");
     scu_check_errors(error_count);

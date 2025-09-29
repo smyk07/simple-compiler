@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 
 cstate *cstate_create_from_args(int argc, char *argv[]) {
   cstate *s = scu_checked_malloc(sizeof(cstate));
@@ -19,12 +20,18 @@ cstate *cstate_create_from_args(int argc, char *argv[]) {
     printf("Simple Compiler - Just as the name suggests\n");
     printf("Usage: sclc [OPTIONS] <filename>\n\n");
     printf("OPTIONS:\n");
-    printf("--verbose OR -v \t Print progress messages for various stages.\n");
+    printf("--verbose      OR -v \t Print progress messages for various "
+           "stages.\n");
+    printf("--output       OR -o \t Specify output binary filename.\n");
+    printf("--include_dir  OR -i \t Specify include directory path.\n");
     exit(1);
   }
 
   int i = 1;
   char *positional_filename = NULL;
+  s->output_filename = NULL;
+  s->include_dir = NULL;
+  s->code_buffer = NULL;
 
   while (i < argc) {
     char *arg = argv[i];
@@ -53,6 +60,38 @@ cstate *cstate_create_from_args(int argc, char *argv[]) {
       continue;
     }
 
+    if (strcmp(arg, "--include_dir") == 0 || strcmp(arg, "-i") == 0) {
+      if (i + 1 >= argc) {
+        scu_perror(&s->error_count, "Missing directory path after %s\n", arg);
+        exit(1);
+      }
+
+      if (s->include_dir != NULL) {
+        scu_perror(&s->error_count,
+                   "Include directory specified more than once: %s\n",
+                   argv[i + 1]);
+        exit(1);
+      }
+
+      struct stat st;
+      if (stat(argv[i + 1], &st) != 0) {
+        scu_perror(&s->error_count, "Include directory does not exist: %s\n",
+                   argv[i + 1]);
+        exit(1);
+      }
+
+      if (!S_ISDIR(st.st_mode)) {
+        scu_perror(&s->error_count, "Path is not a directory: %s\n",
+                   argv[i + 1]);
+        exit(1);
+      }
+
+      s->include_dir = argv[i + 1];
+      s->options.include_dir_specified = true;
+      i += 2;
+      continue;
+    }
+
     if (arg[0] != '-') {
       if (positional_filename != NULL) {
         scu_perror(&s->error_count, "Multiple input files specified: %s\n",
@@ -68,6 +107,9 @@ cstate *cstate_create_from_args(int argc, char *argv[]) {
     scu_perror(&s->error_count, "Unknown option: %s\n", arg);
     exit(1);
   }
+
+  if (s->include_dir == NULL)
+    s->include_dir = strdup(".");
 
   if (positional_filename == NULL) {
     scu_perror(&s->error_count, "Missing input filename\n");
@@ -85,7 +127,6 @@ cstate *cstate_create_from_args(int argc, char *argv[]) {
 
   s->error_count = 0;
 
-  s->code_buffer = NULL;
   s->code_buffer_len =
       scu_read_file(s->filename, &s->code_buffer, &s->error_count);
   if (s->code_buffer == NULL) {
