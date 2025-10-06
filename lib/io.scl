@@ -109,6 +109,12 @@ fasm_define "
       syscall
       ret
 
+  macro pnewline {
+    mov rsi, newline
+    mov rdi, 1
+    call write_cstr
+  }
+
   macro input ptr
   {
     read 0, line, LINE_MAX
@@ -125,10 +131,7 @@ fasm_define "
     mov rsi, qword [rbp - ptr]
     mov rdi, 1
     call write_uint
-
-    mov rsi, newline
-    mov rdi, 1
-    call write_cstr
+    pnewline
   }
 
   macro output_char ptr
@@ -140,9 +143,6 @@ fasm_define "
     mov rdx, 2
     mov rax, 1
     syscall
-
-    mov rsi, newline
-    mov rdi, 1
-    call write_cstr
+    pnewline
   }
 "
