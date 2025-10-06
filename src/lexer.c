@@ -151,6 +151,16 @@ static token lexer_next_token(lexer *l) {
     return (token){.kind = TOKEN_RPAREN, .value.str = NULL, .line = l->line};
   }
 
+  else if (l->ch == '{') {
+    lexer_read_char(l);
+    return (token){.kind = TOKEN_LBRACE, .value.str = NULL, .line = l->line};
+  }
+
+  else if (l->ch == '}') {
+    lexer_read_char(l);
+    return (token){.kind = TOKEN_RBRACE, .value.str = NULL, .line = l->line};
+  }
+
   else if (l->ch == ',') {
     lexer_read_char(l);
     return (token){.kind = TOKEN_COMMA, .value.str = NULL, .line = l->line};
@@ -405,43 +415,80 @@ static token lexer_next_token(lexer *l) {
 
   else if (isalnum(l->ch) || l->ch == '_') {
     string_slice slice = {.str = l->buffer + l->pos, .len = 0};
+
     while (isalnum(l->ch) || l->ch == '_') {
       slice.len += 1;
       lexer_read_char(l);
     }
+
     char *value = NULL;
     string_slice_to_owned(&slice, &value);
+
     if (strcmp(value, "input") == 0) {
       free(value);
       return (token){.kind = TOKEN_INPUT, .value.str = NULL, .line = l->line};
-    } else if (strcmp(value, "output") == 0) {
+    }
+
+    else if (strcmp(value, "output") == 0) {
       free(value);
       return (token){.kind = TOKEN_OUTPUT, .value.str = NULL, .line = l->line};
-    } else if (strcmp(value, "goto") == 0) {
+    }
+
+    else if (strcmp(value, "goto") == 0) {
       free(value);
       return (token){.kind = TOKEN_GOTO, .value.str = NULL, .line = l->line};
-    } else if (strcmp(value, "if") == 0) {
+    }
+
+    else if (strcmp(value, "if") == 0) {
       free(value);
       return (token){.kind = TOKEN_IF, .value.str = NULL, .line = l->line};
-    } else if (strcmp(value, "then") == 0) {
+    }
+
+    else if (strcmp(value, "then") == 0) {
       free(value);
       return (token){.kind = TOKEN_THEN, .value.str = NULL, .line = l->line};
-    } else if (strcmp(value, "int") == 0) {
+    }
+
+    else if (strcmp(value, "int") == 0) {
       free(value);
       return (token){
           .kind = TOKEN_TYPE_INT, .value.str = NULL, .line = l->line};
-    } else if (strcmp(value, "char") == 0) {
+    }
+
+    else if (strcmp(value, "char") == 0) {
       free(value);
       return (token){
           .kind = TOKEN_TYPE_CHAR, .value.str = NULL, .line = l->line};
-    } else if (strcmp(value, "fasm_define") == 0) {
+    }
+
+    else if (strcmp(value, "fasm_define") == 0) {
       free(value);
       return (token){
           .kind = TOKEN_FASM_DEFINE, .value.str = NULL, .line = l->line};
-    } else if (strcmp(value, "fasm") == 0) {
+    }
+
+    else if (strcmp(value, "fasm") == 0) {
       free(value);
       return (token){.kind = TOKEN_FASM, .value.str = NULL, .line = l->line};
-    } else {
+    }
+
+    else if (strcmp(value, "loop") == 0) {
+      free(value);
+      return (token){.kind = TOKEN_LOOP, .value.str = NULL, .line = l->line};
+    }
+
+    else if (strcmp(value, "continue") == 0) {
+      free(value);
+      return (token){
+          .kind = TOKEN_CONTINUE, .value.str = NULL, .line = l->line};
+    }
+
+    else if (strcmp(value, "break") == 0) {
+      free(value);
+      return (token){.kind = TOKEN_BREAK, .value.str = NULL, .line = l->line};
+    }
+
+    else {
       return (token){
           .kind = TOKEN_IDENTIFIER, .value.str = value, .line = l->line};
     }
@@ -468,8 +515,11 @@ void lexer_tokenize(const char *buffer, size_t buffer_len,
 
     if (tok.kind == TOKEN_PDIR_INCLUDE) {
       token incl_str_token = lexer_next_token(&lexer);
-      char *filepath_to_include =
-          strcat(strcat(include_dir, "/"), incl_str_token.value.str);
+      size_t total_len =
+          strlen(include_dir) + 1 + strlen(incl_str_token.value.str) + 1;
+      char *filepath_to_include = malloc(total_len);
+      snprintf(filepath_to_include, total_len, "%s/%s", include_dir,
+               incl_str_token.value.str);
       char *incl_buffer = NULL;
       size_t incl_buffer_len =
           scu_read_file(filepath_to_include, &incl_buffer, errors);
@@ -477,6 +527,7 @@ void lexer_tokenize(const char *buffer, size_t buffer_len,
       lexer_tokenize(incl_buffer, incl_buffer_len, tokens, include_dir, errors);
 
       dynamic_array_remove(tokens, tokens->count - 1);
+      free(filepath_to_include);
       free(incl_str_token.value.str);
       free(incl_buffer);
 
@@ -508,6 +559,12 @@ const char *lexer_token_kind_to_str(token_kind kind) {
     return "fasm_define";
   case TOKEN_FASM:
     return "fasm";
+  case TOKEN_LOOP:
+    return "loop declare";
+  case TOKEN_CONTINUE:
+    return "continue";
+  case TOKEN_BREAK:
+    return "break";
   case TOKEN_PDIR_INCLUDE:
     return "pdir_include";
   case TOKEN_TYPE_INT:
@@ -530,6 +587,10 @@ const char *lexer_token_kind_to_str(token_kind kind) {
     return "bracket open";
   case TOKEN_RPAREN:
     return "bracket close";
+  case TOKEN_LBRACE:
+    return "brace open";
+  case TOKEN_RBRACE:
+    return "brace close";
   case TOKEN_COMMA:
     return "comma";
   case TOKEN_ADD:

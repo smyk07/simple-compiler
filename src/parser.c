@@ -1,9 +1,12 @@
 #include "parser.h"
 #include "ast.h"
+#include "ds/dynamic_array.h"
 #include "lexer.h"
 #include "token.h"
 #include "utils.h"
 
+#include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -279,7 +282,8 @@ static void parse_rel(parser *p, rel_node *rel, unsigned int *errors) {
  * @param instr: pointer to a newly malloc'd instr struct.
  * @param errors: counter variable to increment when an error is encountered.
  */
-static void parse_instr(parser *p, instr_node *instr, unsigned int *errors);
+static void parse_instr(parser *p, instr_node *instr, size_t *loop_counter,
+                        unsigned int *errors);
 
 /*
  * @brief: parse a variable initialize instruction.
@@ -379,7 +383,8 @@ static void parse_assign(parser *p, instr_node *instr, unsigned int *errors) {
  * @param instr: pointer to a newly malloc'd instr struct.
  * @param errors: counter variable to increment when an error is encountered.
  */
-static void parse_if(parser *p, instr_node *instr, unsigned int *errors) {
+static void parse_if(parser *p, instr_node *instr, size_t *loop_counter,
+                     unsigned int *errors) {
   token token;
 
   instr->kind = INSTR_IF;
@@ -397,7 +402,7 @@ static void parse_if(parser *p, instr_node *instr, unsigned int *errors) {
   parser_advance(p);
 
   instr->if_.instr = scu_checked_malloc(sizeof(instr_node));
-  parse_instr(p, instr->if_.instr, errors);
+  parse_instr(p, instr->if_.instr, loop_counter, errors);
 }
 
 /*
@@ -519,13 +524,56 @@ static void parse_fasm(parser *p, instr_node *instr, unsigned int *errors) {
 }
 
 /*
+ * @brief: parse loops.
+ *
+ * @param p: pointer to the parser state.
+ * @param instr: pointer to a newly malloc'd instr struct.
+ * @param errors: counter variable to increment when an error is encountered.
+ */
+static void parse_loop(parser *p, instr_node *instr, size_t *loop_counter,
+                       unsigned int *errors) {
+  token token;
+
+  parser_current(p, &token, errors);
+  instr->kind = INSTR_LOOP;
+  instr->line = token.line;
+  instr->loop.loop_id = (*loop_counter)++;
+  dynamic_array_init(&instr->loop.instrs, sizeof(instr_node));
+
+  parser_advance(p);
+  parser_current(p, &token, errors);
+  if (token.kind != TOKEN_LBRACE) {
+    scu_perror(errors, "no opening brace for loop at %d\n", token.line);
+    scu_check_errors(errors);
+  }
+
+  parser_advance(p);
+  parser_current(p, &token, errors);
+  while (token.kind != TOKEN_RBRACE) {
+    if (token.kind == TOKEN_COMMENT) {
+      parser_advance(p);
+      parser_current(p, &token, errors);
+      continue;
+    }
+    instr_node *_instr = scu_checked_malloc(sizeof(instr_node));
+    parse_instr(p, _instr, loop_counter, errors);
+    dynamic_array_append(&instr->loop.instrs, _instr);
+    free(_instr);
+    parser_current(p, &token, errors);
+  }
+
+  parser_advance(p);
+}
+
+/*
  * @brief: parse an instruction. (definition)
  *
  * @param p: pointer to the parser state.
  * @param instr: pointer to a newly malloc'd instr struct.
  * @param errors: counter variable to increment when an error is encountered.
  */
-static void parse_instr(parser *p, instr_node *instr, unsigned int *errors) {
+static void parse_instr(parser *p, instr_node *instr, size_t *loop_counter,
+                        unsigned int *errors) {
   token token;
 
   parser_current(p, &token, errors);
@@ -543,7 +591,7 @@ static void parse_instr(parser *p, instr_node *instr, unsigned int *errors) {
     parse_output(p, instr, errors);
     break;
   case TOKEN_IF:
-    parse_if(p, instr, errors);
+    parse_if(p, instr, loop_counter, errors);
     break;
   case TOKEN_GOTO:
     parse_goto(p, instr, errors);
@@ -556,6 +604,19 @@ static void parse_instr(parser *p, instr_node *instr, unsigned int *errors) {
     break;
   case TOKEN_FASM:
     parse_fasm(p, instr, errors);
+    break;
+  case TOKEN_LOOP:
+    parse_loop(p, instr, loop_counter, errors);
+    break;
+  case TOKEN_BREAK:
+    instr->kind = INSTR_LOOP_BREAK;
+    instr->line = token.line;
+    parser_advance(p);
+    break;
+  case TOKEN_CONTINUE:
+    instr->kind = INSTR_LOOP_CONTINUE;
+    instr->line = token.line;
+    parser_advance(p);
     break;
   default:
     scu_perror(errors, "unexpected token: %s - '%s' [line %d]\n",
@@ -570,6 +631,7 @@ void parser_parse_program(parser *p, program_node *program,
 
   token token;
   parser_current(p, &token, errors);
+
   while (token.kind != TOKEN_END) {
     if (token.kind == TOKEN_COMMENT) {
       parser_advance(p);
@@ -577,7 +639,7 @@ void parser_parse_program(parser *p, program_node *program,
       continue;
     }
     instr_node *instr = scu_checked_malloc(sizeof(instr_node));
-    parse_instr(p, instr, errors);
+    parse_instr(p, instr, &program->loop_counter, errors);
     dynamic_array_append(&program->instrs, instr);
     free(instr);
     parser_current(p, &token, errors);
@@ -801,6 +863,24 @@ static void print_instr(instr_node *instr) {
       printf(", %s", instr->fasm.argument.name);
     printf("\n");
     break;
+
+  case INSTR_LOOP:
+    printf("loop %zu starts: \n", instr->loop.loop_id);
+    for (unsigned int i = 0; i < instr->loop.instrs.count; i++) {
+      instr_node _instr;
+      dynamic_array_get(&instr->loop.instrs, i, &_instr);
+      printf("\t");
+      print_instr(&_instr);
+    }
+    break;
+
+  case INSTR_LOOP_BREAK:
+    printf("loop break\n");
+    break;
+
+  case INSTR_LOOP_CONTINUE:
+    printf("loop continue\n");
+    break;
   }
 }
 
@@ -870,6 +950,19 @@ void free_expressions(program_node *program) {
       free_expr_children(&instr->assign.expr);
     } else if (instr->kind == INSTR_INITIALIZE) {
       free_expr_children(&instr->initialize_variable.expr);
+    }
+  }
+}
+
+void free_loops(program_node *program) {
+  for (unsigned int i = 0; i < program->instrs.count; i++) {
+    instr_node *instr = program->instrs.items + (i * program->instrs.item_size);
+    if (instr->kind == INSTR_LOOP) {
+      program_node temp = {0, instr->loop.instrs};
+      free_if_instrs(&temp);
+      free_expressions(&temp);
+      free_loops(&temp);
+      dynamic_array_free(&instr->loop.instrs);
     }
   }
 }

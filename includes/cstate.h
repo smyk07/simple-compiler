@@ -12,6 +12,7 @@
 #define CSTATE_H
 
 #include "ds/dynamic_array.h"
+#include "ds/stack.h"
 #include "parser.h"
 
 #include <stdbool.h>
@@ -82,6 +83,7 @@ typedef struct cstate {
   parser *parser;
   program_node *program;
   dynamic_array *variables;
+  stack *loops;
 } cstate;
 
 /*

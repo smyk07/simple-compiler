@@ -1,6 +1,7 @@
 #include "codegen.h"
 #include "ast.h"
 #include "ds/dynamic_array.h"
+#include "ds/stack.h"
 #include "fasm.h"
 #include "semantic.h"
 #include "utils.h"
@@ -169,7 +170,7 @@ static void rel_asm(rel_node *rel, dynamic_array *variables) {
  * @param if_count: counter for if instructions.
  */
 static void instr_asm(instr_node *instr, dynamic_array *variables,
-                      unsigned int *if_count) {
+                      unsigned int *if_count, stack *loops) {
   switch (instr->kind) {
   case INSTR_DECLARE:
     break;
@@ -199,7 +200,7 @@ static void instr_asm(instr_node *instr, dynamic_array *variables,
     int label = (*if_count)++;
     printf("    test rax, rax\n");
     printf("    jz .endif%d\n", label);
-    instr_asm(instr->if_.instr, variables, if_count);
+    instr_asm(instr->if_.instr, variables, if_count, loops);
     printf("    .endif%d:\n", label);
     break;
   }
@@ -298,11 +299,36 @@ static void instr_asm(instr_node *instr, dynamic_array *variables,
       printf("    %s\n", instr->fasm.content);
     }
     break;
+
+  case INSTR_LOOP:
+    loop_node new_loop = {.loop_id = instr->loop.loop_id};
+    stack_push(loops, &new_loop);
+    printf("loop_%zu_start:\n", instr->loop.loop_id);
+    for (unsigned int i = 0; i < instr->loop.instrs.count; i++) {
+      struct instr_node _instr;
+      dynamic_array_get(&instr->loop.instrs, i, &_instr);
+      instr_asm(&_instr, variables, if_count, loops);
+    }
+    loop_node *loop = malloc(sizeof(loop_node *));
+    stack_pop(loops, loop);
+    printf("loop_%zu_end:\n", instr->loop.loop_id);
+    free(loop);
+    break;
+
+  case INSTR_LOOP_BREAK:
+    loop = stack_top(loops);
+    printf("    jmp loop_%zu_end\n", loop->loop_id);
+    break;
+
+  case INSTR_LOOP_CONTINUE:
+    loop = stack_top(loops);
+    printf("    jmp loop_%zu_start\n", loop->loop_id);
+    break;
   }
 }
 
 void instrs_to_asm(program_node *program, dynamic_array *variables,
-                   const char *filename) {
+                   stack *loops, const char *filename) {
   unsigned int if_count = 0;
 
   char *output_asm_file = scu_format_string("%s.s", filename);
@@ -336,7 +362,7 @@ void instrs_to_asm(program_node *program, dynamic_array *variables,
     struct instr_node instr;
     dynamic_array_get(&program->instrs, i, &instr);
 
-    instr_asm(&instr, variables, &if_count);
+    instr_asm(&instr, variables, &if_count, loops);
   }
 
   printf("    add rsp, %zu\n", variables->count * 8);

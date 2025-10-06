@@ -9,6 +9,7 @@
 #include "token.h"
 
 #include <stddef.h>
+#include <stdint.h>
 
 /*
  * @enum type: represents data types.
@@ -127,6 +128,9 @@ typedef enum instr_kind {
   INSTR_LABEL,
   INSTR_FASM_DEFINE,
   INSTR_FASM,
+  INSTR_LOOP,
+  INSTR_LOOP_BREAK,
+  INSTR_LOOP_CONTINUE,
 } instr_kind;
 
 /*
@@ -175,6 +179,11 @@ typedef struct fasm_node {
   const char *content;
 } fasm_node;
 
+typedef struct loop_node {
+  size_t loop_id;
+  dynamic_array instrs;
+} loop_node;
+
 /*
  * @struct instr_node: represents an instruction. (definition)
  */
@@ -191,6 +200,7 @@ typedef struct instr_node {
     label_node label;
     fasm_define_node fasm_def;
     fasm_node fasm;
+    loop_node loop;
   };
 } instr_node;
 
@@ -198,6 +208,7 @@ typedef struct instr_node {
  * @struct program_node: wrapper around a dynamic_array of instructions.
  */
 typedef struct program_node {
+  size_t loop_counter;
   dynamic_array instrs;
 } program_node;
 

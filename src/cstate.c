@@ -1,5 +1,9 @@
 #include "cstate.h"
+#include "ast.h"
+#include "ds/dynamic_array.h"
+#include "ds/stack.h"
 #include "lexer.h"
+#include "parser.h"
 #include "token.h"
 #include "utils.h"
 
@@ -140,6 +144,10 @@ cstate *cstate_create_from_args(int argc, char *argv[]) {
   s->parser = scu_checked_malloc(sizeof(parser));
 
   s->program = scu_checked_malloc(sizeof(program_node));
+  s->program->loop_counter = 0;
+
+  s->loops = scu_checked_malloc(sizeof(stack));
+  stack_init(s->loops, sizeof(loop_node *));
 
   s->variables = scu_checked_malloc(sizeof(dynamic_array));
   dynamic_array_init(s->variables, sizeof(variable));
@@ -159,8 +167,12 @@ void cstate_free(cstate *s) {
 
   free_if_instrs(s->program);
   free_expressions(s->program);
+  free_loops(s->program);
   dynamic_array_free(&s->program->instrs);
   free(s->program);
+
+  stack_free(s->loops);
+  free(s->loops);
 
   dynamic_array_free(s->variables);
   free(s->variables);

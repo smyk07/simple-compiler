@@ -25,10 +25,15 @@
 #include "utils.h"
 
 #include <stdio.h>
+#include <time.h>
 
 int main(int argc, char *argv[]) {
   // Initialize compiler state
   cstate *state = cstate_create_from_args(argc, argv);
+
+  clock_t start, end;
+  double time_taken;
+  start = clock();
 
   // Lexing
   lexer_tokenize(state->code_buffer, state->code_buffer_len, state->tokens,
@@ -55,11 +60,16 @@ int main(int argc, char *argv[]) {
     scu_pdebug("Semantic Analysis Complete\n");
 
   // Codegen & Assembler
-  instrs_to_asm(state->program, state->variables, state->output_filename);
+  instrs_to_asm(state->program, state->variables, state->loops,
+                state->output_filename);
+
+  end = clock();
+  time_taken = (double)(end - start) / CLOCKS_PER_SEC;
 
   // Restore STDOUT
   stdout = fopen("/dev/tty", "w");
-  scu_psuccess("%s\n", state->filename);
+
+  scu_psuccess("%.2fs %s\n", time_taken, state->filename);
 
   // Codegen & Assembler Debug Statements
   if (state->options.verbose)

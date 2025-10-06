@@ -7,6 +7,7 @@
 
 #include "ast.h"
 #include "ds/dynamic_array.h"
+#include "ds/stack.h"
 
 /*
  * @brief: convert a dynamic_array of instructions to FASM assembly.
@@ -17,6 +18,6 @@
  * @param errors: counter variable to increment when an error is encountered.
  */
 void instrs_to_asm(program_node *program, dynamic_array *variables,
-                   const char *filename);
+                   stack *loops, const char *filename);
 
 #endif // !CODEGEN

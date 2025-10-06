@@ -64,4 +64,13 @@ void free_if_instrs(program_node *program);
  */
 void free_expressions(program_node *program);
 
+/*
+ * @brief: free / destroy allocated instructions inside individual loop
+ * instructions.
+ *
+ * @param program: pointer to a program_node (empty dynamic_array of
+ * instructions).
+ */
+void free_loops(program_node *program);
+
 #endif

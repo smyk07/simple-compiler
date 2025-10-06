@@ -26,6 +26,9 @@ typedef enum token_kind {
   TOKEN_TYPE_CHAR,
   TOKEN_FASM_DEFINE, // fasm definitions, goes before _start
   TOKEN_FASM,        // inline fasm copy and paste
+  TOKEN_LOOP,
+  TOKEN_CONTINUE,
+  TOKEN_BREAK,
 
   /*
    * Preprocessor Directives
@@ -47,6 +50,8 @@ typedef enum token_kind {
    */
   TOKEN_LPAREN,
   TOKEN_RPAREN,
+  TOKEN_LBRACE,
+  TOKEN_RBRACE,
 
   /*
    * Delimiters
