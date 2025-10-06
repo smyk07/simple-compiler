@@ -23,7 +23,7 @@ make install
 Compile the examples in `./examples` like so:
 
 ```
-sclc ./examples/n_prime_numbers.scl
+sclc -i ./lib ./examples/n_prime_numbers.scl
 ```
 
 Run the executable:
