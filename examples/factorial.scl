@@ -5,12 +5,11 @@ fasm "input %d", n
 
 int result = 1
 
-if n == 0 then goto :end
+loop {
+  result = result * n
+  n = n - 1
+  if n > 1 then continue
+  break
+}
 
-:main
-result = result * n
-n = n - 1
-if n > 1 then goto :main
-
-:end
 fasm "output_int %d", result

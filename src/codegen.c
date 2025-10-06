@@ -303,7 +303,7 @@ static void instr_asm(instr_node *instr, dynamic_array *variables,
   case INSTR_LOOP:
     loop_node new_loop = {.loop_id = instr->loop.loop_id};
     stack_push(loops, &new_loop);
-    printf("loop_%zu_start:\n", instr->loop.loop_id);
+    printf(".loop_%zu_start:\n", instr->loop.loop_id);
     for (unsigned int i = 0; i < instr->loop.instrs.count; i++) {
       struct instr_node _instr;
       dynamic_array_get(&instr->loop.instrs, i, &_instr);
@@ -311,18 +311,18 @@ static void instr_asm(instr_node *instr, dynamic_array *variables,
     }
     loop_node *loop = malloc(sizeof(loop_node *));
     stack_pop(loops, loop);
-    printf("loop_%zu_end:\n", instr->loop.loop_id);
+    printf(".loop_%zu_end:\n", instr->loop.loop_id);
     free(loop);
     break;
 
   case INSTR_LOOP_BREAK:
     loop = stack_top(loops);
-    printf("    jmp loop_%zu_end\n", loop->loop_id);
+    printf("    jmp .loop_%zu_end\n", loop->loop_id);
     break;
 
   case INSTR_LOOP_CONTINUE:
     loop = stack_top(loops);
-    printf("    jmp loop_%zu_start\n", loop->loop_id);
+    printf("    jmp .loop_%zu_start\n", loop->loop_id);
     break;
   }
 }

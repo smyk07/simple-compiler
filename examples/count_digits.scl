@@ -5,16 +5,11 @@ fasm "input %d", number
 
 int count = 0
 
-if number == 0 then goto :special_case
+loop {
+  if number == 0 then break
+  number = number / 10
+  count = count + 1
+  continue
+}
 
-:count_loop
-if number == 0 then goto :end
-number = number / 10
-count = count + 1
-goto :count_loop
-
-:special_case
-count = 1
-
-:end
 fasm "output_int %d", count

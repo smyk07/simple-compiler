@@ -14,13 +14,13 @@ int b = 1
 int count = 2
 int fib = 0
 
-:fib_loop
-if count > n then goto :end
-fib = a + b
-a = b
-b = fib
-count = count + 1
-goto :fib_loop
+loop {
+  if count > n then break
+  fib = a + b
+  a = b
+  b = fib
+  count = count + 1
+  continue
+}
 
-:end
 fasm "output_int %d", fib
