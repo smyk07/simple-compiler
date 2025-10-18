@@ -16,14 +16,31 @@
  * @enum term_kind: enumeration of all the terms supported by the parser.
  */
 typedef enum term_kind {
-  TERM_INPUT = 0,
-  TERM_INT,
+  TERM_INT = 0,
   TERM_CHAR,
   TERM_IDENTIFIER,
   TERM_POINTER,
   TERM_DEREF,
-  TERM_ADDOF
+  TERM_ADDOF,
+  TERM_ARRAY_ACCESS,
+  TERM_ARRAY_LITERAL
 } term_kind;
+
+/*
+ * @struct array_access_node: represents an array access or subscript node.
+ */
+typedef struct array_access_node {
+  variable array_var;
+  struct expr_node *index_expr;
+} array_access_node;
+
+/*
+ * @struct array_literal_node: represents an array subscript node used to
+ * declare and define arrays.
+ */
+typedef struct array_literal_node {
+  dynamic_array elements;
+} array_literal_node;
 
 /*
  * @struct term_node: represents a term.
@@ -34,6 +51,8 @@ typedef struct term_node {
   union {
     token_value value;
     variable identifier;
+    array_access_node array_access;
+    array_literal_node array_literal;
   };
 } term_node;
 
@@ -108,10 +127,11 @@ typedef struct rel_node {
 typedef enum instr_kind {
   INSTR_DECLARE = 0,
   INSTR_INITIALIZE,
+  INSTR_DECLARE_ARRAY,
+  INSTR_INITIALIZE_ARRAY,
   INSTR_ASSIGN,
   INSTR_IF,
   INSTR_GOTO,
-  INSTR_OUTPUT,
   INSTR_LABEL,
   INSTR_FASM_DEFINE,
   INSTR_FASM,
@@ -131,6 +151,17 @@ typedef struct initialize_variable_node {
   variable var;
   expr_node expr;
 } initialize_variable_node;
+
+typedef struct declare_array_node {
+  variable var;
+  expr_node *size_expr;
+} declare_array_node;
+
+typedef struct initialize_array_node {
+  variable var;
+  expr_node *size_expr;
+  array_literal_node literal;
+} initialize_array_node;
 
 typedef struct assign_node {
   variable identifier;
@@ -180,6 +211,8 @@ typedef struct instr_node {
   union {
     variable declare_variable;
     initialize_variable_node initialize_variable;
+    declare_array_node declare_array;
+    initialize_array_node initialize_array;
     assign_node assign;
     if_node if_;
     goto_node goto_;

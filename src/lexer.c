@@ -161,6 +161,16 @@ static token lexer_next_token(lexer *l) {
     return (token){.kind = TOKEN_RBRACE, .value.str = NULL, .line = l->line};
   }
 
+  else if (l->ch == '[') {
+    lexer_read_char(l);
+    return (token){.kind = TOKEN_LSQBR, .value.str = NULL, .line = l->line};
+  }
+
+  else if (l->ch == ']') {
+    lexer_read_char(l);
+    return (token){.kind = TOKEN_RSQBR, .value.str = NULL, .line = l->line};
+  }
+
   else if (l->ch == ',') {
     lexer_read_char(l);
     return (token){.kind = TOKEN_COMMA, .value.str = NULL, .line = l->line};
@@ -424,17 +434,7 @@ static token lexer_next_token(lexer *l) {
     char *value = NULL;
     string_slice_to_owned(&slice, &value);
 
-    if (strcmp(value, "input") == 0) {
-      free(value);
-      return (token){.kind = TOKEN_INPUT, .value.str = NULL, .line = l->line};
-    }
-
-    else if (strcmp(value, "output") == 0) {
-      free(value);
-      return (token){.kind = TOKEN_OUTPUT, .value.str = NULL, .line = l->line};
-    }
-
-    else if (strcmp(value, "goto") == 0) {
+    if (strcmp(value, "goto") == 0) {
       free(value);
       return (token){.kind = TOKEN_GOTO, .value.str = NULL, .line = l->line};
     }
@@ -543,10 +543,6 @@ void lexer_tokenize(const char *buffer, size_t buffer_len,
 
 const char *lexer_token_kind_to_str(token_kind kind) {
   switch (kind) {
-  case TOKEN_INPUT:
-    return "input";
-  case TOKEN_OUTPUT:
-    return "output";
   case TOKEN_GOTO:
     return "goto";
   case TOKEN_IF:
@@ -591,6 +587,10 @@ const char *lexer_token_kind_to_str(token_kind kind) {
     return "brace open";
   case TOKEN_RBRACE:
     return "brace close";
+  case TOKEN_LSQBR:
+    return "square bracket open";
+  case TOKEN_RSQBR:
+    return "square bracket close";
   case TOKEN_COMMA:
     return "comma";
   case TOKEN_ADD:

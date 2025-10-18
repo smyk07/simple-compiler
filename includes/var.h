@@ -21,7 +21,20 @@ typedef struct variable {
   char *name;
   size_t line;
   size_t stack_offset;
+
+  bool is_array;
+  size_t dimensions;
+  size_t *dimension_sizes;
 } variable;
+
+/*
+ * @brief: get the size of a data type in bytes.
+ *
+ * @param t: data type.
+ *
+ * @return: size in bytes of the type t.
+ */
+int get_type_size(type t);
 
 /*
  * @brief: check if a certain variable exists in a dynamic_array of variables.

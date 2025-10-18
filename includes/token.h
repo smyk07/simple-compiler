@@ -13,13 +13,8 @@
 typedef enum token_kind {
   /*
    * Keywords
-   *
-   * INPUT and OUTPUT will obviously be temporary until I implement an FFI or a
-   * standard library.
    */
-  TOKEN_INPUT = 0,
-  TOKEN_OUTPUT,
-  TOKEN_GOTO,
+  TOKEN_GOTO = 0,
   TOKEN_IF,
   TOKEN_THEN,
   TOKEN_TYPE_INT,
@@ -52,6 +47,8 @@ typedef enum token_kind {
   TOKEN_RPAREN,
   TOKEN_LBRACE,
   TOKEN_RBRACE,
+  TOKEN_LSQBR,
+  TOKEN_RSQBR,
 
   /*
    * Delimiters

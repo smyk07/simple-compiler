@@ -1,8 +1,10 @@
 #include "semantic.h"
 #include "ast.h"
+#include "codegen.h"
 #include "ds/dynamic_array.h"
 #include "ds/ht.h"
 #include "utils.h"
+
 #include <stddef.h>
 
 #define _POSIX_C_SOURCE 200809L
@@ -19,6 +21,11 @@ static void instr_typecheck(instr_node *instr, ht *variables,
                             unsigned int *errors);
 
 /*
+ * @brief: running stack offset counter for allocating variables and arrays.
+ */
+static size_t current_stack_offset = 0;
+
+/*
  * @brief: insert a new variable into the variables hash table.
  *
  * @param var_to_declare: the variable struct to append.
@@ -32,8 +39,32 @@ static void declare_variables(variable *var_to_declare, ht *variables) {
   if (var)
     return;
 
-  var_to_declare->stack_offset = variables->count * 8 + 8;
+  var_to_declare->stack_offset = current_stack_offset;
+  current_stack_offset += 8;
   ht_insert(variables, var_to_declare->name, var_to_declare);
+}
+
+/*
+ * @brief: insert a new array into the variables hash table.
+ *
+ * @param var_to_declare: the variable struct to append.
+ * @param variables: pointer to the variables hash table.
+ */
+static void declare_array(variable *arr_to_declare, expr_node *size_expr,
+                          ht *variables) {
+  if (!arr_to_declare || !arr_to_declare->name || !variables)
+    return;
+
+  variable *var = ht_search(variables, arr_to_declare->name);
+  if (var)
+    return;
+
+  int array_size = evaluate_const_expr(size_expr);
+  size_t size_bytes = array_size * 4;
+  arr_to_declare->stack_offset = current_stack_offset;
+  current_stack_offset += size_bytes;
+
+  ht_insert(variables, arr_to_declare->name, arr_to_declare);
 }
 
 /*
@@ -132,20 +163,37 @@ static void instr_check_variables(instr_node *instr, ht *variables,
   case INSTR_DECLARE:
     declare_variables(&instr->declare_variable, variables);
     break;
+
   case INSTR_INITIALIZE:
-    declare_variables(&instr->initialize_variable.var, variables);
     expr_check_variables(&instr->initialize_variable.expr, variables, errors);
+    declare_variables(&instr->initialize_variable.var, variables);
     break;
+
+  case INSTR_DECLARE_ARRAY:
+    declare_array(&instr->declare_array.var, instr->declare_array.size_expr,
+                  variables);
+    break;
+
+  case INSTR_INITIALIZE_ARRAY:
+    declare_array(&instr->initialize_array.var,
+                  instr->initialize_array.size_expr, variables);
+    for (size_t i = 0; i < instr->initialize_array.literal.elements.count;
+         i++) {
+      expr_node elem;
+      dynamic_array_get(&instr->initialize_array.literal.elements, i, &elem);
+      expr_check_variables(&elem, variables, errors);
+    }
+    break;
+
   case INSTR_ASSIGN:
     expr_check_variables(&instr->assign.expr, variables, errors);
     break;
+
   case INSTR_IF:
     rel_check_variables(&instr->if_.rel, variables, errors);
     instr_check_variables(instr->if_.instr, variables, errors);
     break;
-  case INSTR_OUTPUT:
-    term_check_variables(&instr->output.term, variables, errors);
-    break;
+
   case INSTR_FASM:
     if (instr->fasm.kind == ARG) {
       variable *var = ht_search(variables, instr->fasm.argument.name);
@@ -155,6 +203,7 @@ static void instr_check_variables(instr_node *instr, ht *variables,
       }
     }
     break;
+
   case INSTR_LOOP:
     for (size_t i = 0; i < instr->loop.instrs.count; i++) {
       instr_node instr_;
@@ -163,6 +212,7 @@ static void instr_check_variables(instr_node *instr, ht *variables,
       instr_typecheck(&instr_, variables, errors);
     }
     break;
+
   default:
     break;
   }
@@ -265,6 +315,18 @@ static void instrs_check_labels(dynamic_array *instrs, dynamic_array *labels,
 }
 
 /*
+ * @brief: check for types in an expr_node (declaration)
+ *
+ * @param expr: pointer to an expr_node.
+ * @param target_type: type enumeration for the type which is required in the
+ * instruction.
+ * @param variables: pointer to the variables hash table.
+ * @param errors: counter variable to increment when an error is encountered.
+ */
+static type expr_type(expr_node *expr, type target_type, ht *variables,
+                      unsigned int *errors);
+
+/*
  * @brief: check for types in a term_node
  *
  * @param term: pointer to a term_node.
@@ -274,20 +336,43 @@ static void instrs_check_labels(dynamic_array *instrs, dynamic_array *labels,
  * @param errors: counter variable to increment when an error is encountered.
  * @param line: where the term is situated in the source buffer.
  */
-static type term_type(term_node *term, type target_type, ht *variables,
-                      unsigned int *errors) {
+static type term_type(term_node *term, ht *variables, unsigned int *errors) {
   switch (term->kind) {
-  case TERM_INPUT:
-    return target_type;
   case TERM_INT:
     return TYPE_INT;
+
   case TERM_CHAR:
     return TYPE_CHAR;
+
   case TERM_POINTER:
   case TERM_DEREF:
   case TERM_ADDOF:
   case TERM_IDENTIFIER:
     return get_var_type(variables, &term->identifier, errors);
+
+  case TERM_ARRAY_ACCESS:
+    type array_type =
+        get_var_type(variables, &term->array_access.array_var, errors);
+    if (array_type == TYPE_VOID) {
+      scu_perror(errors, "Array '%s' not declared [line %zu]\n",
+                 term->array_access.array_var.name, term->line);
+      return TYPE_VOID;
+    }
+    type index_type =
+        expr_type(term->array_access.index_expr, TYPE_INT, variables, errors);
+    if (index_type != TYPE_INT) {
+      scu_perror(errors,
+                 "Array index must be of type int, got type at [line %zu]\n",
+                 term->line);
+    }
+    return array_type;
+
+  case TERM_ARRAY_LITERAL:
+    scu_perror(errors,
+               "Array literal cannot be used in expressions [line %zu]\n",
+               term->line);
+    return -1;
+    break;
   }
 }
 
@@ -308,7 +393,7 @@ static const char *type_to_str(type type) {
 }
 
 /*
- * @brief: check for types in an expr_node
+ * @brief: check for types in an expr_node (definition)
  *
  * @param expr: pointer to an expr_node.
  * @param target_type: type enumeration for the type which is required in the
@@ -322,7 +407,7 @@ static type expr_type(expr_node *expr, type target_type, ht *variables,
 
   switch (expr->kind) {
   case EXPR_TERM:
-    return term_type(&expr->term, target_type, variables, errors);
+    return term_type(&expr->term, variables, errors);
   case EXPR_ADD:
   case EXPR_SUBTRACT:
   case EXPR_MULTIPLY:
@@ -355,30 +440,28 @@ static void rel_typecheck(rel_node *rel, ht *variables, unsigned int *errors) {
 
   switch (rel->kind) {
   case REL_IS_EQUAL:
-    lhs = term_type(&rel->is_equal.lhs, TYPE_VOID, variables, errors);
-    rhs = term_type(&rel->is_equal.rhs, TYPE_VOID, variables, errors);
+    lhs = term_type(&rel->is_equal.lhs, variables, errors);
+    rhs = term_type(&rel->is_equal.rhs, variables, errors);
     break;
   case REL_NOT_EQUAL:
-    lhs = term_type(&rel->not_equal.lhs, TYPE_VOID, variables, errors);
-    rhs = term_type(&rel->not_equal.rhs, TYPE_VOID, variables, errors);
+    lhs = term_type(&rel->not_equal.lhs, variables, errors);
+    rhs = term_type(&rel->not_equal.rhs, variables, errors);
     break;
   case REL_LESS_THAN:
-    lhs = term_type(&rel->less_than.lhs, TYPE_VOID, variables, errors);
-    rhs = term_type(&rel->less_than.rhs, TYPE_VOID, variables, errors);
+    lhs = term_type(&rel->less_than.lhs, variables, errors);
+    rhs = term_type(&rel->less_than.rhs, variables, errors);
     break;
   case REL_LESS_THAN_OR_EQUAL:
-    lhs = term_type(&rel->less_than_or_equal.lhs, TYPE_VOID, variables, errors);
-    rhs = term_type(&rel->less_than_or_equal.rhs, TYPE_VOID, variables, errors);
+    lhs = term_type(&rel->less_than_or_equal.lhs, variables, errors);
+    rhs = term_type(&rel->less_than_or_equal.rhs, variables, errors);
     break;
   case REL_GREATER_THAN:
-    lhs = term_type(&rel->greater_than.lhs, TYPE_VOID, variables, errors);
-    rhs = term_type(&rel->greater_than.rhs, TYPE_VOID, variables, errors);
+    lhs = term_type(&rel->greater_than.lhs, variables, errors);
+    rhs = term_type(&rel->greater_than.rhs, variables, errors);
     break;
   case REL_GREATER_THAN_OR_EQUAL:
-    lhs = term_type(&rel->greater_than_or_equal.lhs, TYPE_VOID, variables,
-                    errors);
-    rhs = term_type(&rel->greater_than_or_equal.rhs, TYPE_VOID, variables,
-                    errors);
+    lhs = term_type(&rel->greater_than_or_equal.lhs, variables, errors);
+    rhs = term_type(&rel->greater_than_or_equal.rhs, variables, errors);
     break;
   }
 

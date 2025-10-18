@@ -6,8 +6,123 @@
 #include "fasm.h"
 #include "utils.h"
 
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+
+/*
+ * @brief: generate assembly for arithmetic expressions. (declaration)
+ *
+ * @param expr: pointer to an expr_node.
+ * @param variables: hash table of variables.
+ */
+static void expr_asm(expr_node *expr, ht *variables, program_node *program);
+
+int evaluate_const_expr(expr_node *expr) {
+  if (expr == NULL) {
+    return 0;
+  }
+
+  switch (expr->kind) {
+  case EXPR_TERM:
+    if (expr->term.kind == TERM_INT) {
+      return expr->term.value.integer;
+    }
+    fprintf(stderr, "Error: Array size must be a constant expression\n");
+    return 0;
+
+  case EXPR_ADD:
+    return evaluate_const_expr(expr->binary.left) +
+           evaluate_const_expr(expr->binary.right);
+
+  case EXPR_SUBTRACT:
+    return evaluate_const_expr(expr->binary.left) -
+           evaluate_const_expr(expr->binary.right);
+
+  case EXPR_MULTIPLY:
+    return evaluate_const_expr(expr->binary.left) *
+           evaluate_const_expr(expr->binary.right);
+
+  case EXPR_DIVIDE: {
+    int right = evaluate_const_expr(expr->binary.right);
+    if (right == 0) {
+      fprintf(stderr, "Error: Division by zero in array size\n");
+      return 0;
+    }
+    return evaluate_const_expr(expr->binary.left) / right;
+  }
+
+  case EXPR_MODULO: {
+    int right = evaluate_const_expr(expr->binary.right);
+    if (right == 0) {
+      fprintf(stderr, "Error: Modulo by zero in array size\n");
+      return 0;
+    }
+    return evaluate_const_expr(expr->binary.left) % right;
+  }
+
+  default:
+    fprintf(stderr, "Error: Unknown expression kind in array size\n");
+    return 0;
+  }
+}
+
+/*
+ * @brief: get array size from declare_array_node
+ *
+ * @param node: pointer to declare_array_node
+ * @return: size of the array in elements
+ */
+static int get_array_size_declare(declare_array_node *node) {
+  if (node == NULL || node->size_expr == NULL) {
+    return 0;
+  }
+  return evaluate_const_expr(node->size_expr);
+}
+
+/*
+ * @brief: get array size from initialize_array_node
+ *
+ * @param node: pointer to initialize_array_node
+ * @return: size of the array in elements
+ */
+static int get_array_size_initialize(initialize_array_node *node) {
+  if (node == NULL || node->size_expr == NULL) {
+    return 0;
+  }
+  return evaluate_const_expr(node->size_expr);
+}
+
+/*
+ * @brief: get the absolute stack offset for an array
+ */
+static size_t get_array_base_offset(program_node *program, variable *array_var,
+                                    ht *variables) {
+  size_t offset = variables->count * 8;
+
+  for (unsigned int i = 0; i < program->instrs.count; i++) {
+    instr_node instr;
+    dynamic_array_get(&program->instrs, i, &instr);
+
+    if (instr.kind == INSTR_DECLARE_ARRAY) {
+      if (strcmp(instr.declare_array.var.name, array_var->name) == 0) {
+        int size = get_array_size_declare(&instr.declare_array);
+        return offset + (size * 4); // Return end of array
+      }
+      int size = get_array_size_declare(&instr.declare_array);
+      offset += size * 4; // 4 bytes per int element
+    } else if (instr.kind == INSTR_INITIALIZE_ARRAY) {
+      if (strcmp(instr.initialize_array.var.name, array_var->name) == 0) {
+        int size = get_array_size_initialize(&instr.initialize_array);
+        return offset + (size * 4);
+      }
+      int size = get_array_size_initialize(&instr.initialize_array);
+      offset += size * 4;
+    }
+  }
+  return offset;
+}
 
 /*
  * @brief: generate assembly for terms.
@@ -15,17 +130,8 @@
  * @param term: pointer to a term_node.
  * @param variables: hash table of variables.
  */
-static void term_asm(term_node *term, ht *variables) {
+static void term_asm(term_node *term, ht *variables, program_node *program) {
   switch (term->kind) {
-  case TERM_INPUT: {
-    printf("    read 0, line, LINE_MAX\n");
-    printf("    mov rdi, line\n");
-    printf("    call strlen\n");
-    printf("    mov rdi, line\n");
-    printf("    mov rsi, rax\n");
-    printf("    call parse_uint\n");
-    break;
-  }
   case TERM_INT:
     printf("    mov rax, %d\n", term->value.integer);
     break;
@@ -51,47 +157,62 @@ static void term_asm(term_node *term, ht *variables) {
     printf("    lea rax, [rbp - %d]\n", index * 8 + 8);
     break;
   }
+
+  case TERM_ARRAY_ACCESS: {
+    size_t array_base = get_array_base_offset(
+        program, &term->array_access.array_var, variables);
+    expr_asm(term->array_access.index_expr, variables, program);
+    printf("    cdqe\n");
+    printf("    lea rdx, [rbp - %zu]\n", array_base);
+    printf("    mov eax, dword [rdx + rax*4]\n");
+    break;
+  }
+
+  case TERM_ARRAY_LITERAL: {
+    // nothing here cuz its done at initialization itself
+    break;
+  }
   }
 }
 
 /*
- * @brief: generate assembly for arithmetic expressions.
+ * @brief: generate assembly for arithmetic expressions. (definition)
  *
  * @param expr: pointer to an expr_node.
  * @param variables: hash table of variables.
  */
-static void expr_asm(expr_node *expr, ht *variables) {
+static void expr_asm(expr_node *expr, ht *variables, program_node *program) {
   switch (expr->kind) {
   case EXPR_TERM:
-    term_asm(&expr->term, variables);
+    term_asm(&expr->term, variables, program);
     break;
   case EXPR_ADD:
-    expr_asm(expr->binary.left, variables);
+    expr_asm(expr->binary.left, variables, program);
     printf("    push rax\n");
-    expr_asm(expr->binary.right, variables);
+    expr_asm(expr->binary.right, variables, program);
     printf("    pop rdx\n");
     printf("    add rax, rdx\n");
     break;
   case EXPR_SUBTRACT:
-    expr_asm(expr->binary.left, variables);
+    expr_asm(expr->binary.left, variables, program);
     printf("    push rax\n");
-    expr_asm(expr->binary.right, variables);
+    expr_asm(expr->binary.right, variables, program);
     printf("    mov rdx, rax\n");
     printf("    pop rax\n");
     printf("    sub rax, rdx\n");
     break;
   case EXPR_MULTIPLY:
-    expr_asm(expr->binary.left, variables);
+    expr_asm(expr->binary.left, variables, program);
     printf("    push rax\n");
-    expr_asm(expr->binary.right, variables);
+    expr_asm(expr->binary.right, variables, program);
     printf("    pop rdx\n");
     printf("    imul rax, rdx\n");
     break;
   case EXPR_DIVIDE:
   case EXPR_MODULO:
-    expr_asm(expr->binary.left, variables);
+    expr_asm(expr->binary.left, variables, program);
     printf("    push rax\n");
-    expr_asm(expr->binary.right, variables);
+    expr_asm(expr->binary.right, variables, program);
     printf("    mov rcx, rax\n");
     printf("    pop rax\n");
     printf("    cqo\n");
@@ -109,52 +230,52 @@ static void expr_asm(expr_node *expr, ht *variables) {
  * @param rel: pointer to a rel_node.
  * @param variables: hash table of variables.
  */
-static void rel_asm(rel_node *rel, ht *variables) {
+static void rel_asm(rel_node *rel, ht *variables, program_node *program) {
   switch (rel->kind) {
   case REL_IS_EQUAL:
-    term_asm(&rel->is_equal.lhs, variables);
+    term_asm(&rel->is_equal.lhs, variables, program);
     printf("    mov rdx, rax\n");
-    term_asm(&rel->is_equal.rhs, variables);
+    term_asm(&rel->is_equal.rhs, variables, program);
     printf("    cmp rdx, rax\n");
     printf("    sete al\n");
     printf("    movzx rax, al\n");
     break;
   case REL_NOT_EQUAL:
-    term_asm(&rel->not_equal.lhs, variables);
+    term_asm(&rel->not_equal.lhs, variables, program);
     printf("    mov rdx, rax\n");
-    term_asm(&rel->not_equal.rhs, variables);
+    term_asm(&rel->not_equal.rhs, variables, program);
     printf("    cmp rdx, rax\n");
     printf("    setne al\n");
     printf("    movzx rax, al\n");
     break;
   case REL_LESS_THAN:
-    term_asm(&rel->less_than.lhs, variables);
+    term_asm(&rel->less_than.lhs, variables, program);
     printf("    mov rdx, rax\n");
-    term_asm(&rel->less_than.rhs, variables);
+    term_asm(&rel->less_than.rhs, variables, program);
     printf("    cmp rdx, rax\n");
     printf("    setl al\n");
     printf("    movzx rax, al\n");
     break;
   case REL_LESS_THAN_OR_EQUAL:
-    term_asm(&rel->less_than_or_equal.lhs, variables);
+    term_asm(&rel->less_than_or_equal.lhs, variables, program);
     printf("    mov rdx, rax\n");
-    term_asm(&rel->less_than_or_equal.rhs, variables);
+    term_asm(&rel->less_than_or_equal.rhs, variables, program);
     printf("    cmp rdx, rax\n");
     printf("    setle al\n");
     printf("    movzx rax, al\n");
     break;
   case REL_GREATER_THAN:
-    term_asm(&rel->greater_than.lhs, variables);
+    term_asm(&rel->greater_than.lhs, variables, program);
     printf("    mov rdx, rax\n");
-    term_asm(&rel->greater_than.rhs, variables);
+    term_asm(&rel->greater_than.rhs, variables, program);
     printf("    cmp rdx, rax\n");
     printf("    setg al\n");
     printf("    movzx rax, al\n");
     break;
   case REL_GREATER_THAN_OR_EQUAL:
-    term_asm(&rel->greater_than_or_equal.lhs, variables);
+    term_asm(&rel->greater_than_or_equal.lhs, variables, program);
     printf("    mov rdx, rax\n");
-    term_asm(&rel->greater_than_or_equal.rhs, variables);
+    term_asm(&rel->greater_than_or_equal.rhs, variables, program);
     printf("    cmp rdx, rax\n");
     printf("    setge al\n");
     printf("    movzx rax, al\n");
@@ -170,7 +291,7 @@ static void rel_asm(rel_node *rel, ht *variables) {
  * @param if_count: counter for if instructions.
  */
 static void instr_asm(instr_node *instr, ht *variables, unsigned int *if_count,
-                      stack *loops) {
+                      stack *loops, program_node *program) {
   switch (instr->kind) {
   case INSTR_DECLARE:
     break;
@@ -178,7 +299,7 @@ static void instr_asm(instr_node *instr, ht *variables, unsigned int *if_count,
   case INSTR_INITIALIZE: {
     int index =
         get_var_stack_offset(variables, &instr->initialize_variable.var, NULL);
-    expr_asm(&instr->initialize_variable.expr, variables);
+    expr_asm(&instr->initialize_variable.expr, variables, program);
     printf("    mov qword [rbp - %d], rax\n", index * 8 + 8);
     break;
   }
@@ -186,7 +307,7 @@ static void instr_asm(instr_node *instr, ht *variables, unsigned int *if_count,
   case INSTR_ASSIGN: {
     int index =
         get_var_stack_offset(variables, &instr->assign.identifier, NULL);
-    expr_asm(&instr->assign.expr, variables);
+    expr_asm(&instr->assign.expr, variables, program);
     if (instr->assign.identifier.type == TYPE_POINTER) {
       printf("    mov rbx, qword [rbp - %d]\n", index * 8 + 8);
       printf("    mov qword [rbx], rax\n");
@@ -196,12 +317,32 @@ static void instr_asm(instr_node *instr, ht *variables, unsigned int *if_count,
     break;
   }
 
+  case INSTR_DECLARE_ARRAY: {
+    break;
+  }
+
+  case INSTR_INITIALIZE_ARRAY: {
+    size_t array_base =
+        get_array_base_offset(program, &instr->initialize_array.var, variables);
+    printf("    lea rdx, [rbp - %zu]\n", array_base);
+
+    for (size_t i = 0; i < instr->initialize_array.literal.elements.count;
+         i++) {
+      expr_node elem;
+      dynamic_array_get(&instr->initialize_array.literal.elements, i, &elem);
+
+      expr_asm(&elem, variables, program);
+      printf("    mov dword [rdx + %zu], eax\n", i * 4);
+    }
+    break;
+  }
+
   case INSTR_IF: {
-    rel_asm(&instr->if_.rel, variables);
+    rel_asm(&instr->if_.rel, variables, program);
     int label = (*if_count)++;
     printf("    test rax, rax\n");
     printf("    jz .endif%d\n", label);
-    instr_asm(instr->if_.instr, variables, if_count, loops);
+    instr_asm(instr->if_.instr, variables, if_count, loops, program);
     printf("    .endif%d:\n", label);
     break;
   }
@@ -209,74 +350,6 @@ static void instr_asm(instr_node *instr, ht *variables, unsigned int *if_count,
   case INSTR_GOTO:
     printf("    jmp .%s\n", instr->goto_.label);
     break;
-
-  case INSTR_OUTPUT: {
-    switch (instr->output.term.kind) {
-    case TERM_INPUT:
-      break;
-    case TERM_INT:
-      printf("    mov rsi, %ld\n", (long)instr->output.term.value.integer);
-      printf("    mov rdi, 1\n");
-      printf("    call write_uint\n");
-      printf("    mov rsi, newline\n");
-      printf("    mov rdi, 1\n");
-      printf("    call write_cstr\n");
-      break;
-    case TERM_CHAR:
-      printf("    mov al, %d\n", instr->output.term.value.character);
-      printf("    mov [char_buf], al\n");
-      printf("    mov rdi, 1\n");
-      printf("    mov rsi, char_buf\n");
-      printf("    mov rdx, 2\n");
-      printf("    mov rax, 1\n");
-      printf("    syscall\n");
-      break;
-    case TERM_IDENTIFIER: {
-      variable *var = ht_search(variables, instr->output.term.identifier.name);
-      if (var->type == TYPE_CHAR) {
-        printf("    mov al, byte [rbp - %zu]\n", var->stack_offset * 8 + 8);
-        printf("    mov [char_buf], al\n");
-        printf("    mov rdi, 1\n");
-        printf("    mov rsi, char_buf\n");
-        printf("    mov rdx, 2\n");
-        printf("    mov rax, 1\n");
-        printf("    syscall\n");
-      } else if (var->type == TYPE_INT) {
-        printf("    mov rsi, qword [rbp - %zu]\n", var->stack_offset * 8 + 8);
-        printf("    mov rdi, 1\n");
-        printf("    call write_uint\n");
-        printf("    mov rsi, newline\n");
-        printf("    mov rdi, 1\n");
-        printf("    call write_cstr\n");
-      }
-      break;
-    }
-    case TERM_POINTER:
-      break;
-    case TERM_DEREF: {
-      // Only prints ints for now
-      term_asm(&instr->output.term, variables);
-      printf("    mov rsi, rax\n");
-      printf("    mov rdi, 1\n");
-      printf("    call write_uint\n");
-      printf("    mov rsi, newline\n");
-      printf("    mov rdi, 1\n");
-      printf("    call write_cstr\n");
-      break;
-    }
-    case TERM_ADDOF: {
-      int index =
-          get_var_stack_offset(variables, &instr->output.term.identifier, NULL);
-      printf("    lea rsi, [rbp - %d]\n", index * 8 + 8);
-      printf("    mov rdi, 1\n");
-      printf("    call write_uint\n");
-      printf("    mov rsi, newline\n");
-      printf("    mov rdi, 1\n");
-      printf("    call write_cstr\n");
-      break;
-    }
-    }
-  } break;
 
   case INSTR_LABEL:
     printf(".%s:\n", instr->label.label);
@@ -305,9 +378,9 @@ static void instr_asm(instr_node *instr, ht *variables, unsigned int *if_count,
     for (unsigned int i = 0; i < instr->loop.instrs.count; i++) {
       struct instr_node _instr;
       dynamic_array_get(&instr->loop.instrs, i, &_instr);
-      instr_asm(&_instr, variables, if_count, loops);
+      instr_asm(&_instr, variables, if_count, loops, program);
     }
-    loop_node *loop = malloc(sizeof(loop_node *));
+    loop_node *loop = malloc(sizeof(loop_node));
     stack_pop(loops, loop);
     printf(".loop_%zu_end:\n", instr->loop.loop_id);
     free(loop);
@@ -323,6 +396,28 @@ static void instr_asm(instr_node *instr, ht *variables, unsigned int *if_count,
     printf("    jmp .loop_%zu_start\n", loop->loop_id);
     break;
   }
+}
+
+static size_t calculate_total_stack_size(ht *variables, program_node *program) {
+
+  size_t total = variables->count * 8;
+
+  for (unsigned int i = 0; i < program->instrs.count; i++) {
+    instr_node instr;
+    dynamic_array_get(&program->instrs, i, &instr);
+
+    if (instr.kind == INSTR_DECLARE_ARRAY) {
+      total += get_array_size_declare(&instr.declare_array) * 4; // FIXED: * 4
+    } else if (instr.kind == INSTR_INITIALIZE_ARRAY) {
+      total +=
+          get_array_size_initialize(&instr.initialize_array) * 4; // FIXED: * 4
+    }
+  }
+
+  if (total % 16 != 0) {
+    total += 16 - (total % 16);
+  }
+  return total;
 }
 
 void instrs_to_asm(program_node *program, ht *variables, stack *loops,
@@ -354,16 +449,18 @@ void instrs_to_asm(program_node *program, ht *variables, stack *loops,
   printf("segment readable executable\n");
   printf("_start:\n");
   printf("    mov rbp, rsp\n");
-  printf("    sub rsp, %zu\n", variables->count * 8);
+
+  size_t stack_size = calculate_total_stack_size(variables, program);
+  printf("    sub rsp, %zu\n", stack_size);
 
   for (unsigned int i = 0; i < program->instrs.count; i++) {
     struct instr_node instr;
     dynamic_array_get(&program->instrs, i, &instr);
 
-    instr_asm(&instr, variables, &if_count, loops);
+    instr_asm(&instr, variables, &if_count, loops, program);
   }
 
-  printf("    add rsp, %zu\n", variables->count * 8);
+  printf("    add rsp, %zu\n", stack_size);
 
   printf("    mov rax, 60\n");
   printf("    xor rdi, rdi\n");

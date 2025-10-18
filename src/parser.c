@@ -37,6 +37,14 @@ static void parser_current(parser *p, token *token, unsigned int *errors) {
 static void parser_advance(parser *p) { p->index++; }
 
 /*
+ * @brief: parse a arithmetic expression. (declaration)
+ *
+ * @param p: pointer to the parser state.
+ * @param errors: counter variable to increment when an error is encountered.
+ */
+static expr_node *parse_expr(parser *p, unsigned int *errors);
+
+/*
  * @brief: parse an individual term.
  *
  * @param p: pointer to the parser state.
@@ -49,43 +57,51 @@ static void parse_term_for_expr(parser *p, term_node *term,
 
   parser_current(p, &token, errors);
   term->line = token.line;
-  if (token.kind == TOKEN_INPUT) {
-    term->kind = TERM_INPUT;
-  } else if (token.kind == TOKEN_INT) {
+  if (token.kind == TOKEN_INT) {
     term->kind = TERM_INT;
     term->value.integer = token.value.integer;
+    parser_advance(p);
   } else if (token.kind == TOKEN_CHAR) {
     term->kind = TERM_CHAR;
     term->value.character = token.value.character;
+    parser_advance(p);
   } else if (token.kind == TOKEN_IDENTIFIER) {
     term->kind = TERM_IDENTIFIER;
     term->identifier.line = token.line;
     term->identifier.name = token.value.str;
+
+    parser_advance(p);
+    parser_current(p, &token, errors);
+    if (token.kind == TOKEN_LSQBR) {
+      term->kind = TERM_ARRAY_ACCESS;
+      term->array_access.array_var.name = term->identifier.name;
+      term->array_access.array_var.line = term->identifier.line;
+      parser_advance(p);
+      term->array_access.index_expr = parse_expr(p, errors);
+      parser_current(p, &token, errors);
+      if (token.kind != TOKEN_RSQBR) {
+        scu_perror(errors, "Expected ']' at line %d\n", token.line);
+      }
+      parser_advance(p);
+    }
   } else if (token.kind == TOKEN_ADDRESS_OF) {
     term->kind = TERM_ADDOF;
     term->identifier.line = token.line;
     term->identifier.name = token.value.str;
+    parser_advance(p);
   } else if (token.kind == TOKEN_POINTER) {
     term->kind = TERM_DEREF;
     term->identifier.line = token.line;
     term->identifier.name = token.value.str;
+    parser_advance(p);
   } else {
     scu_perror(errors,
                "Expected a term (input, int, char, identifier, addof, "
                "pointer), got %s [line %d]\n",
                lexer_token_kind_to_str(token.kind), token.line);
+    parser_advance(p);
   }
-
-  parser_advance(p);
 }
-
-/*
- * @brief: parse a arithmetic expression. (declaration)
- *
- * @param p: pointer to the parser state.
- * @param errors: counter variable to increment when an error is encountered.
- */
-static expr_node *parse_expr(parser *p, unsigned int *errors);
 
 /*
  * @brief: parse a factor inside an arithmetic expression.
@@ -98,7 +114,7 @@ static expr_node *parse_factor(parser *p, unsigned int *errors) {
   parser_current(p, &token, errors);
   if (token.kind == TOKEN_INT || token.kind == TOKEN_CHAR ||
       token.kind == TOKEN_IDENTIFIER || token.kind == TOKEN_POINTER ||
-      token.kind == TOKEN_ADDRESS_OF || token.kind == TOKEN_INPUT) {
+      token.kind == TOKEN_ADDRESS_OF) {
     expr_node *node = scu_checked_malloc(sizeof(expr_node));
     node->kind = EXPR_TERM;
     node->line = token.line;
@@ -106,27 +122,45 @@ static expr_node *parse_factor(parser *p, unsigned int *errors) {
     if (token.kind == TOKEN_INT) {
       node->term.kind = TERM_INT;
       node->term.value.integer = token.value.integer;
+      parser_advance(p);
+      return node;
     } else if (token.kind == TOKEN_CHAR) {
       node->term.kind = TERM_CHAR;
       node->term.value.character = token.value.character;
+      parser_advance(p);
+      return node;
     } else if (token.kind == TOKEN_IDENTIFIER) {
       node->term.kind = TERM_IDENTIFIER;
       node->term.identifier.line = token.line;
       node->term.identifier.name = token.value.str;
+      parser_advance(p);
+      parser_current(p, &token, errors);
+      if (token.kind == TOKEN_LSQBR) {
+        node->term.kind = TERM_ARRAY_ACCESS;
+        node->term.array_access.array_var.name = node->term.identifier.name;
+        node->term.array_access.array_var.line = node->term.identifier.line;
+        parser_advance(p);
+        node->term.array_access.index_expr = parse_expr(p, errors);
+        parser_current(p, &token, errors);
+        if (token.kind != TOKEN_RSQBR) {
+          scu_perror(errors, "Expected ']' at line %d\n", token.line);
+        }
+        parser_advance(p);
+      }
+      return node;
     } else if (token.kind == TOKEN_POINTER) {
       node->term.kind = TERM_DEREF;
       node->term.identifier.line = token.line;
       node->term.identifier.name = token.value.str;
+      parser_advance(p);
+      return node;
     } else if (token.kind == TOKEN_ADDRESS_OF) {
       node->term.kind = TERM_ADDOF;
       node->term.identifier.line = token.line;
       node->term.identifier.name = token.value.str;
-    } else if (token.kind == TOKEN_INPUT) {
-      node->term.kind = TERM_INPUT;
+      parser_advance(p);
+      return node;
     }
-
-    parser_advance(p);
-    return node;
   } else if (token.kind == TOKEN_LPAREN) {
     parser_advance(p);
     expr_node *node = parse_expr(p, errors);
@@ -140,6 +174,7 @@ static expr_node *parse_factor(parser *p, unsigned int *errors) {
     scu_perror(errors, "Syntax error: expected term or '('\n");
     exit(1);
   }
+  return NULL;
 }
 
 /*
@@ -303,6 +338,57 @@ static void parse_initialize(parser *p, instr_node *instr, type _type,
 }
 
 /*
+ * @brief: parse an array initialize instruction.
+ *
+ * @param p: pointer to the parser state.
+ * @param instr: pointer to a newly malloc'd instr struct.
+ * @param errors: counter variable to increment when an error is encountered.
+ */
+static void parse_initialize_array(parser *p, instr_node *instr, type _type,
+                                   char *_name, expr_node *size_expr,
+                                   unsigned int *errors) {
+  instr->kind = INSTR_INITIALIZE_ARRAY;
+  instr->initialize_array.var.type = _type;
+  instr->initialize_array.var.name = _name;
+  instr->initialize_array.size_expr = size_expr;
+  parser_advance(p);
+
+  token token;
+  parser_current(p, &token, errors);
+
+  if (token.kind != TOKEN_LBRACE) {
+    scu_perror(errors, "Expected '{' at line %d\n", token.line);
+    return;
+  }
+  parser_advance(p);
+
+  dynamic_array_init(&instr->initialize_array.literal.elements,
+                     sizeof(expr_node));
+
+  while (1) {
+    parser_current(p, &token, errors);
+    if (token.kind == TOKEN_RBRACE) {
+      break;
+    }
+
+    expr_node *elem = parse_expr(p, errors);
+    dynamic_array_append(&instr->initialize_array.literal.elements, elem);
+
+    parser_current(p, &token, errors);
+    if (token.kind == TOKEN_COMMA) {
+      parser_advance(p);
+    } else if (token.kind == TOKEN_RBRACE) {
+      break;
+    } else {
+      scu_perror(errors, "Expected '}' or ',' at line %d\n", token.line);
+      return;
+    }
+  }
+
+  parser_advance(p);
+}
+
+/*
  * @brief: parse a variable declare instruction.
  *
  * @param p: pointer to the parser state.
@@ -315,6 +401,8 @@ static void parse_declare(parser *p, instr_node *instr, unsigned int *errors) {
   type _type = TYPE_VOID;
   char *_name;
   int _line;
+  bool is_array = false;
+  expr_node *size_expr = NULL;
 
   parser_current(p, &token, errors);
   instr->line = token.line;
@@ -330,14 +418,42 @@ static void parse_declare(parser *p, instr_node *instr, unsigned int *errors) {
   _line = token.line;
   parser_advance(p);
 
-  instr->kind = INSTR_DECLARE;
-  instr->declare_variable.type = _type;
-  instr->declare_variable.name = _name;
-  instr->declare_variable.line = _line;
+  parser_current(p, &token, errors);
+  if (token.kind == TOKEN_LSQBR) {
+    is_array = true;
+    parser_advance(p);
+
+    size_expr = parse_expr(p, errors);
+
+    parser_current(p, &token, errors);
+    if (token.kind != TOKEN_RSQBR) {
+      scu_perror(errors, "Expected ']' at line %d\n", token.line);
+      return;
+    }
+    parser_advance(p);
+  }
 
   parser_current(p, &token, errors);
+
   if (token.kind == TOKEN_ASSIGN) {
-    parse_initialize(p, instr, _type, _name, errors);
+    if (is_array) {
+      parse_initialize_array(p, instr, _type, _name, size_expr, errors);
+    } else {
+      parse_initialize(p, instr, _type, _name, errors);
+    }
+  } else {
+    if (is_array) {
+      instr->kind = INSTR_DECLARE_ARRAY;
+      instr->declare_array.var.type = _type;
+      instr->declare_array.var.name = _name;
+      instr->declare_array.var.line = _line;
+      instr->declare_array.size_expr = size_expr;
+    } else {
+      instr->kind = INSTR_DECLARE;
+      instr->declare_variable.type = _type;
+      instr->declare_variable.name = _name;
+      instr->declare_variable.line = _line;
+    }
   }
 }
 
@@ -426,25 +542,6 @@ static void parse_goto(parser *p, instr_node *instr, unsigned int *errors) {
   parser_advance(p);
 
   instr->goto_.label = token.value.str;
-}
-
-/*
- * @brief: parse an output instruction.
- *
- * @param p: pointer to the parser state.
- * @param instr: pointer to a newly malloc'd instr struct.
- * @param errors: counter variable to increment when an error is encountered.
- */
-static void parse_output(parser *p, instr_node *instr, unsigned int *errors) {
-  term_node rhs;
-
-  instr->kind = INSTR_OUTPUT;
-
-  parser_advance(p);
-  parse_term_for_expr(p, &rhs, errors);
-
-  instr->line = rhs.line;
-  instr->output.term = rhs;
 }
 
 /*
@@ -584,9 +681,6 @@ static void parse_instr(parser *p, instr_node *instr, size_t *loop_counter,
   case TOKEN_POINTER:
     parse_assign(p, instr, errors);
     break;
-  case TOKEN_OUTPUT:
-    parse_output(p, instr, errors);
-    break;
   case TOKEN_IF:
     parse_if(p, instr, loop_counter, errors);
     break;
@@ -618,6 +712,7 @@ static void parse_instr(parser *p, instr_node *instr, size_t *loop_counter,
   default:
     scu_perror(errors, "unexpected token: %s - '%s' [line %d]\n",
                lexer_token_kind_to_str(token.kind), token.value, token.line);
+    scu_check_errors(errors);
   }
 }
 
@@ -636,6 +731,7 @@ void parser_parse_program(parser *p, program_node *program,
     }
     instr_node *instr = scu_checked_malloc(sizeof(instr_node));
     parse_instr(p, instr, &program->loop_counter, errors);
+    scu_check_errors(errors);
     dynamic_array_append(&program->instrs, instr);
     free(instr);
     parser_current(p, &token, errors);
@@ -664,15 +760,19 @@ static void check_var_and_print(variable *var) {
 }
 
 /*
+ * @brief: prints an expression node. (declaration)
+ *
+ * @param expr: pointer to an expression node.
+ */
+static void check_expr_and_print(expr_node *expr);
+
+/*
  * @brief: prints a term node.
  *
  * @param expr: pointer to a term node.
  */
 static void check_term_and_print(term_node *term) {
   switch (term->kind) {
-  case TERM_INPUT:
-    printf("input");
-    break;
   case TERM_INT:
     printf("%d", term->value.integer);
     break;
@@ -689,11 +789,20 @@ static void check_term_and_print(term_node *term) {
   case TERM_ADDOF:
     printf("&%s", term->identifier.name);
     break;
+  case TERM_ARRAY_ACCESS:
+    //...
+    printf("%s[", term->array_access.array_var.name);
+    check_expr_and_print(term->array_access.index_expr);
+    printf("]");
+    break;
+  case TERM_ARRAY_LITERAL:
+    printf("{...}");
+    break;
   }
 }
 
 /*
- * @brief: prints an expression node.
+ * @brief: prints an expression node. (definition)
  *
  * @param expr: pointer to an expression node.
  */
@@ -801,6 +910,33 @@ static void print_instr(instr_node *instr) {
     printf("\n");
     break;
 
+  case INSTR_DECLARE_ARRAY:
+    printf("declare array: ");
+    check_var_and_print(&instr->declare_array.var);
+    printf("[");
+    check_expr_and_print(instr->declare_array.size_expr);
+    printf("]\n");
+    break;
+    break;
+
+  case INSTR_INITIALIZE_ARRAY:
+    printf("initialize array: ");
+    check_var_and_print(&instr->initialize_array.var);
+    printf("[");
+    check_expr_and_print(instr->initialize_array.size_expr);
+    printf("] = {");
+    for (size_t i = 0; i < instr->initialize_array.literal.elements.count;
+         i++) {
+      expr_node elem;
+      dynamic_array_get(&instr->initialize_array.literal.elements, i, &elem);
+      check_expr_and_print(&elem);
+      if (i < instr->initialize_array.literal.elements.count - 1) {
+        printf(", ");
+      }
+    }
+    printf("}\n");
+    break;
+
   case INSTR_IF:
     printf("if ");
     switch (instr->if_.rel.kind) {
@@ -839,12 +975,6 @@ static void print_instr(instr_node *instr) {
 
   case INSTR_GOTO:
     printf("goto: %s\n", instr->goto_.label);
-    break;
-
-  case INSTR_OUTPUT:
-    printf("output: ");
-    check_term_and_print(&instr->output.term);
-    printf("\n");
     break;
 
   case INSTR_LABEL:

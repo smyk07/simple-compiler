@@ -10,6 +10,14 @@
 #include "ds/stack.h"
 
 /*
+ * @brief: evaluate a constant expression to extract integer value
+ *
+ * @param expr: pointer to an expr_node
+ * @return: the integer value of the constant expression
+ */
+int evaluate_const_expr(expr_node *expr);
+
+/*
  * @brief: convert a dynamic_array of instructions to FASM assembly.
  *
  * @param program: basically a wrapper around a dynamic_array of instructions.
