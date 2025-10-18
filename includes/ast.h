@@ -7,24 +7,10 @@
 
 #include "ds/dynamic_array.h"
 #include "token.h"
+#include "var.h"
 
 #include <stddef.h>
 #include <stdint.h>
-
-/*
- * @enum type: represents data types.
- */
-typedef enum type { TYPE_INT = 0, TYPE_CHAR, TYPE_POINTER, TYPE_VOID } type;
-
-/*
- * @struct variable: represents a variable.
- */
-typedef struct variable {
-  type type;
-  char *name;
-  size_t line;
-  size_t stack_offset;
-} variable;
 
 /*
  * @enum term_kind: enumeration of all the terms supported by the parser.

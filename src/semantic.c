@@ -18,24 +18,6 @@
 static void instr_typecheck(instr_node *instr, ht *variables,
                             unsigned int *errors);
 
-size_t find_stack_offset(ht *variables, variable *var_to_find,
-                         unsigned int *errors) {
-  if (!variables || !var_to_find || !var_to_find->name)
-    return -1;
-
-  variable *var = ht_search(variables, var_to_find->name);
-
-  if (!var) {
-    if (errors) {
-      scu_perror(errors, "Use of undeclared variable: %s [line %u]\n",
-                 var_to_find->name, var_to_find->line);
-    }
-    return -1;
-  }
-
-  return var->stack_offset;
-}
-
 /*
  * @brief: insert a new variable into the variables hash table.
  *
@@ -282,17 +264,6 @@ static void instrs_check_labels(dynamic_array *instrs, dynamic_array *labels,
   }
 }
 
-type var_type(const char *name, size_t line, ht *variables,
-              unsigned int *errors) {
-  variable *var = ht_search(variables, name);
-  if (!var) {
-    scu_perror(errors, "Use of undeclared variable: %s [line %u]\n", name,
-               line);
-    return -1;
-  }
-  return var->type;
-}
-
 /*
  * @brief: check for types in a term_node
  *
@@ -303,8 +274,8 @@ type var_type(const char *name, size_t line, ht *variables,
  * @param errors: counter variable to increment when an error is encountered.
  * @param line: where the term is situated in the source buffer.
  */
-static type term_type(term_node *term, type target_type, size_t line,
-                      ht *variables, unsigned int *errors) {
+static type term_type(term_node *term, type target_type, ht *variables,
+                      unsigned int *errors) {
   switch (term->kind) {
   case TERM_INPUT:
     return target_type;
@@ -316,7 +287,7 @@ static type term_type(term_node *term, type target_type, size_t line,
   case TERM_DEREF:
   case TERM_ADDOF:
   case TERM_IDENTIFIER:
-    return var_type(term->identifier.name, line, variables, errors);
+    return get_var_type(variables, &term->identifier, errors);
   }
 }
 
@@ -351,7 +322,7 @@ static type expr_type(expr_node *expr, type target_type, ht *variables,
 
   switch (expr->kind) {
   case EXPR_TERM:
-    return term_type(&expr->term, target_type, expr->line, variables, errors);
+    return term_type(&expr->term, target_type, variables, errors);
   case EXPR_ADD:
   case EXPR_SUBTRACT:
   case EXPR_MULTIPLY:
@@ -384,40 +355,30 @@ static void rel_typecheck(rel_node *rel, ht *variables, unsigned int *errors) {
 
   switch (rel->kind) {
   case REL_IS_EQUAL:
-    lhs =
-        term_type(&rel->is_equal.lhs, TYPE_VOID, rel->line, variables, errors);
-    rhs =
-        term_type(&rel->is_equal.rhs, TYPE_VOID, rel->line, variables, errors);
+    lhs = term_type(&rel->is_equal.lhs, TYPE_VOID, variables, errors);
+    rhs = term_type(&rel->is_equal.rhs, TYPE_VOID, variables, errors);
     break;
   case REL_NOT_EQUAL:
-    lhs =
-        term_type(&rel->not_equal.lhs, TYPE_VOID, rel->line, variables, errors);
-    rhs =
-        term_type(&rel->not_equal.rhs, TYPE_VOID, rel->line, variables, errors);
+    lhs = term_type(&rel->not_equal.lhs, TYPE_VOID, variables, errors);
+    rhs = term_type(&rel->not_equal.rhs, TYPE_VOID, variables, errors);
     break;
   case REL_LESS_THAN:
-    lhs =
-        term_type(&rel->less_than.lhs, TYPE_VOID, rel->line, variables, errors);
-    rhs =
-        term_type(&rel->less_than.rhs, TYPE_VOID, rel->line, variables, errors);
+    lhs = term_type(&rel->less_than.lhs, TYPE_VOID, variables, errors);
+    rhs = term_type(&rel->less_than.rhs, TYPE_VOID, variables, errors);
     break;
   case REL_LESS_THAN_OR_EQUAL:
-    lhs = term_type(&rel->less_than_or_equal.lhs, TYPE_VOID, rel->line,
-                    variables, errors);
-    rhs = term_type(&rel->less_than_or_equal.rhs, TYPE_VOID, rel->line,
-                    variables, errors);
+    lhs = term_type(&rel->less_than_or_equal.lhs, TYPE_VOID, variables, errors);
+    rhs = term_type(&rel->less_than_or_equal.rhs, TYPE_VOID, variables, errors);
     break;
   case REL_GREATER_THAN:
-    lhs = term_type(&rel->greater_than.lhs, TYPE_VOID, rel->line, variables,
-                    errors);
-    rhs = term_type(&rel->greater_than.rhs, TYPE_VOID, rel->line, variables,
-                    errors);
+    lhs = term_type(&rel->greater_than.lhs, TYPE_VOID, variables, errors);
+    rhs = term_type(&rel->greater_than.rhs, TYPE_VOID, variables, errors);
     break;
   case REL_GREATER_THAN_OR_EQUAL:
-    lhs = term_type(&rel->greater_than_or_equal.lhs, TYPE_VOID, rel->line,
-                    variables, errors);
-    rhs = term_type(&rel->greater_than_or_equal.rhs, TYPE_VOID, rel->line,
-                    variables, errors);
+    lhs = term_type(&rel->greater_than_or_equal.lhs, TYPE_VOID, variables,
+                    errors);
+    rhs = term_type(&rel->greater_than_or_equal.rhs, TYPE_VOID, variables,
+                    errors);
     break;
   }
 
@@ -458,7 +419,7 @@ static void instr_typecheck(instr_node *instr, ht *variables,
   }
   case INSTR_ASSIGN: {
     type target_type =
-        var_type(instr->assign.identifier.name, instr->line, variables, errors);
+        get_var_type(variables, &instr->assign.identifier, errors);
     type expr_result =
         expr_type(&instr->assign.expr, target_type, variables, errors);
     if (target_type == TYPE_POINTER) {

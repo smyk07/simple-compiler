@@ -4,7 +4,6 @@
 #include "ds/ht.h"
 #include "ds/stack.h"
 #include "fasm.h"
-#include "semantic.h"
 #include "utils.h"
 
 #include <stdio.h>
@@ -35,20 +34,20 @@ static void term_asm(term_node *term, ht *variables) {
     break;
   }
   case TERM_IDENTIFIER: {
-    int index = find_stack_offset(variables, &term->identifier, NULL);
+    int index = get_var_stack_offset(variables, &term->identifier, NULL);
     printf("    mov rax, qword [rbp - %d]\n", index * 8 + 8);
     break;
   }
   case TERM_POINTER:
     break;
   case TERM_DEREF: {
-    int index = find_stack_offset(variables, &term->identifier, NULL);
+    int index = get_var_stack_offset(variables, &term->identifier, NULL);
     printf("    mov rbx, qword [rbp - %d]\n", index * 8 + 8);
     printf("    mov rax, qword [rbx]\n");
     break;
   }
   case TERM_ADDOF: {
-    int index = find_stack_offset(variables, &term->identifier, NULL);
+    int index = get_var_stack_offset(variables, &term->identifier, NULL);
     printf("    lea rax, [rbp - %d]\n", index * 8 + 8);
     break;
   }
@@ -178,14 +177,15 @@ static void instr_asm(instr_node *instr, ht *variables, unsigned int *if_count,
 
   case INSTR_INITIALIZE: {
     int index =
-        find_stack_offset(variables, &instr->initialize_variable.var, NULL);
+        get_var_stack_offset(variables, &instr->initialize_variable.var, NULL);
     expr_asm(&instr->initialize_variable.expr, variables);
     printf("    mov qword [rbp - %d], rax\n", index * 8 + 8);
     break;
   }
 
   case INSTR_ASSIGN: {
-    int index = find_stack_offset(variables, &instr->assign.identifier, NULL);
+    int index =
+        get_var_stack_offset(variables, &instr->assign.identifier, NULL);
     expr_asm(&instr->assign.expr, variables);
     if (instr->assign.identifier.type == TYPE_POINTER) {
       printf("    mov rbx, qword [rbp - %d]\n", index * 8 + 8);
@@ -266,7 +266,7 @@ static void instr_asm(instr_node *instr, ht *variables, unsigned int *if_count,
     }
     case TERM_ADDOF: {
       int index =
-          find_stack_offset(variables, &instr->output.term.identifier, NULL);
+          get_var_stack_offset(variables, &instr->output.term.identifier, NULL);
       printf("    lea rsi, [rbp - %d]\n", index * 8 + 8);
       printf("    mov rdi, 1\n");
       printf("    call write_uint\n");
@@ -288,7 +288,7 @@ static void instr_asm(instr_node *instr, ht *variables, unsigned int *if_count,
 
   case INSTR_FASM:
     if (instr->fasm.kind == ARG) {
-      int index = find_stack_offset(variables, &instr->fasm.argument, NULL);
+      int index = get_var_stack_offset(variables, &instr->fasm.argument, NULL);
       char *stmt =
           scu_format_string((char *)instr->fasm.content, index * 8 + 8);
       printf("    %s\n", stmt);
