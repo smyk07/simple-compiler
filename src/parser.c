@@ -133,13 +133,11 @@ static expr_node *parse_factor(parser *p, unsigned int *errors) {
     parser_current(p, &token, errors);
     if (token.kind != TOKEN_RPAREN) {
       scu_perror(errors, "Syntax error: expected ')'\n");
-      scu_check_errors(errors);
     }
     parser_advance(p);
     return node;
   } else {
     scu_perror(errors, "Syntax error: expected term or '('\n");
-    scu_check_errors(errors);
     exit(1);
   }
 }
@@ -544,7 +542,6 @@ static void parse_loop(parser *p, instr_node *instr, size_t *loop_counter,
   parser_current(p, &token, errors);
   if (token.kind != TOKEN_LBRACE) {
     scu_perror(errors, "no opening brace for loop at %d\n", token.line);
-    scu_check_errors(errors);
   }
 
   parser_advance(p);
@@ -621,7 +618,6 @@ static void parse_instr(parser *p, instr_node *instr, size_t *loop_counter,
   default:
     scu_perror(errors, "unexpected token: %s - '%s' [line %d]\n",
                lexer_token_kind_to_str(token.kind), token.value, token.line);
-    scu_check_errors(errors);
   }
 }
 
@@ -644,6 +640,8 @@ void parser_parse_program(parser *p, program_node *program,
     free(instr);
     parser_current(p, &token, errors);
   }
+
+  scu_check_errors(errors);
 }
 
 /*
