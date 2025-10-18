@@ -1,16 +1,21 @@
 # Simple Compiler
 
 A Simple Compiler. (Compiles to x64 fasm assembly).
+Only linux is supported for now.
 
 ## Inspiration
 
 [How to build a compiler from scratch by Alex The Dev](https://youtu.be/HOe2YFnzO2I)
 
-## Prerequisites (to build the compiler)
+## Prerequisites for building
 
 - `make`
 - `clang`
 - `bear` (for `compile_commands.json`)
+
+## Tools required
+
+- `fasm`
 
 ## Usage
 
