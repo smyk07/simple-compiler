@@ -23,6 +23,7 @@ typedef struct variable {
   type type;
   char *name;
   size_t line;
+  size_t stack_offset;
 } variable;
 
 /*

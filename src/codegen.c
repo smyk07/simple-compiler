@@ -1,6 +1,7 @@
 #include "codegen.h"
 #include "ast.h"
 #include "ds/dynamic_array.h"
+#include "ds/ht.h"
 #include "ds/stack.h"
 #include "fasm.h"
 #include "semantic.h"
@@ -13,9 +14,9 @@
  * @brief: generate assembly for terms.
  *
  * @param term: pointer to a term_node.
- * @param variables: dynamic_array of variables.
+ * @param variables: hash table of variables.
  */
-static void term_asm(term_node *term, dynamic_array *variables) {
+static void term_asm(term_node *term, ht *variables) {
   switch (term->kind) {
   case TERM_INPUT: {
     printf("    read 0, line, LINE_MAX\n");
@@ -34,20 +35,20 @@ static void term_asm(term_node *term, dynamic_array *variables) {
     break;
   }
   case TERM_IDENTIFIER: {
-    int index = find_variables(variables, &term->identifier, NULL);
+    int index = find_stack_offset(variables, &term->identifier, NULL);
     printf("    mov rax, qword [rbp - %d]\n", index * 8 + 8);
     break;
   }
   case TERM_POINTER:
     break;
   case TERM_DEREF: {
-    int index = find_variables(variables, &term->identifier, NULL);
+    int index = find_stack_offset(variables, &term->identifier, NULL);
     printf("    mov rbx, qword [rbp - %d]\n", index * 8 + 8);
     printf("    mov rax, qword [rbx]\n");
     break;
   }
   case TERM_ADDOF: {
-    int index = find_variables(variables, &term->identifier, NULL);
+    int index = find_stack_offset(variables, &term->identifier, NULL);
     printf("    lea rax, [rbp - %d]\n", index * 8 + 8);
     break;
   }
@@ -58,9 +59,9 @@ static void term_asm(term_node *term, dynamic_array *variables) {
  * @brief: generate assembly for arithmetic expressions.
  *
  * @param expr: pointer to an expr_node.
- * @param variables: dynamic_array of variables.
+ * @param variables: hash table of variables.
  */
-static void expr_asm(expr_node *expr, dynamic_array *variables) {
+static void expr_asm(expr_node *expr, ht *variables) {
   switch (expr->kind) {
   case EXPR_TERM:
     term_asm(&expr->term, variables);
@@ -107,9 +108,9 @@ static void expr_asm(expr_node *expr, dynamic_array *variables) {
  * @brief: generate assembly for relational expressions
  *
  * @param rel: pointer to a rel_node.
- * @param variables: dynamic_array of variables.
+ * @param variables: hash table of variables.
  */
-static void rel_asm(rel_node *rel, dynamic_array *variables) {
+static void rel_asm(rel_node *rel, ht *variables) {
   switch (rel->kind) {
   case REL_IS_EQUAL:
     term_asm(&rel->is_equal.lhs, variables);
@@ -166,25 +167,25 @@ static void rel_asm(rel_node *rel, dynamic_array *variables) {
  * @brief: generate assembly for individual expressions.
  *
  * @param instr: pointer ot an instr_node.
- * @param variables: dynamic_array of variables.
+ * @param variables: hash table of variables.
  * @param if_count: counter for if instructions.
  */
-static void instr_asm(instr_node *instr, dynamic_array *variables,
-                      unsigned int *if_count, stack *loops) {
+static void instr_asm(instr_node *instr, ht *variables, unsigned int *if_count,
+                      stack *loops) {
   switch (instr->kind) {
   case INSTR_DECLARE:
     break;
 
   case INSTR_INITIALIZE: {
     int index =
-        find_variables(variables, &instr->initialize_variable.var, NULL);
+        find_stack_offset(variables, &instr->initialize_variable.var, NULL);
     expr_asm(&instr->initialize_variable.expr, variables);
     printf("    mov qword [rbp - %d], rax\n", index * 8 + 8);
     break;
   }
 
   case INSTR_ASSIGN: {
-    int index = find_variables(variables, &instr->assign.identifier, NULL);
+    int index = find_stack_offset(variables, &instr->assign.identifier, NULL);
     expr_asm(&instr->assign.expr, variables);
     if (instr->assign.identifier.type == TYPE_POINTER) {
       printf("    mov rbx, qword [rbp - %d]\n", index * 8 + 8);
@@ -231,20 +232,17 @@ static void instr_asm(instr_node *instr, dynamic_array *variables,
       printf("    syscall\n");
       break;
     case TERM_IDENTIFIER: {
-      int index =
-          find_variables(variables, &instr->output.term.identifier, NULL);
-      variable var;
-      dynamic_array_get(variables, index, &var);
-      if (var.type == TYPE_CHAR) {
-        printf("    mov al, byte [rbp - %d]\n", index * 8 + 8);
+      variable *var = ht_search(variables, instr->output.term.identifier.name);
+      if (var->type == TYPE_CHAR) {
+        printf("    mov al, byte [rbp - %zu]\n", var->stack_offset * 8 + 8);
         printf("    mov [char_buf], al\n");
         printf("    mov rdi, 1\n");
         printf("    mov rsi, char_buf\n");
         printf("    mov rdx, 2\n");
         printf("    mov rax, 1\n");
         printf("    syscall\n");
-      } else if (var.type == TYPE_INT) {
-        printf("    mov rsi, qword [rbp - %d]\n", index * 8 + 8);
+      } else if (var->type == TYPE_INT) {
+        printf("    mov rsi, qword [rbp - %zu]\n", var->stack_offset * 8 + 8);
         printf("    mov rdi, 1\n");
         printf("    call write_uint\n");
         printf("    mov rsi, newline\n");
@@ -268,7 +266,7 @@ static void instr_asm(instr_node *instr, dynamic_array *variables,
     }
     case TERM_ADDOF: {
       int index =
-          find_variables(variables, &instr->output.term.identifier, NULL);
+          find_stack_offset(variables, &instr->output.term.identifier, NULL);
       printf("    lea rsi, [rbp - %d]\n", index * 8 + 8);
       printf("    mov rdi, 1\n");
       printf("    call write_uint\n");
@@ -290,7 +288,7 @@ static void instr_asm(instr_node *instr, dynamic_array *variables,
 
   case INSTR_FASM:
     if (instr->fasm.kind == ARG) {
-      int index = find_variables(variables, &instr->fasm.argument, NULL);
+      int index = find_stack_offset(variables, &instr->fasm.argument, NULL);
       char *stmt =
           scu_format_string((char *)instr->fasm.content, index * 8 + 8);
       printf("    %s\n", stmt);
@@ -327,8 +325,8 @@ static void instr_asm(instr_node *instr, dynamic_array *variables,
   }
 }
 
-void instrs_to_asm(program_node *program, dynamic_array *variables,
-                   stack *loops, const char *filename) {
+void instrs_to_asm(program_node *program, ht *variables, stack *loops,
+                   const char *filename) {
   unsigned int if_count = 0;
 
   char *output_asm_file = scu_format_string("%s.s", filename);

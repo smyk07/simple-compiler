@@ -22,7 +22,7 @@ install: all
 
 $(TARGET): $(OBJS) | $(BIN_DIR)
 	@echo "[LD] $@"
-	@$(CC) $(OBJS) -o $@
+	@$(CC) $(OBJS) -o $@ -lm
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c | $(OBJ_DIR)
 	@echo "[CC] $@"

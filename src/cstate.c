@@ -1,6 +1,7 @@
 #include "cstate.h"
 #include "ast.h"
 #include "ds/dynamic_array.h"
+#include "ds/ht.h"
 #include "ds/stack.h"
 #include "lexer.h"
 #include "parser.h"
@@ -149,8 +150,7 @@ cstate *cstate_create_from_args(int argc, char *argv[]) {
   s->loops = scu_checked_malloc(sizeof(stack));
   stack_init(s->loops, sizeof(loop_node *));
 
-  s->variables = scu_checked_malloc(sizeof(dynamic_array));
-  dynamic_array_init(s->variables, sizeof(variable));
+  s->variables = ht_new(sizeof(variable));
 
   return s;
 }
@@ -174,8 +174,7 @@ void cstate_free(cstate *s) {
   stack_free(s->loops);
   free(s->loops);
 
-  dynamic_array_free(s->variables);
-  free(s->variables);
+  ht_del_ht(s->variables);
 
   free(s);
 }

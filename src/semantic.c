@@ -1,64 +1,67 @@
 #include "semantic.h"
 #include "ast.h"
 #include "ds/dynamic_array.h"
+#include "ds/ht.h"
 #include "utils.h"
+#include <stddef.h>
 
 #define _POSIX_C_SOURCE 200809L
 #include <string.h>
 
-int find_variables(dynamic_array *variables, variable *var_to_find,
-                   unsigned int *errors) {
-  for (unsigned int i = 0; i < variables->count; i++) {
-    variable var;
-    dynamic_array_get(variables, i, &var);
+size_t find_stack_offset(ht *variables, variable *var_to_find,
+                         unsigned int *errors) {
+  if (!variables || !var_to_find || !var_to_find->name)
+    return -1;
 
-    if (strcmp(var_to_find->name, var.name) == 0) {
-      return i;
+  variable *var = ht_search(variables, var_to_find->name);
+
+  if (!var) {
+    if (errors) {
+      scu_perror(errors, "Use of undeclared variable: %s [line %u]\n",
+                 var_to_find->name, var_to_find->line);
+      scu_check_errors(errors);
     }
+    return -1;
   }
 
-  scu_perror(errors, "Use of undeclared variable: %s [line %u]\n",
-             var_to_find->name, var_to_find->line);
-  scu_check_errors(errors);
-  return -1;
+  return var->stack_offset;
 }
 
 /*
- * @brief: append a new variable to the variables dynamic_array.
+ * @brief: insert a new variable into the variables hash table.
  *
  * @param var_to_declare: the variable struct to append.
- * @param variables: pointer to the variables dynamic_array.
+ * @param variables: pointer to the variables hash table.
  */
-static void declare_variables(variable *var_to_declare,
-                              dynamic_array *variables) {
+static void declare_variables(variable *var_to_declare, ht *variables) {
   if (!var_to_declare || !var_to_declare->name || !variables)
     return;
 
-  for (unsigned int i = 0; i < variables->count; i++) {
-    variable var;
-    if (dynamic_array_get(variables, i, &var) != 0)
-      continue;
+  variable *var = ht_search(variables, var_to_declare->name);
+  if (var)
+    return;
 
-    if (var.name && strcmp(var_to_declare->name, var.name) == 0) {
-      return;
-    }
-  }
-
-  dynamic_array_append(variables, var_to_declare);
+  var_to_declare->stack_offset = variables->count * 8 + 8;
+  ht_insert(variables, var_to_declare->name, var_to_declare);
 }
 
 /*
  * @brief: check variables in terms
  *
  * @param term: pointer to a term_node.
- * @param variables: pointer to the variables dynamic_array.
+ * @param variables: pointer to the variables hash table.
  * @param errors: counter variable to increment when an error is encountered.
  */
-static void term_check_variables(term_node *term, dynamic_array *variables,
+static void term_check_variables(term_node *term, ht *variables,
                                  unsigned int *errors) {
   switch (term->kind) {
   case TERM_IDENTIFIER:
-    find_variables(variables, &term->identifier, errors);
+    variable *var = ht_search(variables, term->identifier.name);
+    if (!var) {
+      scu_perror(errors, "Use of undeclared variable: %s [line %u]\n",
+                 term->identifier.name, term->identifier.line);
+      scu_check_errors(errors);
+    }
     break;
   default:
     break;
@@ -69,10 +72,10 @@ static void term_check_variables(term_node *term, dynamic_array *variables,
  * @brief: check variables in expressions
  *
  * @param expr: pointer to an expr_node.
- * @param variables: pointer to the variables dynamic_array.
+ * @param variables: pointer to the variables hash table.
  * @param errors: counter variable to increment when an error is encountered.
  */
-static void expr_check_variables(expr_node *expr, dynamic_array *variables,
+static void expr_check_variables(expr_node *expr, ht *variables,
                                  unsigned int *errors) {
   switch (expr->kind) {
   case EXPR_TERM:
@@ -93,10 +96,10 @@ static void expr_check_variables(expr_node *expr, dynamic_array *variables,
  * @brief: check variables in relational expressions
  *
  * @param rel: pointer to a rel_node.
- * @param variables: pointer to the variables dynamic_array.
+ * @param variables: pointer to the variables hash table.
  * @param errors: counter variable to increment when an error is encountered.
  */
-static void rel_check_variables(rel_node *rel, dynamic_array *variables,
+static void rel_check_variables(rel_node *rel, ht *variables,
                                 unsigned int *errors) {
   switch (rel->kind) {
   case REL_IS_EQUAL:
@@ -130,10 +133,10 @@ static void rel_check_variables(rel_node *rel, dynamic_array *variables,
  * @brief: check variables in an individual instruction
  *
  * @param instr: pointer to an instr_node.
- * @param variables: pointer to the variables dynamic_array.
+ * @param variables: pointer to the variables hash table.
  * @param errors: counter variable to increment when an error is encountered.
  */
-static void instr_check_variables(instr_node *instr, dynamic_array *variables,
+static void instr_check_variables(instr_node *instr, ht *variables,
                                   unsigned int *errors) {
   switch (instr->kind) {
   case INSTR_DECLARE:
@@ -254,18 +257,15 @@ static void instrs_check_labels(dynamic_array *instrs, dynamic_array *labels,
   }
 }
 
-type var_type(const char *name, size_t line, dynamic_array *variables,
+type var_type(const char *name, size_t line, ht *variables,
               unsigned int *errors) {
-  for (unsigned int i = 0; i < variables->count; i++) {
-    variable var;
-    dynamic_array_get(variables, i, &var);
-
-    if (strcmp(name, var.name) == 0) {
-      return var.type;
-    }
+  variable *var = ht_search(variables, name);
+  if (!var) {
+    scu_perror(errors, "Use of undeclared variable: %s [line %u]\n", name,
+               line);
+    return -1;
   }
-  scu_perror(errors, "Use of undeclared variable: %s [line %u]\n", name, line);
-  return -1;
+  return var->type;
 }
 
 /*
@@ -274,12 +274,12 @@ type var_type(const char *name, size_t line, dynamic_array *variables,
  * @param term: pointer to a term_node.
  * @param target_type: type enumeration for the type which is required in the
  * instruction.
- * @param variables: pointer to the variables dynamic_array.
+ * @param variables: pointer to the variables hash table.
  * @param errors: counter variable to increment when an error is encountered.
  * @param line: where the term is situated in the source buffer.
  */
 static type term_type(term_node *term, type target_type, size_t line,
-                      dynamic_array *variables, unsigned int *errors) {
+                      ht *variables, unsigned int *errors) {
   switch (term->kind) {
   case TERM_INPUT:
     return target_type;
@@ -317,11 +317,11 @@ static const char *type_to_str(type type) {
  * @param expr: pointer to an expr_node.
  * @param target_type: type enumeration for the type which is required in the
  * instruction.
- * @param variables: pointer to the variables dynamic_array.
+ * @param variables: pointer to the variables hash table.
  * @param errors: counter variable to increment when an error is encountered.
  */
-static type expr_type(expr_node *expr, type target_type,
-                      dynamic_array *variables, unsigned int *errors) {
+static type expr_type(expr_node *expr, type target_type, ht *variables,
+                      unsigned int *errors) {
   type lhs, rhs;
 
   switch (expr->kind) {
@@ -351,11 +351,10 @@ static type expr_type(expr_node *expr, type target_type,
  * @brief: check for types in a rel_node
  *
  * @param rel: pointer to a rel_node.
- * @param variables: pointer to the variables dynamic_array.
+ * @param variables: pointer to the variables hash table.
  * @param errors: counter variable to increment when an error is encountered.
  */
-static void rel_typecheck(rel_node *rel, dynamic_array *variables,
-                          unsigned int *errors) {
+static void rel_typecheck(rel_node *rel, ht *variables, unsigned int *errors) {
   type lhs, rhs;
 
   switch (rel->kind) {
@@ -410,10 +409,10 @@ static void rel_typecheck(rel_node *rel, dynamic_array *variables,
  * @brief: check for types in an instr_node
  *
  * @param instr: pointer to an instr_node.
- * @param variables: pointer to the variables dynamic_array.
+ * @param variables: pointer to the variables hash table.
  * @param errors: counter variable to increment when an error is encountered.
  */
-static void instr_typecheck(instr_node *instr, dynamic_array *variables,
+static void instr_typecheck(instr_node *instr, ht *variables,
                             unsigned int *errors) {
   switch (instr->kind) {
   case INSTR_INITIALIZE: {
@@ -457,7 +456,7 @@ static void instr_typecheck(instr_node *instr, dynamic_array *variables,
   }
 }
 
-void check_semantics(dynamic_array *instrs, dynamic_array *variables,
+void check_semantics(dynamic_array *instrs, ht *variables,
                      unsigned int *errors) {
   // Semantic Analysis - Check variables and their types
   for (unsigned int i = 0; i < instrs->count; i++) {
