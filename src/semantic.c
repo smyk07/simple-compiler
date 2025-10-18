@@ -8,6 +8,16 @@
 #define _POSIX_C_SOURCE 200809L
 #include <string.h>
 
+/*
+ * @brief: check for types in an instr_node (declaration)
+ *
+ * @param instr: pointer to an instr_node.
+ * @param variables: pointer to the variables hash table.
+ * @param errors: counter variable to increment when an error is encountered.
+ */
+static void instr_typecheck(instr_node *instr, ht *variables,
+                            unsigned int *errors);
+
 size_t find_stack_offset(ht *variables, variable *var_to_find,
                          unsigned int *errors) {
   if (!variables || !var_to_find || !var_to_find->name)
@@ -19,7 +29,6 @@ size_t find_stack_offset(ht *variables, variable *var_to_find,
     if (errors) {
       scu_perror(errors, "Use of undeclared variable: %s [line %u]\n",
                  var_to_find->name, var_to_find->line);
-      scu_check_errors(errors);
     }
     return -1;
   }
@@ -60,7 +69,6 @@ static void term_check_variables(term_node *term, ht *variables,
     if (!var) {
       scu_perror(errors, "Use of undeclared variable: %s [line %u]\n",
                  term->identifier.name, term->identifier.line);
-      scu_check_errors(errors);
     }
     break;
   default:
@@ -155,6 +163,23 @@ static void instr_check_variables(instr_node *instr, ht *variables,
     break;
   case INSTR_OUTPUT:
     term_check_variables(&instr->output.term, variables, errors);
+    break;
+  case INSTR_FASM:
+    if (instr->fasm.kind == ARG) {
+      variable *var = ht_search(variables, instr->fasm.argument.name);
+      if (!var) {
+        scu_perror(errors, "Use of undeclared variable: %s [line %u]\n",
+                   instr->fasm.argument.name, instr->fasm.argument.line);
+      }
+    }
+    break;
+  case INSTR_LOOP:
+    for (size_t i = 0; i < instr->loop.instrs.count; i++) {
+      instr_node instr_;
+      dynamic_array_get(&instr->loop.instrs, i, &instr_);
+      instr_check_variables(&instr_, variables, errors);
+      instr_typecheck(&instr_, variables, errors);
+    }
     break;
   default:
     break;
