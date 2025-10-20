@@ -40,7 +40,7 @@ static void declare_variables(variable *var_to_declare, ht *variables) {
     return;
 
   var_to_declare->stack_offset = current_stack_offset;
-  current_stack_offset += 8;
+  current_stack_offset += 1;
   ht_insert(variables, var_to_declare->name, var_to_declare);
 }
 
@@ -205,6 +205,9 @@ static void instr_check_variables(instr_node *instr, ht *variables,
     break;
 
   case INSTR_LOOP:
+    if (instr->loop.kind == WHILE) {
+      rel_check_variables(&instr->loop.break_condition, variables, errors);
+    }
     for (size_t i = 0; i < instr->loop.instrs.count; i++) {
       instr_node instr_;
       dynamic_array_get(&instr->loop.instrs, i, &instr_);

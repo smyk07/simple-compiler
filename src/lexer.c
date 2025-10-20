@@ -477,6 +477,17 @@ static token lexer_next_token(lexer *l) {
       return (token){.kind = TOKEN_LOOP, .value.str = NULL, .line = l->line};
     }
 
+    else if (strcmp(value, "while") == 0) {
+      free(value);
+      return (token){.kind = TOKEN_WHILE, .value.str = NULL, .line = l->line};
+    }
+
+    else if (strcmp(value, "dowhile") == 0) {
+      free(value);
+      return (token){
+          .kind = TOKEN_DO_WHILE, .value.str = NULL, .line = l->line};
+    }
+
     else if (strcmp(value, "continue") == 0) {
       free(value);
       return (token){
@@ -557,6 +568,10 @@ const char *lexer_token_kind_to_str(token_kind kind) {
     return "fasm";
   case TOKEN_LOOP:
     return "loop declare";
+  case TOKEN_WHILE:
+    return "while loop declare";
+  case TOKEN_DO_WHILE:
+    return "do-while loop declare";
   case TOKEN_CONTINUE:
     return "continue";
   case TOKEN_BREAK:

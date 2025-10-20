@@ -53,7 +53,7 @@ static expr_node *parse_expr(parser *p, unsigned int *errors);
  */
 static void parse_term_for_expr(parser *p, term_node *term,
                                 unsigned int *errors) {
-  token token;
+  token token = {0};
 
   parser_current(p, &token, errors);
   term->line = token.line;
@@ -110,7 +110,7 @@ static void parse_term_for_expr(parser *p, term_node *term,
  * @param errors: counter variable to increment when an error is encountered.
  */
 static expr_node *parse_factor(parser *p, unsigned int *errors) {
-  token token;
+  token token = {0};
   parser_current(p, &token, errors);
   if (token.kind == TOKEN_INT || token.kind == TOKEN_CHAR ||
       token.kind == TOKEN_IDENTIFIER || token.kind == TOKEN_POINTER ||
@@ -186,7 +186,7 @@ static expr_node *parse_factor(parser *p, unsigned int *errors) {
 static expr_node *parse_term(parser *p, unsigned int *errors) {
   expr_node *left = parse_factor(p, errors);
   while (1) {
-    token token;
+    token token = {0};
     parser_current(p, &token, errors);
 
     if (token.kind == TOKEN_MULTIPLY || token.kind == TOKEN_DIVIDE ||
@@ -224,7 +224,7 @@ static expr_node *parse_term(parser *p, unsigned int *errors) {
 static expr_node *parse_expr(parser *p, unsigned int *errors) {
   expr_node *left = parse_term(p, errors);
   while (1) {
-    token token;
+    token token = {0};
     parser_current(p, &token, errors);
 
     if (token.kind == TOKEN_ADD || token.kind == TOKEN_SUBTRACT) {
@@ -252,8 +252,8 @@ static expr_node *parse_expr(parser *p, unsigned int *errors) {
  * @param errors: counter variable to increment when an error is encountered.
  */
 static void parse_rel(parser *p, rel_node *rel, unsigned int *errors) {
-  token token;
-  term_node lhs, rhs;
+  token token = {0};
+  term_node lhs = {0}, rhs = {0};
 
   parse_term_for_expr(p, &lhs, errors);
 
@@ -353,7 +353,7 @@ static void parse_initialize_array(parser *p, instr_node *instr, type _type,
   instr->initialize_array.size_expr = size_expr;
   parser_advance(p);
 
-  token token;
+  token token = {0};
   parser_current(p, &token, errors);
 
   if (token.kind != TOKEN_LBRACE) {
@@ -396,7 +396,7 @@ static void parse_initialize_array(parser *p, instr_node *instr, type _type,
  * @param errors: counter variable to increment when an error is encountered.
  */
 static void parse_declare(parser *p, instr_node *instr, unsigned int *errors) {
-  token token;
+  token token = {0};
 
   type _type = TYPE_VOID;
   char *_name;
@@ -465,7 +465,7 @@ static void parse_declare(parser *p, instr_node *instr, unsigned int *errors) {
  * @param errors: counter variable to increment when an error is encountered.
  */
 static void parse_assign(parser *p, instr_node *instr, unsigned int *errors) {
-  token token;
+  token token = {0};
 
   instr->kind = INSTR_ASSIGN;
 
@@ -499,7 +499,7 @@ static void parse_assign(parser *p, instr_node *instr, unsigned int *errors) {
  */
 static void parse_if(parser *p, instr_node *instr, size_t *loop_counter,
                      unsigned int *errors) {
-  token token;
+  token token = {0};
 
   instr->kind = INSTR_IF;
 
@@ -527,7 +527,7 @@ static void parse_if(parser *p, instr_node *instr, size_t *loop_counter,
  * @param errors: counter variable to increment when an error is encountered.
  */
 static void parse_goto(parser *p, instr_node *instr, unsigned int *errors) {
-  token token;
+  token token = {0};
 
   instr->kind = INSTR_GOTO;
 
@@ -552,7 +552,7 @@ static void parse_goto(parser *p, instr_node *instr, unsigned int *errors) {
  * @param errors: counter variable to increment when an error is encountered.
  */
 static void parse_label(parser *p, instr_node *instr, unsigned int *errors) {
-  token token;
+  token token = {0};
 
   instr->kind = INSTR_LABEL;
 
@@ -593,7 +593,7 @@ static void parse_fasm_def(parser *p, instr_node *instr, unsigned int *errors) {
  * @param errors: counter variable to increment when an error is encountered.
  */
 static void parse_fasm(parser *p, instr_node *instr, unsigned int *errors) {
-  token token;
+  token token = {0};
 
   instr->kind = INSTR_FASM;
 
@@ -623,22 +623,32 @@ static void parse_fasm(parser *p, instr_node *instr, unsigned int *errors) {
  *
  * @param p: pointer to the parser state.
  * @param instr: pointer to a newly malloc'd instr struct.
+ * @param kind: the kind of loop to parse (UNCONDITIONAL or WHILE).
+ * @param loop_counter: counter for unique loop IDs.
  * @param errors: counter variable to increment when an error is encountered.
  */
-static void parse_loop(parser *p, instr_node *instr, size_t *loop_counter,
-                       unsigned int *errors) {
-  token token;
+static void parse_loop(parser *p, instr_node *instr, loop_kind kind,
+                       size_t *loop_counter, unsigned int *errors) {
+  token token = {0};
 
   parser_current(p, &token, errors);
   instr->kind = INSTR_LOOP;
   instr->line = token.line;
+  instr->loop.kind = kind;
   instr->loop.loop_id = (*loop_counter)++;
   dynamic_array_init(&instr->loop.instrs, sizeof(instr_node));
 
   parser_advance(p);
+
+  if (kind == WHILE) {
+    parser_current(p, &token, errors);
+    parse_rel(p, &instr->loop.break_condition, errors);
+  }
+
   parser_current(p, &token, errors);
   if (token.kind != TOKEN_LBRACE) {
-    scu_perror(errors, "no opening brace for loop at %d\n", token.line);
+    scu_perror(errors, "no opening brace for %s loop at %d\n",
+               kind == WHILE ? "while" : "", token.line);
   }
 
   parser_advance(p);
@@ -657,6 +667,11 @@ static void parse_loop(parser *p, instr_node *instr, size_t *loop_counter,
   }
 
   parser_advance(p);
+
+  if (kind == DO_WHILE) {
+    parser_current(p, &token, errors);
+    parse_rel(p, &instr->loop.break_condition, errors);
+  }
 }
 
 /*
@@ -668,7 +683,7 @@ static void parse_loop(parser *p, instr_node *instr, size_t *loop_counter,
  */
 static void parse_instr(parser *p, instr_node *instr, size_t *loop_counter,
                         unsigned int *errors) {
-  token token;
+  token token = {0};
 
   parser_current(p, &token, errors);
 
@@ -697,7 +712,13 @@ static void parse_instr(parser *p, instr_node *instr, size_t *loop_counter,
     parse_fasm(p, instr, errors);
     break;
   case TOKEN_LOOP:
-    parse_loop(p, instr, loop_counter, errors);
+    parse_loop(p, instr, UNCONDITIONAL, loop_counter, errors);
+    break;
+  case TOKEN_WHILE:
+    parse_loop(p, instr, WHILE, loop_counter, errors);
+    break;
+  case TOKEN_DO_WHILE:
+    parse_loop(p, instr, DO_WHILE, loop_counter, errors);
     break;
   case TOKEN_BREAK:
     instr->kind = INSTR_LOOP_BREAK;
@@ -720,7 +741,7 @@ void parser_parse_program(parser *p, program_node *program,
                           unsigned int *errors) {
   dynamic_array_init(&program->instrs, sizeof(instr_node));
 
-  token token;
+  token token = {0};
   parser_current(p, &token, errors);
 
   while (token.kind != TOKEN_END) {
@@ -863,6 +884,29 @@ static void check_binary_node_and_print(term_binary_node *bnode,
   printf("\n");
 }
 
+static void check_rel_node_and_print(rel_node *rel) {
+  switch (rel->kind) {
+  case REL_IS_EQUAL:
+    check_binary_node_and_print(&rel->is_equal, "==");
+    break;
+  case REL_NOT_EQUAL:
+    check_binary_node_and_print(&rel->not_equal, "!=");
+    break;
+  case REL_LESS_THAN:
+    check_binary_node_and_print(&rel->less_than, "<");
+    break;
+  case REL_LESS_THAN_OR_EQUAL:
+    check_binary_node_and_print(&rel->less_than_or_equal, "<=");
+    break;
+  case REL_GREATER_THAN:
+    check_binary_node_and_print(&rel->greater_than, ">");
+    break;
+  case REL_GREATER_THAN_OR_EQUAL:
+    check_binary_node_and_print(&rel->greater_than_or_equal, ">=");
+    break;
+  }
+}
+
 /*
  * @brief: print an instruction.
  *
@@ -939,38 +983,9 @@ static void print_instr(instr_node *instr) {
 
   case INSTR_IF:
     printf("if ");
-    switch (instr->if_.rel.kind) {
-    case REL_IS_EQUAL:
-      check_binary_node_and_print(&instr->if_.rel.is_equal, "==");
-      printf("\t then: ");
-      print_instr(instr->if_.instr);
-      break;
-    case REL_NOT_EQUAL:
-      check_binary_node_and_print(&instr->if_.rel.not_equal, "!=");
-      printf("\t then: ");
-      print_instr(instr->if_.instr);
-      break;
-    case REL_LESS_THAN:
-      check_binary_node_and_print(&instr->if_.rel.less_than, "<");
-      printf("\t then: ");
-      print_instr(instr->if_.instr);
-      break;
-    case REL_LESS_THAN_OR_EQUAL:
-      check_binary_node_and_print(&instr->if_.rel.less_than_or_equal, "<=");
-      printf("\t then: ");
-      print_instr(instr->if_.instr);
-      break;
-    case REL_GREATER_THAN:
-      check_binary_node_and_print(&instr->if_.rel.greater_than, ">");
-      printf("\t then: ");
-      print_instr(instr->if_.instr);
-      break;
-    case REL_GREATER_THAN_OR_EQUAL:
-      check_binary_node_and_print(&instr->if_.rel.greater_than_or_equal, ">=");
-      printf("\t then: ");
-      print_instr(instr->if_.instr);
-      break;
-    }
+    check_rel_node_and_print(&instr->if_.rel);
+    printf("\t then: ");
+    print_instr(instr->if_.instr);
     break;
 
   case INSTR_GOTO:
@@ -993,7 +1008,19 @@ static void print_instr(instr_node *instr) {
     break;
 
   case INSTR_LOOP:
-    printf("loop %zu starts: \n", instr->loop.loop_id);
+    switch (instr->loop.kind) {
+    case UNCONDITIONAL:
+      printf("loop %zu starts: \n", instr->loop.loop_id);
+      break;
+    case WHILE:
+      printf("while loop %zu starts, break condition: ", instr->loop.loop_id);
+      check_rel_node_and_print(&instr->loop.break_condition);
+      break;
+    case DO_WHILE:
+      printf("do-loop %zu starts, break condition: ", instr->loop.loop_id);
+      check_rel_node_and_print(&instr->loop.break_condition);
+      break;
+    }
     for (unsigned int i = 0; i < instr->loop.instrs.count; i++) {
       instr_node _instr;
       dynamic_array_get(&instr->loop.instrs, i, &_instr);

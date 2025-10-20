@@ -22,6 +22,8 @@ typedef enum token_kind {
   TOKEN_FASM_DEFINE, // fasm definitions, goes before _start
   TOKEN_FASM,        // inline fasm copy and paste
   TOKEN_LOOP,
+  TOKEN_WHILE,
+  TOKEN_DO_WHILE,
   TOKEN_CONTINUE,
   TOKEN_BREAK,
 

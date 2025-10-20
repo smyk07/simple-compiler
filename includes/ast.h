@@ -189,7 +189,7 @@ typedef struct fasm_define_node {
   const char *content;
 } fasm_define_node;
 
-typedef enum fasm_node_kind { ARG, NON_ARG } fasm_node_kind;
+typedef enum fasm_node_kind { ARG = 0, NON_ARG } fasm_node_kind;
 
 typedef struct fasm_node {
   fasm_node_kind kind;
@@ -197,9 +197,13 @@ typedef struct fasm_node {
   const char *content;
 } fasm_node;
 
+typedef enum loop_kind { UNCONDITIONAL = 0, WHILE, DO_WHILE } loop_kind;
+
 typedef struct loop_node {
+  loop_kind kind;
   size_t loop_id;
   dynamic_array instrs;
+  rel_node break_condition;
 } loop_node;
 
 /*

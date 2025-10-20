@@ -148,7 +148,7 @@ cstate *cstate_create_from_args(int argc, char *argv[]) {
   s->program->loop_counter = 0;
 
   s->loops = scu_checked_malloc(sizeof(stack));
-  stack_init(s->loops, sizeof(loop_node *));
+  stack_init(s->loops, sizeof(loop_node));
 
   s->variables = ht_new(sizeof(variable));
 

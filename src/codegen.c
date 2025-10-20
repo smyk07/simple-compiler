@@ -141,7 +141,10 @@ static void term_asm(term_node *term, ht *variables, program_node *program) {
   }
   case TERM_IDENTIFIER: {
     int index = get_var_stack_offset(variables, &term->identifier, NULL);
-    printf("    mov rax, qword [rbp - %d]\n", index * 8 + 8);
+    if (term->identifier.is_array)
+      printf("    lea rax, [rbp - %d]\n", index * 8 + 8);
+    else
+      printf("    mov rax, qword [rbp - %d]\n", index * 8 + 8);
     break;
   }
   case TERM_POINTER:
@@ -372,34 +375,68 @@ static void instr_asm(instr_node *instr, ht *variables, unsigned int *if_count,
     break;
 
   case INSTR_LOOP:
-    loop_node new_loop = {.loop_id = instr->loop.loop_id};
+    loop_node new_loop = {.kind = instr->loop.kind,
+                          .loop_id = instr->loop.loop_id,
+                          .instrs = {0},
+                          .break_condition = {0}};
     stack_push(loops, &new_loop);
-    printf(".loop_%zu_start:\n", instr->loop.loop_id);
-    for (unsigned int i = 0; i < instr->loop.instrs.count; i++) {
-      struct instr_node _instr;
-      dynamic_array_get(&instr->loop.instrs, i, &_instr);
-      instr_asm(&_instr, variables, if_count, loops, program);
+
+    switch (instr->loop.kind) {
+    case UNCONDITIONAL:
+      printf(".loop_%zu_start:\n", instr->loop.loop_id);
+      for (unsigned int i = 0; i < instr->loop.instrs.count; i++) {
+        struct instr_node _instr;
+        dynamic_array_get(&instr->loop.instrs, i, &_instr);
+        instr_asm(&_instr, variables, if_count, loops, program);
+      }
+      printf(".loop_%zu_end:\n", instr->loop.loop_id);
+      break;
+
+    case WHILE:
+      printf("    jmp .loop_%zu_test\n", instr->loop.loop_id);
+
+    case DO_WHILE:
+      printf(".loop_%zu_start:\n", instr->loop.loop_id);
+      for (unsigned int i = 0; i < instr->loop.instrs.count; i++) {
+        struct instr_node _instr;
+        dynamic_array_get(&instr->loop.instrs, i, &_instr);
+        instr_asm(&_instr, variables, if_count, loops, program);
+      }
+      printf(".loop_%zu_test:\n", instr->loop.loop_id);
+      rel_asm(&instr->loop.break_condition, variables, program);
+      printf("    test rax, rax\n");
+      printf("    jz .loop_%zu_end\n", instr->loop.loop_id);
+      printf("    jmp .loop_%zu_start\n", instr->loop.loop_id);
+      printf(".loop_%zu_end:\n", instr->loop.loop_id);
+      break;
     }
-    loop_node *loop = malloc(sizeof(loop_node));
-    stack_pop(loops, loop);
-    printf(".loop_%zu_end:\n", instr->loop.loop_id);
-    free(loop);
+
+    loop_node loop;
+    stack_pop(loops, &loop);
     break;
 
-  case INSTR_LOOP_BREAK:
-    loop = stack_top(loops);
-    printf("    jmp .loop_%zu_end\n", loop->loop_id);
+  case INSTR_LOOP_BREAK: {
+    loop_node *_loop = stack_top(loops);
+    printf("    jmp .loop_%zu_end\n", _loop->loop_id);
     break;
+  }
 
   case INSTR_LOOP_CONTINUE:
-    loop = stack_top(loops);
-    printf("    jmp .loop_%zu_start\n", loop->loop_id);
+    loop_node *_loop = stack_top(loops);
+    switch (_loop->kind) {
+    case UNCONDITIONAL:
+      printf("    jmp .loop_%zu_start\n", _loop->loop_id);
+      break;
+    case WHILE:
+    case DO_WHILE:
+      printf("    jmp .loop_%zu_test\n", _loop->loop_id);
+      break;
+    }
     break;
   }
 }
 
 static size_t calculate_total_stack_size(ht *variables, program_node *program) {
-
   size_t total = variables->count * 8;
 
   for (unsigned int i = 0; i < program->instrs.count; i++) {
@@ -429,6 +466,8 @@ void instrs_to_asm(program_node *program, ht *variables, stack *loops,
 
   printf("format ELF64 executable\n");
   printf("LINE_MAX equ 1024\n");
+
+  printf("entry _start\n");
   printf("segment readable executable\n");
 
   // fasm definitions
@@ -442,12 +481,8 @@ void instrs_to_asm(program_node *program, ht *variables, stack *loops,
     }
   }
 
-  printf("entry _start\n");
-
-  printf("segment readable writeable\n");
-
-  printf("segment readable executable\n");
   printf("_start:\n");
+  printf("    push rbp\n");
   printf("    mov rbp, rsp\n");
 
   size_t stack_size = calculate_total_stack_size(variables, program);
@@ -461,6 +496,7 @@ void instrs_to_asm(program_node *program, ht *variables, stack *loops,
   }
 
   printf("    add rsp, %zu\n", stack_size);
+  printf("    pop rbp\n");
 
   printf("    mov rax, 60\n");
   printf("    xor rdi, rdi\n");
