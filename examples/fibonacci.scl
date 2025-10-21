@@ -14,13 +14,11 @@ int b = 1
 int count = 2
 int fib = 0
 
-loop {
-  if count > n then break
+while count < n {
   fib = a + b
   a = b
   b = fib
   count = count + 1
-  continue
 }
 
 fasm "output_int %d", fib

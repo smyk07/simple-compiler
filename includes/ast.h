@@ -130,6 +130,7 @@ typedef enum instr_kind {
   INSTR_DECLARE_ARRAY,
   INSTR_INITIALIZE_ARRAY,
   INSTR_ASSIGN,
+  INSTR_ASSIGN_TO_ARRAY_SUBSCRIPT,
   INSTR_IF,
   INSTR_GOTO,
   INSTR_LABEL,
@@ -167,6 +168,12 @@ typedef struct assign_node {
   variable identifier;
   expr_node expr;
 } assign_node;
+
+typedef struct assign_to_array_subscript_node {
+  variable var;
+  expr_node *index_expr;
+  expr_node expr_to_assign;
+} assign_to_array_subscript_node;
 
 typedef struct if_node {
   rel_node rel;
@@ -218,6 +225,7 @@ typedef struct instr_node {
     declare_array_node declare_array;
     initialize_array_node initialize_array;
     assign_node assign;
+    assign_to_array_subscript_node assign_to_array_subscript;
     if_node if_;
     goto_node goto_;
     output_node output;

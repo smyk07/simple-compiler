@@ -5,11 +5,9 @@ fasm "input %d", n
 
 int result = 1
 
-loop {
+while n > 1 {
   result = result * n
   n = n - 1
-  if n > 1 then continue
-  break
 }
 
 fasm "output_int %d", result

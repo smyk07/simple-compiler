@@ -467,27 +467,61 @@ static void parse_declare(parser *p, instr_node *instr, unsigned int *errors) {
 static void parse_assign(parser *p, instr_node *instr, unsigned int *errors) {
   token token = {0};
 
-  instr->kind = INSTR_ASSIGN;
-
   parser_current(p, &token, errors);
-  instr->line = token.line;
-  instr->assign.identifier.name = token.value.str;
-  instr->assign.identifier.line = token.line;
+
+  size_t ident_line = instr->line = token.line;
+  char *ident_name = token.value.str;
+
   if (token.kind == TOKEN_POINTER) {
     instr->assign.identifier.type = TYPE_POINTER;
   }
-  parser_advance(p);
 
+  parser_advance(p);
   parser_current(p, &token, errors);
-  if (token.kind != TOKEN_ASSIGN) {
-    scu_perror(errors, "Expected assign, found %s [line %d]\n",
-               lexer_token_kind_to_str(token.kind), token.line);
-  }
-  parser_advance(p);
 
-  expr_node *expr = parse_expr(p, errors);
-  instr->assign.expr = *expr;
-  free(expr);
+  if (token.kind == TOKEN_LSQBR) {
+    instr->kind = INSTR_ASSIGN_TO_ARRAY_SUBSCRIPT;
+    instr->line = token.line;
+    instr->assign_to_array_subscript.var.name = ident_name;
+    instr->assign_to_array_subscript.var.line = ident_line;
+
+    parser_advance(p);
+
+    expr_node *index_expr = parse_expr(p, errors);
+    instr->assign_to_array_subscript.index_expr = index_expr;
+
+    parser_current(p, &token, errors);
+    if (token.kind != TOKEN_RSQBR) {
+      scu_perror(errors, "Expected ], found %s [line %d]\n",
+                 lexer_token_kind_to_str(token.kind), token.line);
+    }
+    parser_advance(p);
+    parser_current(p, &token, errors);
+
+    if (token.kind != TOKEN_ASSIGN) {
+      scu_perror(errors, "Expected assign, found %s [line %d]\n",
+                 lexer_token_kind_to_str(token.kind), token.line);
+    }
+    parser_advance(p);
+
+    expr_node *expr = parse_expr(p, errors);
+    instr->assign_to_array_subscript.expr_to_assign = *expr;
+    free(expr);
+  } else {
+    instr->kind = INSTR_ASSIGN;
+    instr->line = ident_line;
+    instr->assign.identifier.name = ident_name;
+
+    if (token.kind != TOKEN_ASSIGN) {
+      scu_perror(errors, "Expected assign, found %s [line %d]\n",
+                 lexer_token_kind_to_str(token.kind), token.line);
+    }
+    parser_advance(p);
+
+    expr_node *expr = parse_expr(p, errors);
+    instr->assign.expr = *expr;
+    free(expr);
+  }
 }
 
 /*
@@ -954,13 +988,22 @@ static void print_instr(instr_node *instr) {
     printf("\n");
     break;
 
+  case INSTR_ASSIGN_TO_ARRAY_SUBSCRIPT:
+    printf("assign to array subscript: ");
+    check_var_and_print(&instr->assign_to_array_subscript.var);
+    printf("[");
+    check_expr_and_print(instr->assign_to_array_subscript.index_expr);
+    printf("] = ");
+    check_expr_and_print(&instr->assign_to_array_subscript.expr_to_assign);
+    printf("\n");
+    break;
+
   case INSTR_DECLARE_ARRAY:
     printf("declare array: ");
     check_var_and_print(&instr->declare_array.var);
     printf("[");
     check_expr_and_print(instr->declare_array.size_expr);
     printf("]\n");
-    break;
     break;
 
   case INSTR_INITIALIZE_ARRAY:

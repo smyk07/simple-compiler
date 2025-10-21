@@ -61,7 +61,7 @@ int main(int argc, char *argv[]) {
 
   // Codegen & Assembler
   instrs_to_asm(state->program, state->variables, state->loops,
-                state->output_filename);
+                state->output_filename, &state->error_count);
 
   end = clock();
   time_taken = (double)(end - start) / CLOCKS_PER_SEC;

@@ -13,9 +13,11 @@
  * @brief: evaluate a constant expression to extract integer value
  *
  * @param expr: pointer to an expr_node
+ * @param errors: counter variable to increment when an error is encountered.
+ *
  * @return: the integer value of the constant expression
  */
-int evaluate_const_expr(expr_node *expr);
+int evaluate_const_expr(expr_node *expr, unsigned int *errors);
 
 /*
  * @brief: convert a dynamic_array of instructions to FASM assembly.
@@ -26,6 +28,6 @@ int evaluate_const_expr(expr_node *expr);
  * @param errors: counter variable to increment when an error is encountered.
  */
 void instrs_to_asm(program_node *program, ht *variables, stack *loops,
-                   const char *filename);
+                   const char *filename, unsigned int *errors);
 
 #endif // !CODEGEN

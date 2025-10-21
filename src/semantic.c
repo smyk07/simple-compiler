@@ -49,9 +49,10 @@ static void declare_variables(variable *var_to_declare, ht *variables) {
  *
  * @param var_to_declare: the variable struct to append.
  * @param variables: pointer to the variables hash table.
+ * @param errors: counter variable to increment when an error is encountered.
  */
 static void declare_array(variable *arr_to_declare, expr_node *size_expr,
-                          ht *variables) {
+                          ht *variables, unsigned int *errors) {
   if (!arr_to_declare || !arr_to_declare->name || !variables)
     return;
 
@@ -59,7 +60,7 @@ static void declare_array(variable *arr_to_declare, expr_node *size_expr,
   if (var)
     return;
 
-  int array_size = evaluate_const_expr(size_expr);
+  int array_size = evaluate_const_expr(size_expr, errors);
   size_t size_bytes = array_size * 4;
   arr_to_declare->stack_offset = current_stack_offset;
   current_stack_offset += size_bytes;
@@ -171,18 +172,32 @@ static void instr_check_variables(instr_node *instr, ht *variables,
 
   case INSTR_DECLARE_ARRAY:
     declare_array(&instr->declare_array.var, instr->declare_array.size_expr,
-                  variables);
+                  variables, errors);
     break;
 
   case INSTR_INITIALIZE_ARRAY:
     declare_array(&instr->initialize_array.var,
-                  instr->initialize_array.size_expr, variables);
+                  instr->initialize_array.size_expr, variables, errors);
     for (size_t i = 0; i < instr->initialize_array.literal.elements.count;
          i++) {
       expr_node elem;
       dynamic_array_get(&instr->initialize_array.literal.elements, i, &elem);
       expr_check_variables(&elem, variables, errors);
     }
+    break;
+
+  case INSTR_ASSIGN_TO_ARRAY_SUBSCRIPT:
+    variable *arr =
+        ht_search(variables, instr->assign_to_array_subscript.var.name);
+    if (!arr) {
+      scu_perror(errors, "Use of undeclared array: %s [line %u]\n",
+                 instr->assign_to_array_subscript.var.name,
+                 instr->assign_to_array_subscript.var.line);
+    }
+    expr_check_variables(instr->assign_to_array_subscript.index_expr, variables,
+                         errors);
+    expr_check_variables(&instr->assign_to_array_subscript.expr_to_assign,
+                         variables, errors);
     break;
 
   case INSTR_ASSIGN:
@@ -503,6 +518,26 @@ static void instr_typecheck(instr_node *instr, ht *variables,
     }
     break;
   }
+
+  case INSTR_INITIALIZE_ARRAY: {
+    type array_type = instr->initialize_array.var.type;
+    for (size_t i = 0; i < instr->initialize_array.literal.elements.count;
+         i++) {
+      expr_node elem;
+      dynamic_array_get(&instr->initialize_array.literal.elements, i, &elem);
+      type elem_type = expr_type(&elem, array_type, variables, errors);
+      if (array_type != elem_type && array_type != TYPE_POINTER) {
+        const char *array_type_str = type_to_str(array_type);
+        const char *elem_type_str = type_to_str(elem_type);
+        scu_perror(errors,
+                   "Type mismatch in array initialization - element %zu is %s "
+                   "but array is %s [line %u]\n",
+                   i, elem_type_str, array_type_str, instr->line);
+      }
+    }
+    break;
+  }
+
   case INSTR_ASSIGN: {
     type target_type =
         get_var_type(variables, &instr->assign.identifier, errors);
@@ -520,6 +555,33 @@ static void instr_typecheck(instr_node *instr, ht *variables,
     }
     break;
   }
+
+  case INSTR_ASSIGN_TO_ARRAY_SUBSCRIPT: {
+    type array_type =
+        get_var_type(variables, &instr->assign_to_array_subscript.var, errors);
+
+    type index_type = expr_type(instr->assign_to_array_subscript.index_expr,
+                                TYPE_INT, variables, errors);
+    if (index_type != TYPE_INT) {
+      scu_perror(errors, "Array index must be of type int, got %s [line %u]\n",
+                 type_to_str(index_type), instr->line);
+    }
+
+    type expr_result =
+        expr_type(&instr->assign_to_array_subscript.expr_to_assign, array_type,
+                  variables, errors);
+    if (array_type != expr_result && array_type != TYPE_POINTER) {
+      const char *array_type_str = type_to_str(array_type);
+      const char *expr_result_str = type_to_str(expr_result);
+      scu_perror(
+          errors,
+          "Type mismatch in array assignment to %s - %s to %s [line %u]\n",
+          instr->assign_to_array_subscript.var.name, expr_result_str,
+          array_type_str, instr->line);
+    }
+    break;
+  }
+
   case INSTR_IF:
     rel_typecheck(&instr->if_.rel, variables, errors);
     break;

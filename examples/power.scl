@@ -10,11 +10,9 @@ fasm "input %d", exponent
 
 if exponent == 0 then goto :end
 
-loop {
+while counter < exponent {
   result = result * base
   counter = counter + 1
-  if counter < exponent then continue
-  break
 }
 
 :end
