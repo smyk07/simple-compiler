@@ -252,60 +252,41 @@ static expr_node *parse_expr(parser *p, unsigned int *errors) {
  * @param errors: counter variable to increment when an error is encountered.
  */
 static void parse_rel(parser *p, rel_node *rel, unsigned int *errors) {
+  typedef struct {
+    token_kind token_type;
+    rel_kind rel_type;
+  } rel_mapping;
+
+  static const rel_mapping mappings[] = {
+      {TOKEN_IS_EQUAL, REL_IS_EQUAL},
+      {TOKEN_NOT_EQUAL, REL_NOT_EQUAL},
+      {TOKEN_LESS_THAN, REL_LESS_THAN},
+      {TOKEN_LESS_THAN_OR_EQUAL, REL_LESS_THAN_OR_EQUAL},
+      {TOKEN_GREATER_THAN, REL_GREATER_THAN},
+      {TOKEN_GREATER_THAN_OR_EQUAL, REL_GREATER_THAN_OR_EQUAL}};
+
   token token = {0};
   term_node lhs = {0}, rhs = {0};
 
   parse_term_for_expr(p, &lhs, errors);
-
   parser_current(p, &token, errors);
   rel->line = token.line;
-  if (token.kind == TOKEN_IS_EQUAL) {
-    parser_advance(p);
-    parse_term_for_expr(p, &rhs, errors);
 
-    rel->kind = REL_IS_EQUAL;
-    rel->is_equal.lhs = lhs;
-    rel->is_equal.rhs = rhs;
-  } else if (token.kind == TOKEN_NOT_EQUAL) {
-    parser_advance(p);
-    parse_term_for_expr(p, &rhs, errors);
+  for (size_t i = 0; i < sizeof(mappings) / sizeof(mappings[0]); i++) {
+    if (token.kind == mappings[i].token_type) {
+      parser_advance(p);
+      parse_term_for_expr(p, &rhs, errors);
 
-    rel->kind = REL_NOT_EQUAL;
-    rel->not_equal.lhs = lhs;
-    rel->not_equal.rhs = rhs;
-  } else if (token.kind == TOKEN_LESS_THAN) {
-    parser_advance(p);
-    parse_term_for_expr(p, &rhs, errors);
-
-    rel->kind = REL_LESS_THAN;
-    rel->less_than.lhs = lhs;
-    rel->less_than.rhs = rhs;
-  } else if (token.kind == TOKEN_LESS_THAN_OR_EQUAL) {
-    parser_advance(p);
-    parse_term_for_expr(p, &rhs, errors);
-
-    rel->kind = REL_LESS_THAN_OR_EQUAL;
-    rel->less_than_or_equal.lhs = lhs;
-    rel->less_than_or_equal.rhs = rhs;
-  } else if (token.kind == TOKEN_GREATER_THAN) {
-    parser_advance(p);
-    parse_term_for_expr(p, &rhs, errors);
-
-    rel->kind = REL_GREATER_THAN;
-    rel->greater_than.lhs = lhs;
-    rel->greater_than.rhs = rhs;
-  } else if (token.kind == TOKEN_GREATER_THAN_OR_EQUAL) {
-    parser_advance(p);
-    parse_term_for_expr(p, &rhs, errors);
-
-    rel->kind = REL_GREATER_THAN_OR_EQUAL;
-    rel->greater_than_or_equal.lhs = lhs;
-    rel->greater_than_or_equal.rhs = rhs;
-  } else {
-    scu_perror(errors,
-               "Expected a relation (==, !=, <, <=, >, >=), got %s [line %d]\n",
-               lexer_token_kind_to_str(token.kind), token.line);
+      rel->kind = mappings[i].rel_type;
+      rel->comparison.lhs = lhs;
+      rel->comparison.rhs = rhs;
+      return;
+    }
   }
+
+  scu_perror(errors,
+             "Expected a relation (==, !=, <, <=, >, >=), got %s [line %d]\n",
+             lexer_token_kind_to_str(token.kind), token.line);
 }
 
 /*
@@ -921,22 +902,22 @@ static void check_binary_node_and_print(term_binary_node *bnode,
 static void check_rel_node_and_print(rel_node *rel) {
   switch (rel->kind) {
   case REL_IS_EQUAL:
-    check_binary_node_and_print(&rel->is_equal, "==");
+    check_binary_node_and_print(&rel->comparison, "==");
     break;
   case REL_NOT_EQUAL:
-    check_binary_node_and_print(&rel->not_equal, "!=");
+    check_binary_node_and_print(&rel->comparison, "!=");
     break;
   case REL_LESS_THAN:
-    check_binary_node_and_print(&rel->less_than, "<");
+    check_binary_node_and_print(&rel->comparison, "<");
     break;
   case REL_LESS_THAN_OR_EQUAL:
-    check_binary_node_and_print(&rel->less_than_or_equal, "<=");
+    check_binary_node_and_print(&rel->comparison, "<=");
     break;
   case REL_GREATER_THAN:
-    check_binary_node_and_print(&rel->greater_than, ">");
+    check_binary_node_and_print(&rel->comparison, ">");
     break;
   case REL_GREATER_THAN_OR_EQUAL:
-    check_binary_node_and_print(&rel->greater_than_or_equal, ">=");
+    check_binary_node_and_print(&rel->comparison, ">=");
     break;
   }
 }

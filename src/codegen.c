@@ -244,56 +244,34 @@ static void expr_asm(expr_node *expr, ht *variables, program_node *program,
  */
 static void rel_asm(rel_node *rel, ht *variables, program_node *program,
                     unsigned int *errors) {
+  term_asm(&rel->comparison.lhs, variables, program, errors);
+  printf("    push rax\n");
+  term_asm(&rel->comparison.rhs, variables, program, errors);
+  printf("    pop rdx\n");
+  printf("    cmp rdx, rax\n");
+
   switch (rel->kind) {
   case REL_IS_EQUAL:
-    term_asm(&rel->is_equal.lhs, variables, program, errors);
-    printf("    mov rdx, rax\n");
-    term_asm(&rel->is_equal.rhs, variables, program, errors);
-    printf("    cmp rdx, rax\n");
     printf("    sete al\n");
-    printf("    movzx rax, al\n");
     break;
   case REL_NOT_EQUAL:
-    term_asm(&rel->not_equal.lhs, variables, program, errors);
-    printf("    mov rdx, rax\n");
-    term_asm(&rel->not_equal.rhs, variables, program, errors);
-    printf("    cmp rdx, rax\n");
     printf("    setne al\n");
-    printf("    movzx rax, al\n");
     break;
   case REL_LESS_THAN:
-    term_asm(&rel->less_than.lhs, variables, program, errors);
-    printf("    mov rdx, rax\n");
-    term_asm(&rel->less_than.rhs, variables, program, errors);
-    printf("    cmp rdx, rax\n");
     printf("    setl al\n");
-    printf("    movzx rax, al\n");
     break;
   case REL_LESS_THAN_OR_EQUAL:
-    term_asm(&rel->less_than_or_equal.lhs, variables, program, errors);
-    printf("    mov rdx, rax\n");
-    term_asm(&rel->less_than_or_equal.rhs, variables, program, errors);
-    printf("    cmp rdx, rax\n");
     printf("    setle al\n");
-    printf("    movzx rax, al\n");
     break;
   case REL_GREATER_THAN:
-    term_asm(&rel->greater_than.lhs, variables, program, errors);
-    printf("    mov rdx, rax\n");
-    term_asm(&rel->greater_than.rhs, variables, program, errors);
-    printf("    cmp rdx, rax\n");
     printf("    setg al\n");
-    printf("    movzx rax, al\n");
     break;
   case REL_GREATER_THAN_OR_EQUAL:
-    term_asm(&rel->greater_than_or_equal.lhs, variables, program, errors);
-    printf("    mov rdx, rax\n");
-    term_asm(&rel->greater_than_or_equal.rhs, variables, program, errors);
-    printf("    cmp rdx, rax\n");
     printf("    setge al\n");
-    printf("    movzx rax, al\n");
     break;
   }
+
+  printf("    movzx rax, al\n");
 }
 
 /*

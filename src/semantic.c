@@ -123,32 +123,8 @@ static void expr_check_variables(expr_node *expr, ht *variables,
  */
 static void rel_check_variables(rel_node *rel, ht *variables,
                                 unsigned int *errors) {
-  switch (rel->kind) {
-  case REL_IS_EQUAL:
-    term_check_variables(&rel->is_equal.lhs, variables, errors);
-    term_check_variables(&rel->is_equal.rhs, variables, errors);
-    break;
-  case REL_NOT_EQUAL:
-    term_check_variables(&rel->not_equal.lhs, variables, errors);
-    term_check_variables(&rel->not_equal.rhs, variables, errors);
-    break;
-  case REL_LESS_THAN:
-    term_check_variables(&rel->less_than.lhs, variables, errors);
-    term_check_variables(&rel->less_than.rhs, variables, errors);
-    break;
-  case REL_LESS_THAN_OR_EQUAL:
-    term_check_variables(&rel->less_than_or_equal.lhs, variables, errors);
-    term_check_variables(&rel->less_than_or_equal.rhs, variables, errors);
-    break;
-  case REL_GREATER_THAN:
-    term_check_variables(&rel->greater_than.lhs, variables, errors);
-    term_check_variables(&rel->greater_than.rhs, variables, errors);
-    break;
-  case REL_GREATER_THAN_OR_EQUAL:
-    term_check_variables(&rel->greater_than_or_equal.lhs, variables, errors);
-    term_check_variables(&rel->greater_than_or_equal.rhs, variables, errors);
-    break;
-  }
+  term_check_variables(&rel->comparison.lhs, variables, errors);
+  term_check_variables(&rel->comparison.rhs, variables, errors);
 }
 
 /*
@@ -456,32 +432,8 @@ static type expr_type(expr_node *expr, type target_type, ht *variables,
 static void rel_typecheck(rel_node *rel, ht *variables, unsigned int *errors) {
   type lhs, rhs;
 
-  switch (rel->kind) {
-  case REL_IS_EQUAL:
-    lhs = term_type(&rel->is_equal.lhs, variables, errors);
-    rhs = term_type(&rel->is_equal.rhs, variables, errors);
-    break;
-  case REL_NOT_EQUAL:
-    lhs = term_type(&rel->not_equal.lhs, variables, errors);
-    rhs = term_type(&rel->not_equal.rhs, variables, errors);
-    break;
-  case REL_LESS_THAN:
-    lhs = term_type(&rel->less_than.lhs, variables, errors);
-    rhs = term_type(&rel->less_than.rhs, variables, errors);
-    break;
-  case REL_LESS_THAN_OR_EQUAL:
-    lhs = term_type(&rel->less_than_or_equal.lhs, variables, errors);
-    rhs = term_type(&rel->less_than_or_equal.rhs, variables, errors);
-    break;
-  case REL_GREATER_THAN:
-    lhs = term_type(&rel->greater_than.lhs, variables, errors);
-    rhs = term_type(&rel->greater_than.rhs, variables, errors);
-    break;
-  case REL_GREATER_THAN_OR_EQUAL:
-    lhs = term_type(&rel->greater_than_or_equal.lhs, variables, errors);
-    rhs = term_type(&rel->greater_than_or_equal.rhs, variables, errors);
-    break;
-  }
+  lhs = term_type(&rel->comparison.lhs, variables, errors);
+  rhs = term_type(&rel->comparison.rhs, variables, errors);
 
   if (lhs != rhs) {
     const char *lhs_type_str = type_to_str(lhs);

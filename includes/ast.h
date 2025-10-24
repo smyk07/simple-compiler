@@ -110,14 +110,7 @@ typedef enum rel_kind {
 typedef struct rel_node {
   rel_kind kind;
   size_t line;
-  union {
-    term_binary_node is_equal;
-    term_binary_node not_equal;
-    term_binary_node less_than;
-    term_binary_node less_than_or_equal;
-    term_binary_node greater_than;
-    term_binary_node greater_than_or_equal;
-  };
+  term_binary_node comparison;
 } rel_node;
 
 /*
