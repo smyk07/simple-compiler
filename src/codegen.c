@@ -490,13 +490,13 @@ void instrs_to_asm(program_node *program, ht *variables, stack *loops,
   char *output_asm_file = scu_format_string("%s.s", filename);
   freopen(output_asm_file, "w", stdout);
 
+  // Initialization and fasm definitions
   printf("format ELF64 executable\n");
   printf("LINE_MAX equ 1024\n");
 
   printf("entry _start\n");
   printf("segment readable executable\n");
 
-  // fasm definitions
   for (unsigned int i = 0; i < program->instrs.count; i++) {
     struct instr_node instr;
     dynamic_array_get(&program->instrs, i, &instr);
@@ -507,7 +507,8 @@ void instrs_to_asm(program_node *program, ht *variables, stack *loops,
     }
   }
 
-  printf("_start:\n");
+  // main function
+  printf("\nmain:\n");
   printf("    push rbp\n");
   printf("    mov rbp, rsp\n");
 
@@ -523,10 +524,14 @@ void instrs_to_asm(program_node *program, ht *variables, stack *loops,
 
   printf("    add rsp, %zu\n", stack_size);
   printf("    pop rbp\n");
+  printf("    ret\n");
 
+  // entrypoint
+  printf("\n_start:\n");
+  printf("    call main\n");
   printf("    mov rax, 60\n");
   printf("    xor rdi, rdi\n");
-  printf("    syscall\n");
+  printf("    syscall\n\n");
 
   printf("segment readable writeable\n");
   printf("line rb LINE_MAX\n");
