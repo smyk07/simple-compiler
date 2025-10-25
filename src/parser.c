@@ -524,14 +524,38 @@ static void parse_if(parser *p, instr_node *instr, size_t *loop_counter,
 
   parser_current(p, &token, errors);
   instr->line = token.line;
-  if (token.kind != TOKEN_THEN) {
-    scu_perror(errors, "Expected then, found %s [line %d]\n",
+
+  if (token.kind == TOKEN_THEN) {
+    instr->if_.kind = IF_SINGLE_INSTR;
+    parser_advance(p);
+
+    instr->if_.instr = scu_checked_malloc(sizeof(instr_node));
+    parse_instr(p, instr->if_.instr, loop_counter, errors);
+  } else if (token.kind == TOKEN_LBRACE) {
+    instr->if_.kind = IF_MULTI_INSTR;
+    parser_advance(p);
+
+    dynamic_array_init(&instr->if_.instrs, sizeof(instr_node));
+
+    parser_current(p, &token, errors);
+    while (token.kind != TOKEN_RBRACE && token.kind != TOKEN_END) {
+      instr_node *new_instr = scu_checked_malloc(sizeof(instr_node));
+      parse_instr(p, new_instr, loop_counter, errors);
+      dynamic_array_append(&instr->if_.instrs, new_instr);
+
+      parser_current(p, &token, errors);
+    }
+
+    if (token.kind != TOKEN_RBRACE) {
+      scu_perror(errors, "Expected '}', found %s [line %d]\n",
+                 lexer_token_kind_to_str(token.kind), token.line);
+      return;
+    }
+    parser_advance(p);
+  } else {
+    scu_perror(errors, "Expected 'then' or '{', found %s [line %d]\n",
                lexer_token_kind_to_str(token.kind), token.line);
   }
-  parser_advance(p);
-
-  instr->if_.instr = scu_checked_malloc(sizeof(instr_node));
-  parse_instr(p, instr->if_.instr, loop_counter, errors);
 }
 
 /*
@@ -618,12 +642,12 @@ static void parse_fasm(parser *p, instr_node *instr, unsigned int *errors) {
   parser_advance(p);
   parser_current(p, &token, errors);
   instr->fasm.content = token.value.str;
-  instr->fasm.kind = NON_ARG;
+  instr->fasm.kind = FASM_NON_PAR;
 
   parser_advance(p);
   parser_current(p, &token, errors);
   if (token.kind == TOKEN_COMMA) {
-    instr->fasm.kind = ARG;
+    instr->fasm.kind = FASM_PAR;
     parser_advance(p);
     parser_current(p, &token, errors);
     instr->fasm.argument.name = token.value.str;
@@ -655,7 +679,7 @@ static void parse_loop(parser *p, instr_node *instr, loop_kind kind,
 
   parser_advance(p);
 
-  if (kind == WHILE) {
+  if (kind == LOOP_WHILE) {
     parser_current(p, &token, errors);
     parse_rel(p, &instr->loop.break_condition, errors);
   }
@@ -663,7 +687,7 @@ static void parse_loop(parser *p, instr_node *instr, loop_kind kind,
   parser_current(p, &token, errors);
   if (token.kind != TOKEN_LBRACE) {
     scu_perror(errors, "no opening brace for %s loop at %d\n",
-               kind == WHILE ? "while" : "", token.line);
+               kind == LOOP_WHILE ? "while" : "dowhile", token.line);
   }
 
   parser_advance(p);
@@ -683,7 +707,7 @@ static void parse_loop(parser *p, instr_node *instr, loop_kind kind,
 
   parser_advance(p);
 
-  if (kind == DO_WHILE) {
+  if (kind == LOOP_DO_WHILE) {
     parser_current(p, &token, errors);
     parse_rel(p, &instr->loop.break_condition, errors);
   }
@@ -727,13 +751,13 @@ static void parse_instr(parser *p, instr_node *instr, size_t *loop_counter,
     parse_fasm(p, instr, errors);
     break;
   case TOKEN_LOOP:
-    parse_loop(p, instr, UNCONDITIONAL, loop_counter, errors);
+    parse_loop(p, instr, LOOP_UNCONDITIONAL, loop_counter, errors);
     break;
   case TOKEN_WHILE:
-    parse_loop(p, instr, WHILE, loop_counter, errors);
+    parse_loop(p, instr, LOOP_WHILE, loop_counter, errors);
     break;
   case TOKEN_DO_WHILE:
-    parse_loop(p, instr, DO_WHILE, loop_counter, errors);
+    parse_loop(p, instr, LOOP_DO_WHILE, loop_counter, errors);
     break;
   case TOKEN_BREAK:
     instr->kind = INSTR_LOOP_BREAK;
@@ -1008,8 +1032,20 @@ static void print_instr(instr_node *instr) {
   case INSTR_IF:
     printf("if ");
     check_rel_node_and_print(&instr->if_.rel);
-    printf("\t then: ");
-    print_instr(instr->if_.instr);
+    switch (instr->if_.kind) {
+    case IF_SINGLE_INSTR:
+      printf("\t then: ");
+      print_instr(instr->if_.instr);
+      break;
+    case IF_MULTI_INSTR:
+      for (unsigned int i = 0; i < instr->if_.instrs.count; i++) {
+        instr_node _instr;
+        dynamic_array_get(&instr->if_.instrs, i, &_instr);
+        printf("\t");
+        print_instr(&_instr);
+      }
+      break;
+    }
     break;
 
   case INSTR_GOTO:
@@ -1026,21 +1062,21 @@ static void print_instr(instr_node *instr) {
 
   case INSTR_FASM:
     printf("fasm: %s", instr->fasm.content);
-    if (instr->fasm.kind == ARG)
+    if (instr->fasm.kind == FASM_PAR)
       printf(", %s", instr->fasm.argument.name);
     printf("\n");
     break;
 
   case INSTR_LOOP:
     switch (instr->loop.kind) {
-    case UNCONDITIONAL:
+    case LOOP_UNCONDITIONAL:
       printf("loop %zu starts: \n", instr->loop.loop_id);
       break;
-    case WHILE:
+    case LOOP_WHILE:
       printf("while loop %zu starts, break condition: ", instr->loop.loop_id);
       check_rel_node_and_print(&instr->loop.break_condition);
       break;
-    case DO_WHILE:
+    case LOOP_DO_WHILE:
       printf("do-loop %zu starts, break condition: ", instr->loop.loop_id);
       check_rel_node_and_print(&instr->loop.break_condition);
       break;
@@ -1078,6 +1114,8 @@ void free_if_instrs(program_node *program) {
     instr_node *instr = program->instrs.items + (i * program->instrs.item_size);
     if (instr->kind == INSTR_IF) {
       free(instr->if_.instr);
+    } else {
+      dynamic_array_free(&instr->if_.instrs);
     }
   }
 }

@@ -349,7 +349,19 @@ static void instr_asm(instr_node *instr, ht *variables, unsigned int *if_count,
     int label = (*if_count)++;
     printf("    test rax, rax\n");
     printf("    jz .endif%d\n", label);
-    instr_asm(instr->if_.instr, variables, if_count, loops, program, errors);
+    switch (instr->if_.kind) {
+    case IF_SINGLE_INSTR:
+      instr_asm(instr->if_.instr, variables, if_count, loops, program, errors);
+      break;
+
+    case IF_MULTI_INSTR:
+      for (size_t i = 0; i < instr->if_.instrs.count; i++) {
+        struct instr_node _instr;
+        dynamic_array_get(&instr->if_.instrs, i, &_instr);
+        instr_asm(&_instr, variables, if_count, loops, program, errors);
+      }
+      break;
+    }
     printf("    .endif%d:\n", label);
     break;
   }
@@ -367,7 +379,7 @@ static void instr_asm(instr_node *instr, ht *variables, unsigned int *if_count,
     break;
 
   case INSTR_FASM:
-    if (instr->fasm.kind == ARG) {
+    if (instr->fasm.kind == FASM_PAR) {
       int index = get_var_stack_offset(variables, &instr->fasm.argument, NULL);
       char *stmt =
           scu_format_string((char *)instr->fasm.content, index * 8 + 8);
@@ -386,7 +398,7 @@ static void instr_asm(instr_node *instr, ht *variables, unsigned int *if_count,
     stack_push(loops, &new_loop);
 
     switch (instr->loop.kind) {
-    case UNCONDITIONAL:
+    case LOOP_UNCONDITIONAL:
       printf(".loop_%zu_start:\n", instr->loop.loop_id);
       for (unsigned int i = 0; i < instr->loop.instrs.count; i++) {
         struct instr_node _instr;
@@ -396,10 +408,10 @@ static void instr_asm(instr_node *instr, ht *variables, unsigned int *if_count,
       printf(".loop_%zu_end:\n", instr->loop.loop_id);
       break;
 
-    case WHILE:
+    case LOOP_WHILE:
       printf("    jmp .loop_%zu_test\n", instr->loop.loop_id);
 
-    case DO_WHILE:
+    case LOOP_DO_WHILE:
       printf(".loop_%zu_start:\n", instr->loop.loop_id);
       for (unsigned int i = 0; i < instr->loop.instrs.count; i++) {
         struct instr_node _instr;
@@ -428,11 +440,11 @@ static void instr_asm(instr_node *instr, ht *variables, unsigned int *if_count,
   case INSTR_LOOP_CONTINUE:
     loop_node *_loop = stack_top(loops);
     switch (_loop->kind) {
-    case UNCONDITIONAL:
+    case LOOP_UNCONDITIONAL:
       printf("    jmp .loop_%zu_start\n", _loop->loop_id);
       break;
-    case WHILE:
-    case DO_WHILE:
+    case LOOP_WHILE:
+    case LOOP_DO_WHILE:
       printf("    jmp .loop_%zu_test\n", _loop->loop_id);
       break;
     }

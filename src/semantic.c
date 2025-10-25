@@ -186,7 +186,7 @@ static void instr_check_variables(instr_node *instr, ht *variables,
     break;
 
   case INSTR_FASM:
-    if (instr->fasm.kind == ARG) {
+    if (instr->fasm.kind == FASM_PAR) {
       variable *var = ht_search(variables, instr->fasm.argument.name);
       if (!var) {
         scu_perror(errors, "Use of undeclared variable: %s [line %u]\n",
@@ -196,7 +196,7 @@ static void instr_check_variables(instr_node *instr, ht *variables,
     break;
 
   case INSTR_LOOP:
-    if (instr->loop.kind == WHILE) {
+    if (instr->loop.kind == LOOP_WHILE) {
       rel_check_variables(&instr->loop.break_condition, variables, errors);
     }
     for (size_t i = 0; i < instr->loop.instrs.count; i++) {

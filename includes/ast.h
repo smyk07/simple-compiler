@@ -168,18 +168,20 @@ typedef struct assign_to_array_subscript_node {
   expr_node expr_to_assign;
 } assign_to_array_subscript_node;
 
+typedef enum if_node_kind { IF_SINGLE_INSTR = 0, IF_MULTI_INSTR } if_node_kind;
+
 typedef struct if_node {
+  if_node_kind kind;
   rel_node rel;
-  instr_node *instr;
+  union {
+    instr_node *instr;
+    dynamic_array instrs;
+  };
 } if_node;
 
 typedef struct goto_node {
   const char *label;
 } goto_node;
-
-typedef struct output_node {
-  term_node term;
-} output_node;
 
 typedef struct label_node {
   const char *label;
@@ -189,7 +191,7 @@ typedef struct fasm_define_node {
   const char *content;
 } fasm_define_node;
 
-typedef enum fasm_node_kind { ARG = 0, NON_ARG } fasm_node_kind;
+typedef enum fasm_node_kind { FASM_PAR = 0, FASM_NON_PAR } fasm_node_kind;
 
 typedef struct fasm_node {
   fasm_node_kind kind;
@@ -197,13 +199,17 @@ typedef struct fasm_node {
   const char *content;
 } fasm_node;
 
-typedef enum loop_kind { UNCONDITIONAL = 0, WHILE, DO_WHILE } loop_kind;
+typedef enum loop_kind {
+  LOOP_UNCONDITIONAL = 0,
+  LOOP_WHILE,
+  LOOP_DO_WHILE
+} loop_kind;
 
 typedef struct loop_node {
   loop_kind kind;
   size_t loop_id;
-  dynamic_array instrs;
   rel_node break_condition;
+  dynamic_array instrs;
 } loop_node;
 
 /*
@@ -221,7 +227,6 @@ typedef struct instr_node {
     assign_to_array_subscript_node assign_to_array_subscript;
     if_node if_;
     goto_node goto_;
-    output_node output;
     label_node label;
     fasm_define_node fasm_def;
     fasm_node fasm;
