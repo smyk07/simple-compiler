@@ -9,13 +9,13 @@ Only linux is supported for now.
 
 ## Prerequisites for building
 
-- `make`
-- `clang`
-- `bear` (for `compile_commands.json`)
+- [`make`](https://www.gnu.org/software/make)
+- [`clang`](https://clang.llvm.org)
+- [`bear`](https://github.com/rizsotto/Bear) (for `compile_commands.json`)
 
 ## Tools required
 
-- `fasm`
+- [`fasm`](https://flatassembler.net)
 
 ## Usage
 
