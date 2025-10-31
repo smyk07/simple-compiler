@@ -40,5 +40,5 @@ Run the executable:
 Cleanup:
 
 ```
-make clean
+make clean-sclc
 ```
