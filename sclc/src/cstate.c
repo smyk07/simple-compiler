@@ -84,7 +84,7 @@ void cstate_init(cstate *cst, u32 argc, char *argv[]) {
     char *arg = argv[i];
 
     if (strcmp(arg, "--target") == 0) {
-      LLVMInitializeX86TargetInfo();
+      LLVMInitializeAllTargetInfos();
 
       if (i + 1 >= argc) {
         scu_perror("Missing target after %s\n", arg);
