@@ -55,7 +55,7 @@ void llvm_backend_init(cstate *cst) {
 
   bctx.target_triple = cst->llvm_target_triple;
 
-  bctx.module->setTargetTriple(llvm::Triple(bctx.target_triple));
+  bctx.module->setTargetTriple(bctx.target_triple);
 
   std::string error;
   const llvm::Target *target =
@@ -70,9 +70,8 @@ void llvm_backend_init(cstate *cst) {
   llvm::TargetOptions opt;
   llvm::Reloc::Model RM = llvm::Reloc::PIC_;
 
-  bctx.target_machine =
-      target->createTargetMachine(llvm::Triple(bctx.target_triple), "generic",
-                                  "", opt, RM, llvm::CodeModel::Small);
+  bctx.target_machine = target->createTargetMachine(
+      bctx.target_triple, "generic", "", opt, RM, llvm::CodeModel::Small);
 
   if (!bctx.target_machine) {
     scu_perror(const_cast<char *>("Failed to create target machine\n"));
