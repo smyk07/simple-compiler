@@ -15,6 +15,7 @@ extern "C" {
 #include "var.h"
 }
 
+#include <inttypes.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Type.h>
@@ -80,7 +81,7 @@ static llvm::Value *llvm_irgen_term(llvm_backend_ctx &ctx, term_node *term) {
   case TERM_IDENTIFIER: {
     auto it = named_values.find(term->identifier.name);
     if (it == named_values.end()) {
-      scu_perror(const_cast<char *>("Unknown variable '%s' at line %zu"),
+      scu_perror(const_cast<char *>("Unknown variable '%s' at line %" PRIu64),
                  term->identifier.name, term->line);
       return nullptr;
     }
@@ -95,7 +96,7 @@ static llvm::Value *llvm_irgen_term(llvm_backend_ctx &ctx, term_node *term) {
 
     llvm::Function *callee = ctx.module->getFunction(call->name);
     if (!callee) {
-      scu_perror(const_cast<char *>("Unknown function '%s' at line %zu"),
+      scu_perror(const_cast<char *>("Unknown function '%s' at line %" PRIu64),
                  call->name, term->line);
       return nullptr;
     }
@@ -118,7 +119,7 @@ static llvm::Value *llvm_irgen_term(llvm_backend_ctx &ctx, term_node *term) {
     auto it = named_values.find(term->identifier.name);
     if (it == named_values.end()) {
       scu_perror(
-          const_cast<char *>("Unknown pointer variable '%s' at line %zu"),
+          const_cast<char *>("Unknown pointer variable '%s' at line %" PRIu64),
           term->identifier.name, term->line);
       return nullptr;
     }
@@ -135,7 +136,7 @@ static llvm::Value *llvm_irgen_term(llvm_backend_ctx &ctx, term_node *term) {
   case TERM_ADDOF: {
     auto it = named_values.find(term->identifier.name);
     if (it == named_values.end()) {
-      scu_perror(const_cast<char *>("Unknown variable '%s' at line %zu"),
+      scu_perror(const_cast<char *>("Unknown variable '%s' at line %" PRIu64),
                  term->identifier.name, term->line);
       return nullptr;
     }
@@ -148,7 +149,7 @@ static llvm::Value *llvm_irgen_term(llvm_backend_ctx &ctx, term_node *term) {
 
     auto it = named_values.find(access->array_var.name);
     if (it == named_values.end()) {
-      scu_perror(const_cast<char *>("Unknown array '%s' at line %zu"),
+      scu_perror(const_cast<char *>("Unknown array '%s' at line %" PRIu64),
                  access->array_var.name, term->line);
       return nullptr;
     }
@@ -183,14 +184,15 @@ static llvm::Value *llvm_irgen_term(llvm_backend_ctx &ctx, term_node *term) {
   }
 
   case TERM_ARRAY_LITERAL: {
-    scu_perror(const_cast<char *>(
-                   "Array literal only valid in initialization at line %zu"),
-               term->line);
+    scu_perror(
+        const_cast<char *>(
+            "Array literal only valid in initialization at line %" PRIu64),
+        term->line);
     return nullptr;
   }
 
   default:
-    scu_perror(const_cast<char *>("Unknown term kind %d at line %zu"),
+    scu_perror(const_cast<char *>("Unknown term kind %d at line %" PRIu64),
                term->kind, term->line);
     return nullptr;
   }
@@ -280,7 +282,8 @@ static void llvm_irgen_instr_declare(llvm_backend_ctx &ctx, variable *var) {
 
   if (!fn) {
     scu_perror(const_cast<char *>(
-                   "Variable declaration '%s' outside function at line %zu\n"),
+                   "Variable declaration '%s' outside function at line %" PRIu64
+                   "\n"),
                var->name, var->line);
     return;
   }
@@ -305,9 +308,9 @@ static void llvm_irgen_instr_initialize(llvm_backend_ctx &ctx,
 
   if (!fn) {
     scu_perror(
-
         const_cast<char *>(
-            "Variable initialization '%s' outside function at line %zu\n"),
+            "Variable initialization '%s' outside function at line %" PRIu64
+            "\n"),
         var->name, var->line);
     return;
   }
@@ -320,7 +323,7 @@ static void llvm_irgen_instr_initialize(llvm_backend_ctx &ctx,
 
   if (!init_value) {
     scu_perror(const_cast<char *>("Failed to generate intiialization "
-                                  "expression for '%s' at line %zu\n"),
+                                  "expression for '%s' at line %" PRIu64 "\n"),
                var->name, var->line);
     return;
   }
@@ -339,7 +342,8 @@ static void llvm_irgen_instr_declare_array(llvm_backend_ctx &ctx,
     size_val = llvm_irgen_expr(ctx, arr->size_expr);
     if (!size_val) {
       scu_perror(const_cast<char *>(
-                     "Failed to evaluate array size for '%s' at line %zu\n"),
+                     "Failed to evaluate array size for '%s' at line %" PRIu64
+                     "\n"),
                  var->name, var->line);
       return;
     }
@@ -348,7 +352,8 @@ static void llvm_irgen_instr_declare_array(llvm_backend_ctx &ctx,
   llvm::Function *fn = ctx.builder->GetInsertBlock()->getParent();
   if (!fn) {
     scu_perror(const_cast<char *>(
-                   "Array declaration '%s' outside function at line %zu\n"),
+                   "Array declaration '%s' outside function at line %" PRIu64
+                   "\n"),
                var->name, var->line);
     return;
   }
@@ -368,7 +373,8 @@ static void llvm_irgen_instr_declare_array(llvm_backend_ctx &ctx,
 
   if (!alloca) {
     scu_perror(const_cast<char *>(
-                   "Failed to create array alloca for '%s' at line %zu\n"),
+                   "Failed to create array alloca for '%s' at line %" PRIu64
+                   "\n"),
                var->name, var->line);
     return;
   }
@@ -385,7 +391,8 @@ static void llvm_irgen_initialize_array(llvm_backend_ctx &ctx,
   llvm::Function *fn = ctx.builder->GetInsertBlock()->getParent();
   if (!fn) {
     scu_perror(const_cast<char *>(
-                   "Array initialization '%s' outside function at line %zu\n"),
+                   "Array initialization '%s' outside function at line %" PRIu64
+                   "\n"),
                var->name, var->line);
     return;
   }
@@ -554,13 +561,13 @@ static void llvm_irgen_instr_if(llvm_backend_ctx &ctx, if_node *if_stmt) {
     }
 
     char buf[32];
-    snprintf(buf, sizeof(buf), "elif.then.%zu", i);
+    snprintf(buf, sizeof(buf), "elif.then.%" PRIu64, i);
     llvm::BasicBlock *elif_then_bb =
         llvm::BasicBlock::Create(*ctx.context, buf, fn);
 
     llvm::BasicBlock *next_target;
     if (i + 1 < if_stmt->else_ifs.count) {
-      snprintf(buf, sizeof(buf), "elif.cond.%zu", i + 1);
+      snprintf(buf, sizeof(buf), "elif.cond.%" PRIu64, i + 1);
       next_target = llvm::BasicBlock::Create(*ctx.context, buf, fn);
     } else if (if_stmt->else_) {
       next_target = llvm::BasicBlock::Create(*ctx.context, "if.else", fn);
@@ -640,13 +647,13 @@ static void llvm_irgen_instr_match(llvm_backend_ctx &ctx,
     dynamic_array_get(&match_stmt->cases, i, &case_node);
 
     char buf[64];
-    snprintf(buf, sizeof(buf), "match.case.%zu", i);
+    snprintf(buf, sizeof(buf), "match.case.%" PRIu64, i);
     llvm::BasicBlock *case_body_bb =
         llvm::BasicBlock::Create(*ctx.context, buf, fn);
 
     llvm::BasicBlock *next_case_bb;
     if (i + 1 < match_stmt->cases.count) {
-      snprintf(buf, sizeof(buf), "match.check.%zu", i + 1);
+      snprintf(buf, sizeof(buf), "match.check.%" PRIu64, i + 1);
       next_case_bb = llvm::BasicBlock::Create(*ctx.context, buf, fn);
     } else {
       next_case_bb = default_bb;
@@ -1023,8 +1030,8 @@ static void llvm_irgen_instr_fn_call(llvm_backend_ctx &ctx,
     llvm::Value *arg_val = llvm_irgen_expr(ctx, &arg_expr);
 
     if (!arg_val) {
-      scu_perror(const_cast<char *>(
-                     "Failed to evaluate argument %zu in call to '%s'\n"),
+      scu_perror(const_cast<char *>("Failed to evaluate argument %" PRIu64
+                                    " in call to '%s'\n"),
                  i, call->name);
       return;
     }

@@ -7,6 +7,7 @@
 
 #include "token.h"
 
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -128,7 +129,7 @@ void lexer_print_tokens(dynamic_array *tokens) {
     token token;
     dynamic_array_get(tokens, i, &token);
 
-    printf("[line %zu] ", token.line);
+    printf("[line %" PRIu64 "] ", token.line);
 
     const char *kind = lexer_token_kind_to_str(token.kind);
     printf("%s", kind);

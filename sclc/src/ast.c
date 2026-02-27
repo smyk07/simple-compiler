@@ -11,6 +11,7 @@
 #include "ds/dynamic_array.h"
 #include "ds/ht.h"
 
+#include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -221,7 +222,7 @@ static void print_cond_block(cond_block_node *block) {
 void print_instr(instr_node *instr) {
   PRINT_INDENTATION
 
-  printf("[line %zu] ", instr->line);
+  printf("[line %" PRIu64 "] ", instr->line);
 
   switch (instr->kind) {
   case INSTR_DECLARE:

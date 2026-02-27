@@ -12,6 +12,7 @@
 #include "utils.h"
 #include "var.h"
 
+#include <inttypes.h>
 #include <stddef.h>
 
 #define _POSIX_C_SOURCE 200809L
@@ -520,20 +521,22 @@ static type term_type(term_node *term, ht *variables, ht *functions) {
   case TERM_ARRAY_ACCESS:
     type array_type = get_var_type(variables, &term->array_access.array_var);
     if (array_type == TYPE_VOID) {
-      scu_perror("Array '%s' not declared [line %zu]\n",
+      scu_perror("Array '%s' not declared [line %" PRIu64 "]\n",
                  term->array_access.array_var.name, term->line);
       return TYPE_VOID;
     }
     type index_type = expr_type(term->array_access.index_expr, TYPE_INT,
                                 variables, functions);
     if (index_type != TYPE_INT) {
-      scu_perror("Array index must be of type int, got type at [line %zu]\n",
+      scu_perror("Array index must be of type int, got type at [line %" PRIu64
+                 "]\n",
                  term->line);
     }
     return array_type;
 
   case TERM_ARRAY_LITERAL:
-    scu_perror("Array literal cannot be used in expressions [line %zu]\n",
+    scu_perror("Array literal cannot be used in expressions [line %" PRIu64
+               "]\n",
                term->line);
     return -1;
     break;
@@ -541,21 +544,21 @@ static type term_type(term_node *term, ht *variables, ht *functions) {
   case TERM_FUNCTION_CALL: {
     fn_node *fn = ht_search(functions, term->fn_call.name);
     if (!fn) {
-      scu_perror("Call to undeclared function: %s [line %zu]\n",
+      scu_perror("Call to undeclared function: %s [line %" PRIu64 "]\n",
                  term->fn_call.name, term->line);
       return TYPE_VOID;
     }
 
     if (!fn->is_variadic &&
         term->fn_call.parameters.count != fn->parameters.count) {
-      scu_perror("Function '%s' expects %zu arguments, but %zu were provided "
-                 "[line %zu]\n",
+      scu_perror("Function '%s' expects %" PRIu64 " arguments, but %" PRIu64
+                 " were provided [line %" PRIu64 "]\n",
                  term->fn_call.name, fn->parameters.count,
                  term->fn_call.parameters.count, term->line);
     } else if (fn->is_variadic &&
                term->fn_call.parameters.count < fn->parameters.count) {
-      scu_perror("Variadic function '%s' requires at least %zu fixed arguments "
-                 "[line %zu]\n",
+      scu_perror("Variadic function '%s' requires at least %" PRIu64
+                 " fixed arguments [line %" PRIu64 "]\n",
                  term->fn_call.name, fn->parameters.count, term->line);
     }
 
@@ -574,8 +577,8 @@ static type term_type(term_node *term, ht *variables, ht *functions) {
               (arg_type == TYPE_STRING || arg_type == TYPE_POINTER))) {
           scu_perror(
 
-              "Type mismatch in argument %zu to function '%s': expected %s, "
-              "got %s [line %zu]\n",
+              "Type mismatch in argument %" PRIu64
+              " to function '%s': expected %s, got %s [line %" PRIu64 "]\n",
               i + 1, term->fn_call.name, type_to_str(param.type),
               type_to_str(arg_type), term->line);
         }
@@ -584,7 +587,7 @@ static type term_type(term_node *term, ht *variables, ht *functions) {
 
     if (fn->returntypes.count == 0) {
       scu_perror("Function '%s' has no return value but is used in expression "
-                 "[line %zu]\n",
+                 "[line %" PRIu64 "]\n",
                  term->fn_call.name, term->line);
       return TYPE_VOID;
     }
@@ -684,8 +687,8 @@ static void instr_typecheck(instr_node *instr, ht *variables, ht *functions) {
       if (array_type != elem_type && array_type != TYPE_POINTER) {
         const char *array_type_str = type_to_str(array_type);
         const char *elem_type_str = type_to_str(elem_type);
-        scu_perror("Type mismatch in array initialization - element %zu is %s "
-                   "but array is %s [line %u]\n",
+        scu_perror("Type mismatch in array initialization - element %" PRIu64
+                   " is %s but array is %s [line %u]\n",
                    i, elem_type_str, array_type_str, instr->line);
       }
     }
@@ -826,9 +829,10 @@ static void register_function(fn_node *fn, ht *functions) {
     }
 
     if (!fn->is_variadic && existing->parameters.count != fn->parameters.count)
-      scu_perror("Function '%s' parameter count mismatch: declared with %zu, "
-                 "but has %zu\n",
-                 fn->name, existing->parameters.count, fn->parameters.count);
+      scu_perror(
+          "Function '%s' parameter count mismatch: declared with %" PRIu64
+          ", but has %" PRIu64 "\n",
+          fn->name, existing->parameters.count, fn->parameters.count);
 
     if (fn->kind == FN_DEFINED && existing->kind == FN_DEFINED) {
       scu_perror("Duplicate function definition: %s\n", fn->name);
@@ -836,9 +840,10 @@ static void register_function(fn_node *fn, ht *functions) {
     }
 
     if (existing->parameters.count != fn->parameters.count)
-      scu_perror("Function '%s' parameter count mismatch: declared with %zu, "
-                 "but has %zu\n",
-                 fn->name, existing->parameters.count, fn->parameters.count);
+      scu_perror(
+          "Function '%s' parameter count mismatch: declared with %" PRIu64
+          ", but has %" PRIu64 "\n",
+          fn->name, existing->parameters.count, fn->parameters.count);
 
     if (existing->returntypes.count != fn->returntypes.count)
       scu_perror("Function '%s' return type count mismatch\n", fn->name);
@@ -868,21 +873,21 @@ static void check_function_call(fn_call_node *fn_call, ht *functions,
   fn_node *fn = ht_search(functions, fn_call->name);
 
   if (!fn) {
-    scu_perror("Call to undeclared function: %s [line %zu]\n", fn_call->name,
-               line);
+    scu_perror("Call to undeclared function: %s [line %" PRIu64 "]\n",
+               fn_call->name, line);
     return;
   }
 
   if (!fn->is_variadic && fn_call->parameters.count != fn->parameters.count) {
-    scu_perror("Function '%s' expects %zu arguments, but %zu were provided "
-               "[line %zu]\n",
+    scu_perror("Function '%s' expects %" PRIu64 " arguments, but %" PRIu64
+               " were provided [line %" PRIu64 "]\n",
                fn_call->name, fn->parameters.count, fn_call->parameters.count,
                line);
     return;
   } else if (fn->is_variadic &&
              fn_call->parameters.count < fn->parameters.count) {
-    scu_perror("Variadic function '%s' requires at least %zu fixed arguments "
-               "[line %zu]\n",
+    scu_perror("Variadic function '%s' requires at least %" PRIu64
+               " fixed arguments [line %" PRIu64 "]\n",
                fn_call->name, fn->parameters.count, line);
     return;
   }
@@ -898,8 +903,8 @@ static void check_function_call(fn_call_node *fn_call, ht *functions,
     type arg_type = expr_type(&arg_expr, param.type, variables, functions);
 
     if (arg_type != param.type && param.type != TYPE_POINTER) {
-      scu_perror("Type mismatch in argument %zu to function '%s': expected %s, "
-                 "got %s [line %zu]\n",
+      scu_perror("Type mismatch in argument %" PRIu64
+                 " to function '%s': expected %s, got %s [line %" PRIu64 "]\n",
                  i + 1, fn_call->name, type_to_str(param.type),
                  type_to_str(arg_type), line);
     }
@@ -920,8 +925,8 @@ static void check_return_statement(return_node *ret, fn_node *fn, ht *variables,
     return;
 
   if (ret->returnvals.count != fn->returntypes.count) {
-    scu_perror("Function '%s' expects %zu return values, but %zu were provided "
-               "[line %zu]\n",
+    scu_perror("Function '%s' expects %" PRIu64 " return values, but %" PRIu64
+               " were provided [line %" PRIu64 "]\n",
                fn->name, fn->returntypes.count, ret->returnvals.count, line);
     return;
   }
@@ -937,7 +942,7 @@ static void check_return_statement(return_node *ret, fn_node *fn, ht *variables,
         expr_type(&ret_expr, expected_type, variables, functions);
     if (actual_type != expected_type && expected_type != TYPE_POINTER) {
       scu_perror("Return type mismatch in function '%s': expected %s, got %s "
-                 "[line %zu]\n",
+                 "[line %" PRIu64 "]\n",
                  fn->name, type_to_str(expected_type), type_to_str(actual_type),
                  line);
     }
