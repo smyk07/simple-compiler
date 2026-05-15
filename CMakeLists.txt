@@ -142,13 +142,34 @@ target_compile_options(frontend PRIVATE
 #  sclc   #
 ###########
 
-set(INC_DIR ${CMAKE_SOURCE_DIR}/sclc/include)
-set(SRC_DIR ${CMAKE_SOURCE_DIR}/sclc/src)
+set(SCLC_INC_DIR ${CMAKE_SOURCE_DIR}/sclc/include)
+set(SCLC_SRC_DIR ${CMAKE_SOURCE_DIR}/sclc/src)
 
-file(GLOB_RECURSE C_SRCS   CONFIGURE_DEPENDS ${SRC_DIR}/*.c)
-file(GLOB_RECURSE CXX_SRCS CONFIGURE_DEPENDS ${SRC_DIR}/*.cpp)
+file(GLOB_RECURSE SCLC_C_SRCS   CONFIGURE_DEPENDS ${SCLC_SRC_DIR}/*.c)
+file(GLOB_RECURSE SCLC_CXX_SRCS CONFIGURE_DEPENDS ${SCLC_SRC_DIR}/*.cpp)
 
-add_executable(sclc ${C_SRCS} ${CXX_SRCS})
+list(REMOVE_ITEM SCLC_CXX_SRCS ${SCLC_SRC_DIR}/sclc.c)
+
+add_library(sclc_lib STATIC ${SCLC_C_SRCS} ${SCLC_CXX_SRCS})
+
+set_target_properties(sclc_lib PROPERTIES
+  C_STANDARD            23
+  CXX_STANDARD          17
+  CXX_STANDARD_REQUIRED ON
+)
+
+target_include_directories(sclc_lib PUBLIC ${SCLC_INC_DIR} ${LLVM_INC})
+
+target_compile_options(sclc_lib PRIVATE
+  $<$<COMPILE_LANGUAGE:C>:   ${CMAKE_C_FLAGS}>
+  $<$<COMPILE_LANGUAGE:CXX>: ${CMAKE_CXX_FLAGS} ${LLVM_CXXFLAGS} -Wno-unused-parameter>
+)
+
+target_link_directories(sclc_lib PRIVATE ${LLVM_LIB})
+target_link_libraries(sclc_lib PUBLIC core frontend PRIVATE LLVM ${LLVM_SYSTEM_LIBS} m)
+add_dependencies(sclc_lib llvm_project)
+
+add_executable(sclc ${SCLC_SRC_DIR}/sclc.c)
 
 set_target_properties(sclc PROPERTIES
   C_STANDARD               23
@@ -158,19 +179,8 @@ set_target_properties(sclc PROPERTIES
   BUILD_RPATH              "$ORIGIN/../external/llvm-project/build/lib"
 )
 
-target_include_directories(sclc PRIVATE
-  ${INC_DIR}
-  ${LLVM_INC}
-)
-
-target_compile_options(sclc PRIVATE
-  $<$<COMPILE_LANGUAGE:C>:   ${CMAKE_C_FLAGS}>
-  $<$<COMPILE_LANGUAGE:CXX>: ${CMAKE_CXX_FLAGS} ${LLVM_CXXFLAGS} -Wno-unused-parameter>
-)
-
 target_link_directories(sclc PRIVATE ${LLVM_LIB})
-target_link_libraries(sclc PRIVATE core frontend LLVM ${LLVM_SYSTEM_LIBS} m)
-
+target_link_libraries(sclc PRIVATE sclc_lib LLVM ${LLVM_SYSTEM_LIBS} m)
 add_dependencies(sclc llvm_project)
 
 add_custom_target(do-install
@@ -194,12 +204,51 @@ foreach(example_src ${EXAMPLE_SRCS})
   add_custom_target(example_${_tname}
     COMMAND $<TARGET_FILE:sclc> -i ${CMAKE_SOURCE_DIR}/lib ${example_src}
     DEPENDS sclc
-    COMMENT "[SCLC] ${example_src}"
   )
   list(APPEND _EXAMPLE_TARGETS example_${_tname})
 endforeach()
 
 add_custom_target(examples
   DEPENDS ${_EXAMPLE_TARGETS}
-  COMMENT "[INFO] Examples compiled successfully"
+)
+
+#########
+# Tests #
+#########
+
+set(TESTS_INC_DIR ${CMAKE_SOURCE_DIR}/tests/include)
+set(TESTS_SRC_DIR ${CMAKE_SOURCE_DIR}/tests/src)
+
+file(GLOB_RECURSE TESTS_C_SRCS   CONFIGURE_DEPENDS ${TESTS_SRC_DIR}/*.c)
+file(GLOB_RECURSE TESTS_CXX_SRCS CONFIGURE_DEPENDS ${TESTS_SRC_DIR}/*.cpp)
+
+add_executable(tests ${TESTS_C_SRCS} ${TESTS_CXX_SRCS})
+
+set_target_properties(tests PROPERTIES
+  C_STANDARD               23
+  CXX_STANDARD             17
+  CXX_STANDARD_REQUIRED    ON
+  RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/tests-bin
+  BUILD_RPATH              "$ORIGIN/../external/llvm-project/build/lib"
+)
+
+target_include_directories(tests PRIVATE
+  ${TESTS_INC_DIR}
+  ${LLVM_INC}
+)
+
+target_compile_options(tests PRIVATE
+  $<$<COMPILE_LANGUAGE:C>:   ${CMAKE_C_FLAGS}>
+  $<$<COMPILE_LANGUAGE:CXX>: ${CMAKE_CXX_FLAGS} ${LLVM_CXXFLAGS} -Wno-unused-parameter>
+)
+
+target_link_directories(tests PRIVATE ${LLVM_LIB})
+target_link_libraries(tests PRIVATE sclc_lib core frontend LLVM ${LLVM_SYSTEM_LIBS} m)
+
+add_dependencies(tests llvm_project)
+
+add_custom_target(run-tests ALL
+  COMMAND $<TARGET_FILE:tests>
+  DEPENDS tests
+  USES_TERMINAL
 )

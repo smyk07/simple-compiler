@@ -12,6 +12,9 @@
 !/lib/
 !/lib/**
 
+!/tests/
+!/tests/**
+
 !/examples/
 !/examples/**.scl
 
@@ -22,6 +25,7 @@
 !.clang-format
 !README.md
 !LICENSE
+!THIRD_PARTY_LICENSES
 !LICENSE_HEADER.txt
 !AGENDA.md
 
