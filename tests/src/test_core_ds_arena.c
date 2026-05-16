@@ -12,8 +12,8 @@ PTEST(arena_initialization_and_free) {
 
   PROVA_ASSERT_NOT_NULL(arena.first);
   PROVA_ASSERT_EQUAL_PTR(arena.first, arena.current);
-  PROVA_ASSERT_EQUAL_INT(1 << 20, arena.first->capacity);
-  PROVA_ASSERT_EQUAL_INT(0, arena.first->pos);
+  PROVA_ASSERT_EQUAL(1 << 20, arena.first->capacity);
+  PROVA_ASSERT_EQUAL(0, arena.first->pos);
   PROVA_ASSERT_NOT_NULL(arena.first->buffer);
   PROVA_ASSERT_NULL(arena.first->next);
 
@@ -29,11 +29,11 @@ PTEST(arena_basic_push_and_alignment) {
   u32 *num = arena_push_struct(&arena, u32);
   PROVA_ASSERT_NOT_NULL(num);
 
-  PROVA_ASSERT_EQUAL_INT(4, arena.current->pos);
+  PROVA_ASSERT_EQUAL(4, arena.current->pos);
 
   char *c = arena_push_struct(&arena, char);
   PROVA_ASSERT_NOT_NULL(c);
-  PROVA_ASSERT_EQUAL_INT(ARENA_ALIGNMENT + 1, arena.current->pos);
+  PROVA_ASSERT_EQUAL(ARENA_ALIGNMENT + 1, arena.current->pos);
 
   arena_free(&arena);
 }
@@ -58,7 +58,7 @@ PTEST(arena_block_chaining_on_overflow) {
   PROVA_ASSERT_NOT_EQUAL_PTR(block1, block2);
   PROVA_ASSERT_EQUAL_PTR(block1->next, block2);
 
-  PROVA_ASSERT_EQUAL_INT(20, block2->pos);
+  PROVA_ASSERT_EQUAL(20, block2->pos);
   PROVA_ASSERT_NULL(block2->next);
 
   arena_free(&arena);
@@ -80,12 +80,12 @@ PTEST(arena_pop_across_blocks) {
 
   arena_pop(&arena, 5);
   PROVA_ASSERT_EQUAL_PTR(block2, arena.current);
-  PROVA_ASSERT_EQUAL_INT(15, arena.current->pos);
+  PROVA_ASSERT_EQUAL(15, arena.current->pos);
 
   arena_pop(&arena, 20);
   PROVA_ASSERT_EQUAL_PTR(block1, arena.current);
-  PROVA_ASSERT_EQUAL_INT(15, arena.current->pos);
-  PROVA_ASSERT_EQUAL_INT(0, block2->pos);
+  PROVA_ASSERT_EQUAL(15, arena.current->pos);
+  PROVA_ASSERT_EQUAL(0, block2->pos);
 
   arena_free(&arena);
 }
@@ -110,9 +110,9 @@ PTEST(arena_clear_mechanics) {
   arena_clear(&arena);
 
   PROVA_ASSERT_EQUAL_PTR(block1, arena.current);
-  PROVA_ASSERT_EQUAL_INT(0, block1->pos);
-  PROVA_ASSERT_EQUAL_INT(0, block2->pos);
-  PROVA_ASSERT_EQUAL_INT(0, block3->pos);
+  PROVA_ASSERT_EQUAL(0, block1->pos);
+  PROVA_ASSERT_EQUAL(0, block2->pos);
+  PROVA_ASSERT_EQUAL(0, block3->pos);
 
   PROVA_ASSERT_EQUAL_PTR(block2, block1->next);
   PROVA_ASSERT_EQUAL_PTR(block3, block2->next);

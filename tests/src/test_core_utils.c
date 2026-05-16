@@ -15,7 +15,7 @@ PTEST(scu_checked_malloc_realloc) {
     ptr[i] = i * 10;
   }
   for (u32 i = 0; i < 10; i++) {
-    PROVA_ASSERT_EQUAL_INT(i * 10, ptr[i]);
+    PROVA_ASSERT_EQUAL(i * 10, ptr[i]);
   }
 
   u64 new_size = 256;
@@ -23,7 +23,7 @@ PTEST(scu_checked_malloc_realloc) {
   PROVA_ASSERT_NOT_NULL(ptr);
 
   for (u32 i = 0; i < 10; i++) {
-    PROVA_ASSERT_EQUAL_INT(i * 10, ptr[i]);
+    PROVA_ASSERT_EQUAL(i * 10, ptr[i]);
   }
 }
 
@@ -49,7 +49,7 @@ PTEST(scu_read_file) {
 
   u32 bytes = scu_read_file(filepath, &buff);
 
-  PROVA_ASSERT_EQUAL_INT(13, bytes);
+  PROVA_ASSERT_EQUAL(13, bytes);
   PROVA_ASSERT_EQUAL_STRING(expected_contents, buff);
 
   free(buff);

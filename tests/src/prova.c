@@ -1,8 +1,19 @@
 /*
  * prova: Unit testing framework in C, for C.
  *
- * Copyright (c) 2026, Abhigyan Kumar <314abh+source@gmail.com>.
- * Licensed under the Apache License v2.0
+ * Copyright 2026 Abhigyan Kumar Abhigyan Kumar <314abh at gmail dot com>
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 #include <assert.h>
@@ -100,7 +111,7 @@ void prova_print_summary(const PTest *registry)
 {
     if (registry == NULL)
     {
-        fprintf(stderr, "prova: no test cases provided.\n");
+        fprintf(stderr, "prova: no test cases provided.");
         return;
     }
 
@@ -127,7 +138,7 @@ void prova_print_summary(const PTest *registry)
         curr = curr->next;
     }
 
-    printf("=== PROVA SUMMARY ===\n");
+    printf("\n=== SUMMARY ===\n");
     printf("Total testcases: %u\n", p_metadata.total_tests);
     printf("Failing testcases: %u\n", p_metadata.failing_tests);
     printf("Skipped testcases: %u\n", p_metadata.skipping_tests);
@@ -142,4 +153,11 @@ void prova_cleanup_messages(const PTest *registry) {
         free(curr->msg);
         curr = next;
     }
+}
+
+int main(void)
+{
+    prova_run_tests(p_registry);
+    prova_print_summary(p_registry);
+    return (p_metadata.failing_tests + p_metadata.crashing_tests) > 0 ? 1 : 0;
 }
