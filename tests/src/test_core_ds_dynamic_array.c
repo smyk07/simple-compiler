@@ -3,22 +3,6 @@
 #include "core/ds/dynamic_array.h"
 #include <unistd.h>
 
-#define MUTE_STDERR                                                            \
-  int _orig_stderr_fd __attribute__((unused)) = dup(STDERR_FILENO);            \
-  do {                                                                         \
-    FILE *__err = freopen("/dev/null", "w", stderr);                           \
-    (void)__err;                                                               \
-  } while (0);
-
-#define UNMUTE_STDERR                                                          \
-  do {                                                                         \
-    if (_orig_stderr_fd != -1) {                                               \
-      fflush(stderr);                                                          \
-      dup2(_orig_stderr_fd, STDERR_FILENO);                                    \
-      close(_orig_stderr_fd);                                                  \
-    }                                                                          \
-  } while (0);
-
 typedef struct {
   u32 id;
   char name[20];
@@ -80,12 +64,12 @@ PTEST(get_set) {
   PROVA_ASSERT_EQUAL(3, out.id);
   PROVA_ASSERT_EQUAL_STRING("Charlie", out.name);
 
-  MUTE_STDERR
+  PROVA_MUTE_STDERR
 
   PROVA_ASSERT_EQUAL(1, dynamic_array_set(&da, 5, &item3));
   PROVA_ASSERT_EQUAL(1, dynamic_array_get(&da, 5, &out));
 
-  UNMUTE_STDERR
+  PROVA_UNMUTE_STDERR
 
   dynamic_array_free(&da);
 }
@@ -110,11 +94,11 @@ PTEST(insert) {
   PROVA_ASSERT_EQUAL(30, r1);
   PROVA_ASSERT_EQUAL(20, r2);
 
-  MUTE_STDERR
+  PROVA_MUTE_STDERR
 
   PROVA_ASSERT_EQUAL(1, dynamic_array_insert(&da, 5, &v3));
 
-  UNMUTE_STDERR
+  PROVA_UNMUTE_STDERR
 
   dynamic_array_free(&da);
 }
@@ -138,11 +122,11 @@ PTEST(remove) {
   PROVA_ASSERT_EQUAL(10, r0);
   PROVA_ASSERT_EQUAL(30, r1);
 
-  MUTE_STDERR
+  PROVA_MUTE_STDERR
 
   PROVA_ASSERT_EQUAL(1, dynamic_array_remove(&da, 5));
 
-  UNMUTE_STDERR
+  PROVA_UNMUTE_STDERR
 
   dynamic_array_free(&da);
 }
@@ -164,11 +148,11 @@ PTEST(pop) {
 
   PROVA_ASSERT_EQUAL(0, da.count);
 
-  MUTE_STDERR
+  PROVA_MUTE_STDERR
 
   PROVA_ASSERT_EQUAL(1, dynamic_array_pop(&da, &pop_val));
 
-  UNMUTE_STDERR
+  PROVA_UNMUTE_STDERR
 
   dynamic_array_free(&da);
 }
