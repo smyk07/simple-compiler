@@ -415,8 +415,7 @@ restart:
 
   else if (l->ch == '*') {
     lexer_read_char(l);
-    if (((*__ctype_b_loc())[(int)((l->ch))] & (unsigned short int)_ISalnum) ||
-        l->ch == '_') {
+    if (isalnum((unsigned char)l->ch) || l->ch == '_') {
       char *value = lexer_read_identifier(l);
       return (token){.kind = TOKEN_POINTER,
                      .value.kind = TLV_STR,
