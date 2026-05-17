@@ -95,7 +95,7 @@ u32 dynamic_array_remove(dynamic_array *da, u64 index);
  * @param da: pointer to a dynamic_array
  * @param item: pointer to store the popped item (can be NULL)
  *
- * @return: 0 if successful, -1 if array is empty
+ * @return: 0 if successful, 1 if array is empty
  */
 u32 dynamic_array_pop(dynamic_array *da, void *item);
 

@@ -119,13 +119,16 @@ u32 dynamic_array_remove(dynamic_array *da, u64 index) {
 
 u32 dynamic_array_pop(dynamic_array *da, void *item) {
   if (!da || da->item_size == 0 || da->count == 0) {
-    scu_perror("Invalid dynamic array passed to function.\n");
+    scu_perror("Invalid dynamic array or array is empty.\n");
     return 1;
   }
 
-  u32 return_value = dynamic_array_get(da, da->count - 1, item);
-  if (return_value != 0)
-    return return_value;
+  if (item != NULL) {
+    u32 return_value = dynamic_array_get(da, da->count - 1, item);
+    if (return_value != 0) {
+      return -1;
+    }
+  }
 
   da->count--;
   return 0;
