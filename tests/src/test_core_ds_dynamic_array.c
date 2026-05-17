@@ -8,7 +8,7 @@ typedef struct {
   char name[20];
 } TestItem;
 
-PTEST(init) {
+PTEST(da_init) {
   dynamic_array da;
   dynamic_array_init(&da, sizeof(int));
 
@@ -18,7 +18,7 @@ PTEST(init) {
   PROVA_ASSERT_EQUAL(0, da.capacity);
 }
 
-PTEST(append) {
+PTEST(da_append) {
   dynamic_array da;
   dynamic_array_init(&da, sizeof(u32));
 
@@ -41,7 +41,7 @@ PTEST(append) {
   dynamic_array_free(&da);
 }
 
-PTEST(get_set) {
+PTEST(da_get_set) {
   dynamic_array da;
   dynamic_array_init(&da, sizeof(TestItem));
 
@@ -74,7 +74,7 @@ PTEST(get_set) {
   dynamic_array_free(&da);
 }
 
-PTEST(insert) {
+PTEST(da_insert) {
   dynamic_array da;
   dynamic_array_init(&da, sizeof(int));
 
@@ -103,7 +103,7 @@ PTEST(insert) {
   dynamic_array_free(&da);
 }
 
-PTEST(remove) {
+PTEST(da_remove) {
   dynamic_array da;
   dynamic_array_init(&da, sizeof(int));
 
@@ -131,7 +131,7 @@ PTEST(remove) {
   dynamic_array_free(&da);
 }
 
-PTEST(pop) {
+PTEST(da_pop) {
   dynamic_array da;
   dynamic_array_init(&da, sizeof(int));
 
