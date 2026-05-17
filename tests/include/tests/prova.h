@@ -327,7 +327,7 @@ static inline void prova_fail(uint32_t line, const char *file,
 /* ===  COMMON ASSERTION MACROS END  === */
 
 #define PROVA_MUTE_STDERR                                                      \
-  int _orig_stderr_fd __attribute__((unused)) = dup(STDERR_FILENO);            \
+  int _orig_stderr_fd = dup(STDERR_FILENO);                                    \
   do {                                                                         \
     FILE *__err = freopen("/dev/null", "w", stderr);                           \
     (void)__err;                                                               \
