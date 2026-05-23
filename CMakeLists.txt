@@ -77,7 +77,7 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Debug CACHE STRING "" FORCE)
 endif()
 
-set(_DEBUG_FLAGS  "-g -O0 -fsanitize=address,undefined -fsanitize-address-use-after-scope -fno-omit-frame-pointer -DDEBUG -Wall -Wextra")
+set(_DEBUG_FLAGS  "-g -O0 -fsanitize=address,leak,undefined -fsanitize-address-use-after-scope -fno-omit-frame-pointer -fno-optimize-sibling-calls -DDEBUG -Wall -Wextra")
 set(_RELEASE_FLAGS "-O2 -DNDEBUG -Wall -Werror -Wextra")
 
 set(CMAKE_C_FLAGS_DEBUG   "${_DEBUG_FLAGS}"   CACHE STRING "" FORCE)
