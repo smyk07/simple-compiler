@@ -5,8 +5,8 @@
  * Licensed under the GNU/GPL Version 3
  */
 
-#ifndef AST
-#define AST
+#ifndef AST_H
+#define AST_H
 
 #include "frontend/token.h"
 #include "frontend/var.h"
@@ -455,4 +455,4 @@ void print_instr(instr_node *instr);
  */
 void print_ast(ast *program_ast);
 
-#endif // !AST
+#endif // !AST_H

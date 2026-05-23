@@ -5,8 +5,8 @@
  * Licensed under the GNU/GPL Version 3
  */
 
-#ifndef UTILS
-#define UTILS
+#ifndef UTILS_H
+#define UTILS_H
 
 #include "core/common.h"
 
@@ -101,4 +101,4 @@ void scu_perror(char *__restrict __format, ...);
  */
 void scu_check_errors();
 
-#endif
+#endif // UTILS_H

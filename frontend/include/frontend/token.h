@@ -5,8 +5,8 @@
  * Licensed under the GNU/GPL Version 3
  */
 
-#ifndef TOKEN
-#define TOKEN
+#ifndef TOKEN_H
+#define TOKEN_H
 
 #include "core/common.h"
 #include "core/ds/dynamic_array.h"
@@ -191,4 +191,4 @@ void token_print_tokens(dynamic_array *tokens);
  */
 void free_tokens(dynamic_array *tokens);
 
-#endif // !TOKEN
+#endif // !TOKEN_H

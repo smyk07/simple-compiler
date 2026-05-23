@@ -5,8 +5,8 @@
  * Licensed under the GNU/GPL Version 3
  */
 
-#ifndef LD_UTILS
-#define LD_UTILS
+#ifndef LD_UTILS_H
+#define LD_UTILS_H
 
 #include <vector>
 
@@ -20,4 +20,4 @@
 void ld_link(const char *output_file,
              const std::vector<const char *> &obj_files);
 
-#endif // !LD_UTILS
+#endif // !LD_UTILS_H
