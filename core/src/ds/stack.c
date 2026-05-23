@@ -96,10 +96,8 @@ u32 stack_pop(stack *s, void *item) {
     return 1;
   }
 
-  if (s->count == 0) {
-    scu_perror("Cannot pop from empty stack.\n");
+  if (s->count == 0)
     return 1;
-  }
 
   memcpy(item, (char *)s->items + ((s->count - 1) * s->item_size),
          s->item_size);

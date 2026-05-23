@@ -9,6 +9,7 @@
 #define BACKEND_H
 
 /* forward declarations of cstate and fstate to avoid recursive inclusion */
+#include "core/creg.h"
 typedef struct cstate cstate;
 typedef struct fstate fstate;
 
@@ -49,5 +50,7 @@ void backend_compile(backend *backend, cstate *cst, fstate *fst);
  * @param backend: Pointer to the backend to be freed
  */
 void backend_free(backend *backend);
+
+CREG_CLEANUP_SHIM(backend, backend_free)
 
 #endif // !BACKEND_H

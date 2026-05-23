@@ -10,6 +10,7 @@
 #define CSTATE_H
 
 #include "core/common.h"
+#include "core/creg.h"
 #include "core/ds/arena.h"
 #include "core/ds/dynamic_array.h"
 
@@ -121,5 +122,7 @@ void cstate_init(cstate *cst, u32 argc, char *argv[]);
  * @param s: pointer to malloc'd cstate.
  */
 void cstate_free(cstate *s);
+
+CREG_CLEANUP_SHIM(cstate, cstate_free)
 
 #endif // !CSTATE_H

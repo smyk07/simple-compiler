@@ -14,17 +14,25 @@
 #include "frontend/parser.h"
 #include "frontend/semantic.h"
 
+#include "core/creg.h"
 #include "core/ds/dynamic_array.h"
 #include "core/utils.h"
 
+#include <stdlib.h>
 #include <time.h>
 
+CREG_CREATE(sclc)
+
 int main(int argc, char *argv[]) {
+  CREG_INIT(sclc);
+
   // Initialize compiler state
-  cstate cst = {0};
+  static cstate cst = {0};
+  creg_register(&sclc, &cst, cstate_free_shim);
   cstate_init(&cst, argc, argv);
 
-  backend backend;
+  static backend backend = {0};
+  creg_register(&sclc, &backend, backend_free_shim);
   backend_init(&backend, &cst);
 
   clock_t start, end;
@@ -75,10 +83,7 @@ int main(int argc, char *argv[]) {
   if (!(cst.options.compile_only))
     backend.link(&cst);
 
-  backend_free(&backend);
-
   if (cst.options.emit_llvm || cst.options.emit_asm) {
-    cstate_free(&cst);
     return 0;
   }
 
@@ -88,8 +93,6 @@ int main(int argc, char *argv[]) {
   if (cst.options.verbose)
     scu_psuccess("  LINKED %s - %.2fs total time taken\n", cst.output_filepath,
                  time_taken);
-
-  cstate_free(&cst);
 
   return 0;
 }
