@@ -42,7 +42,7 @@ void ld_link(const char *output_file,
   if (pid == 0) {
     execvp("cc", const_cast<char *const *>(args.data()));
     perror("execvp cc");
-    _exit(1);
+    exit(1);
   }
 
   int status = 0;
