@@ -21,7 +21,9 @@
  * @enum term_kind: enumeration of all the terms supported by the parser.
  */
 typedef enum term_kind {
-  TERM_INT = 0,
+  TERM_INVALID = 0,
+
+  TERM_INT,
   TERM_CHAR,
   TERM_STRING,
   TERM_IDENTIFIER,
@@ -78,15 +80,17 @@ typedef struct term_node {
  * the parser.
  */
 typedef enum arithmetic_expr_kind {
-  EXPR_AR_TERM = 0,
+  AR_EXPR_INVALID = 0,
 
-  EXPR_ADD,
-  EXPR_SUBTRACT,
-  EXPR_MULTIPLY,
-  EXPR_DIVIDE,
-  EXPR_MODULO,
+  AR_EXPR_TERM,
 
-  EXPR_UNARY_MINUS,
+  AR_EXPR_ADD,
+  AR_EXPR_SUBTRACT,
+  AR_EXPR_MULTIPLY,
+  AR_EXPR_DIVIDE,
+  AR_EXPR_MODULO,
+
+  AR_EXPR_UNARY_MINUS,
 } arithmetic_expr_kind;
 
 /*
@@ -121,7 +125,9 @@ typedef struct term_binary_node {
  * parser.
  */
 typedef enum rel_kind {
-  REL_IS_EQUAL = 0,
+  REL_INVALID = 0,
+
+  REL_IS_EQUAL,
   REL_NOT_EQUAL,
   REL_LESS_THAN,
   REL_LESS_THAN_OR_EQUAL,
@@ -143,7 +149,9 @@ typedef struct rel_node {
  * the parser.
  */
 typedef enum logical_kind {
-  LOG_NOT = 0,
+  LOG_INVALID = 0,
+
+  LOG_NOT,
   LOG_AND,
   LOG_OR,
 } logical_kind;
@@ -173,7 +181,9 @@ typedef struct logical_node {
  * parser.
  */
 typedef enum expr_kind {
-  EXPR_TERM = 0,
+  EXPR_INVALID = 0,
+
+  EXPR_TERM,
   EXPR_LOGICAL,
   EXPR_RELATIONAL,
   EXPR_BOOL,
@@ -198,7 +208,9 @@ typedef struct expr_node {
  * parser.
  */
 typedef enum instr_kind {
-  INSTR_DECLARE = 0,
+  INSTR_INVALID = 0,
+
+  INSTR_DECLARE,
   INSTR_INITIALIZE,
   INSTR_DECLARE_ARRAY,
   INSTR_INITIALIZE_ARRAY,
@@ -256,7 +268,9 @@ typedef struct assign_to_array_subscript_node {
 } assign_to_array_subscript_node;
 
 typedef enum cond_block_kind {
-  COND_SINGLE_INSTR = 0,
+  COND_INVALID = 0,
+
+  COND_SINGLE_INSTR,
   COND_MULTI_INSTR
 } cond_block_kind;
 
@@ -278,9 +292,11 @@ typedef struct if_node {
 } if_node;
 
 typedef enum match_case_kind {
-  MATCH_CASE_VALUES = 0, // 1, 2, 3
-  MATCH_CASE_RANGE,      // 1...10
-  MATCH_CASE_DEFAULT     // _
+  MATCH_CASE_INVALID = 0,
+
+  MATCH_CASE_VALUES, // 1, 2, 3
+  MATCH_CASE_RANGE,  // 1...10
+  MATCH_CASE_DEFAULT // _
 } match_case_kind;
 
 typedef struct match_case_values_node {
@@ -317,7 +333,9 @@ typedef struct label_node {
 } label_node;
 
 typedef enum loop_kind {
-  LOOP_UNCONDITIONAL = 0,
+  LOOP_INVALID = 0,
+
+  LOOP_UNCONDITIONAL,
   LOOP_WHILE,
   LOOP_DO_WHILE,
   LOOP_FOR
@@ -347,7 +365,9 @@ typedef struct loop_node {
 } loop_node;
 
 typedef enum fn_kind {
-  FN_DEFINED = 0,
+  FN_INVALID = 0,
+
+  FN_DEFINED,
   FN_DECLARED,
 } fn_kind;
 

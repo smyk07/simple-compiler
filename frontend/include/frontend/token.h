@@ -15,10 +15,12 @@
  * @enum token_kind: enumeration of all kinds of tokens supported by the lexer.
  */
 typedef enum token_kind {
+  TOKEN_INVALID = 0,
+
   /*
    * Keywords
    */
-  TOKEN_GOTO = 0,
+  TOKEN_GOTO,
   TOKEN_IF,
   TOKEN_ELSE,
   TOKEN_THEN,
@@ -122,7 +124,6 @@ typedef enum token_kind {
   /*
    * Special Tokens
    */
-  TOKEN_INVALID,
   TOKEN_END
 } token_kind;
 

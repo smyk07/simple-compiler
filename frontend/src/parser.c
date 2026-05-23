@@ -198,7 +198,7 @@ static arithmetic_expr_node *parse_factor(parser *p) {
 
     arithmetic_expr_node *node =
         arena_push_struct(ast_arena, arithmetic_expr_node);
-    node->kind = EXPR_UNARY_MINUS;
+    node->kind = AR_EXPR_UNARY_MINUS;
     node->line = token.line;
     node->unary = operand;
     return node;
@@ -209,7 +209,7 @@ static arithmetic_expr_node *parse_factor(parser *p) {
       token.kind == TOKEN_STRING_LITERAL || token.kind == TOKEN_ADDRESS_OF) {
     arithmetic_expr_node *node =
         arena_push_struct(ast_arena, arithmetic_expr_node);
-    node->kind = EXPR_AR_TERM;
+    node->kind = AR_EXPR_TERM;
     node->line = token.line;
 
     if (token.kind == TOKEN_INT_LITERAL) {
@@ -341,11 +341,11 @@ static arithmetic_expr_node *parse_term(parser *p) {
       parent->line = token.line;
 
       if (token.kind == TOKEN_MULTIPLY) {
-        parent->kind = EXPR_MULTIPLY;
+        parent->kind = AR_EXPR_MULTIPLY;
       } else if (token.kind == TOKEN_DIVIDE) {
-        parent->kind = EXPR_DIVIDE;
+        parent->kind = AR_EXPR_DIVIDE;
       } else {
-        parent->kind = EXPR_MODULO;
+        parent->kind = AR_EXPR_MODULO;
       }
       parent->binary.left = left;
       parent->binary.right = right;
@@ -374,7 +374,7 @@ static arithmetic_expr_node *parse_arithmetic_expr(parser *p) {
 
       arithmetic_expr_node *parent =
           arena_push_struct(ast_arena, arithmetic_expr_node);
-      parent->kind = (token.kind == TOKEN_ADD) ? EXPR_ADD : EXPR_SUBTRACT;
+      parent->kind = (token.kind == TOKEN_ADD) ? AR_EXPR_ADD : AR_EXPR_SUBTRACT;
       parent->line = token.line;
       parent->binary.left = left;
       parent->binary.right = right;

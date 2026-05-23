@@ -11,6 +11,7 @@
 #include "core/ds/arena.h"
 #include "core/ds/dynamic_array.h"
 #include "core/ds/ht.h"
+#include "core/utils.h"
 #include "frontend/types.h"
 #include "frontend/var.h"
 
@@ -70,12 +71,18 @@ static void check_arithmetic_expr_and_print(arithmetic_expr_node *expr);
  */
 static void check_term_and_print(term_node *term) {
   switch (term->kind) {
+  case TERM_INVALID:
+    printf("invalid term");
+    break;
+
   case TERM_INT:
     printf("%d", term->value.integer);
     break;
+
   case TERM_CHAR:
     printf("\'%c\'", term->value.character);
     break;
+
   case TERM_STRING:
     char *str = term->value.str;
     u64 len = strlen(str);
@@ -84,24 +91,30 @@ static void check_term_and_print(term_node *term) {
     else
       printf("\"%s\"", str);
     break;
+
   case TERM_IDENTIFIER:
     printf("%s", term->identifier.name);
     break;
+
   case TERM_POINTER:
   case TERM_DEREF:
     printf("*%s", term->identifier.name);
     break;
+
   case TERM_ADDOF:
     printf("&%s", term->identifier.name);
     break;
+
   case TERM_ARRAY_ACCESS:
     printf("%s[", term->array_access.array_var.name);
     check_arithmetic_expr_and_print(term->array_access.index_expr);
     printf("]");
     break;
+
   case TERM_ARRAY_LITERAL:
     printf("{...}");
     break;
+
   case TERM_FUNCTION_CALL:
     printf("%s(", term->fn_call.name);
     for (u64 i = 0; i < term->fn_call.parameters.count; i++) {
@@ -124,11 +137,15 @@ static void check_term_and_print(term_node *term) {
  */
 static void check_arithmetic_expr_and_print(arithmetic_expr_node *expr) {
   switch (expr->kind) {
-  case EXPR_AR_TERM:
+  case AR_EXPR_INVALID:
+    printf("invalid arithmetic expr");
+    break;
+
+  case AR_EXPR_TERM:
     check_term_and_print(&expr->term);
     break;
 
-  case EXPR_ADD:
+  case AR_EXPR_ADD:
     printf("(");
     check_arithmetic_expr_and_print(expr->binary.left);
     printf(" + ");
@@ -136,7 +153,7 @@ static void check_arithmetic_expr_and_print(arithmetic_expr_node *expr) {
     printf(")");
     break;
 
-  case EXPR_SUBTRACT:
+  case AR_EXPR_SUBTRACT:
     printf("(");
     check_arithmetic_expr_and_print(expr->binary.left);
     printf(" - ");
@@ -144,7 +161,7 @@ static void check_arithmetic_expr_and_print(arithmetic_expr_node *expr) {
     printf(")");
     break;
 
-  case EXPR_MULTIPLY:
+  case AR_EXPR_MULTIPLY:
     printf("(");
     check_arithmetic_expr_and_print(expr->binary.left);
     printf(" * ");
@@ -152,7 +169,7 @@ static void check_arithmetic_expr_and_print(arithmetic_expr_node *expr) {
     printf(")");
     break;
 
-  case EXPR_DIVIDE:
+  case AR_EXPR_DIVIDE:
     printf("(");
     check_arithmetic_expr_and_print(expr->binary.left);
     printf(" / ");
@@ -160,7 +177,7 @@ static void check_arithmetic_expr_and_print(arithmetic_expr_node *expr) {
     printf(")");
     break;
 
-  case EXPR_MODULO:
+  case AR_EXPR_MODULO:
     printf("(");
     check_arithmetic_expr_and_print(expr->binary.left);
     printf(" %% ");
@@ -168,7 +185,7 @@ static void check_arithmetic_expr_and_print(arithmetic_expr_node *expr) {
     printf(")");
     break;
 
-  case EXPR_UNARY_MINUS:
+  case AR_EXPR_UNARY_MINUS:
     printf("-");
     check_arithmetic_expr_and_print(expr->unary);
     break;
@@ -186,6 +203,10 @@ static void check_binary_node_and_print(term_binary_node *bnode,
 
 static void check_rel_node_and_print(rel_node *rel) {
   switch (rel->kind) {
+  case REL_INVALID:
+    printf("invalid rel expr");
+    break;
+
   case REL_IS_EQUAL:
     check_binary_node_and_print(&rel->comparison, "==");
     break;
@@ -208,6 +229,10 @@ static void check_rel_node_and_print(rel_node *rel) {
 
 static void check_logical_node_and_print(logical_node *log) {
   switch (log->kind) {
+  case LOG_INVALID:
+    printf("invalid logical node");
+    break;
+
   case LOG_AND:
     check_expr_node_and_print(log->binary.lhs);
     printf(" AND ");
@@ -229,6 +254,10 @@ static void check_logical_node_and_print(logical_node *log) {
 
 static void check_expr_node_and_print(expr_node *expr) {
   switch (expr->kind) {
+  case EXPR_INVALID:
+    printf("invalid expr");
+    break;
+
   case EXPR_TERM:
     check_term_and_print(&expr->term);
     break;
@@ -284,6 +313,10 @@ void print_instr(instr_node *instr) {
   printf("[line %" PRIu64 "] ", instr->line);
 
   switch (instr->kind) {
+  case INSTR_INVALID:
+    printf("invalid instr\n");
+    break;
+
   case INSTR_DECLARE:
     printf("declare: ");
     check_var_and_print(&instr->declare_variable);
@@ -316,7 +349,7 @@ void print_instr(instr_node *instr) {
 
     case TYPE_CHAR:
       switch (instr->initialize_variable.arithmetic->kind) {
-      case EXPR_AR_TERM:
+      case AR_EXPR_TERM:
         printf("\'%c\'\n",
                instr->initialize_variable.arithmetic->term.value.character);
         break;
@@ -407,6 +440,10 @@ void print_instr(instr_node *instr) {
       printf("case ");
 
       switch (case_node->kind) {
+      case MATCH_CASE_INVALID:
+        printf("invalid match case\n");
+        break;
+
       case MATCH_CASE_VALUES: {
         for (u64 j = 0; j < case_node->values.values.count; j++) {
           arithmetic_expr_node *val;
@@ -455,6 +492,10 @@ void print_instr(instr_node *instr) {
 
   case INSTR_LOOP:
     switch (instr->loop.kind) {
+    case LOOP_INVALID:
+      printf("invalid loop\n");
+      break;
+
     case LOOP_UNCONDITIONAL:
       printf("loop starts: \n");
       break;
@@ -623,6 +664,10 @@ static void free_arithmetic_exprs(dynamic_array *exprs);
 
 static void free_term_node(term_node *term) {
   switch (term->kind) {
+  case TERM_INVALID:
+    scu_pwarning("attempting to free invalid term_node\n");
+    break;
+
   case TERM_INT:
   case TERM_CHAR:
   case TERM_STRING:
@@ -645,20 +690,24 @@ static void free_term_node(term_node *term) {
 
 static void free_arithmetic_expr_node(arithmetic_expr_node *expr) {
   switch (expr->kind) {
-  case EXPR_AR_TERM:
+  case AR_EXPR_INVALID:
+    scu_pwarning("attempting to free invalid arithmetic_expr_node\n");
+    break;
+
+  case AR_EXPR_TERM:
     free_term_node(&expr->term);
     break;
 
-  case EXPR_ADD:
-  case EXPR_SUBTRACT:
-  case EXPR_MULTIPLY:
-  case EXPR_DIVIDE:
-  case EXPR_MODULO:
+  case AR_EXPR_ADD:
+  case AR_EXPR_SUBTRACT:
+  case AR_EXPR_MULTIPLY:
+  case AR_EXPR_DIVIDE:
+  case AR_EXPR_MODULO:
     free_arithmetic_expr_node(expr->binary.left);
     free_arithmetic_expr_node(expr->binary.right);
     break;
 
-  case EXPR_UNARY_MINUS:
+  case AR_EXPR_UNARY_MINUS:
     free_arithmetic_expr_node(expr->unary);
     break;
   }
@@ -681,6 +730,10 @@ static void free_rel_node(rel_node *rel) {
 
 static void free_logical_node(logical_node *log) {
   switch (log->kind) {
+  case LOG_INVALID:
+    scu_pwarning("attempting to free invalid logical_node\n");
+    break;
+
   case LOG_AND:
   case LOG_OR:
     free_expr_node(log->binary.lhs);
@@ -694,6 +747,10 @@ static void free_logical_node(logical_node *log) {
 
 static void free_expr_node(expr_node *expr) {
   switch (expr->kind) {
+  case EXPR_INVALID:
+    scu_pwarning("attempting to free invalid expr_node\n");
+    break;
+
   case EXPR_TERM:
     free_term_node(&expr->term);
     break;
@@ -724,6 +781,10 @@ static void free_cond_block_node(cond_block_node *block) {
 
 static void free_instr(instr_node *instr) {
   switch (instr->kind) {
+  case INSTR_INVALID:
+    scu_pwarning("attempting to free invalid instr_node\n");
+    break;
+
   case INSTR_INITIALIZE:
     if (instr->initialize_variable.var.type != TYPE_BOOL)
       free_arithmetic_expr_node(instr->initialize_variable.arithmetic);
@@ -768,6 +829,10 @@ static void free_instr(instr_node *instr) {
           dynamic_array_get_ptr(&instr->match.cases, i);
 
       switch (case_node->kind) {
+      case MATCH_CASE_INVALID:
+        scu_pwarning("attempting to free invalid match_case_node\n");
+        break;
+
       case MATCH_CASE_VALUES:
         for (u64 j = 0; j < case_node->values.values.count; j++) {
           arithmetic_expr_node *expr;
@@ -794,6 +859,10 @@ static void free_instr(instr_node *instr) {
 
   case INSTR_LOOP:
     switch (instr->loop.kind) {
+    case LOOP_INVALID:
+      scu_pwarning("attempting to free invalid loop_node\n");
+      break;
+
     case LOOP_DO_WHILE:
     case LOOP_WHILE:
       free_expr_node(&instr->loop.conditional.break_condition);

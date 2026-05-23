@@ -6,6 +6,7 @@
  */
 
 #include "sclc/backend/llvm/llvm_irgen.hpp"
+#include "llvm/Support/ErrorHandling.h"
 
 extern "C" {
 #include "frontend/ast.h"
@@ -111,8 +112,9 @@ static llvm::Value *llvm_irgen_term(llvm_backend_ctx &ctx, term_node *term) {
   case TERM_IDENTIFIER: {
     auto it = named_values.find(term->identifier.name);
     if (it == named_values.end()) {
-      scu_perror(const_cast<char *>("Unknown variable '%s' at line %" PRIu64),
-                 term->identifier.name, term->line);
+      scu_perror(
+          const_cast<char *>("Unknown variable '%s' at line %" PRIu64 "\n"),
+          term->identifier.name, term->line);
       return nullptr;
     }
 
@@ -136,8 +138,9 @@ static llvm::Value *llvm_irgen_term(llvm_backend_ctx &ctx, term_node *term) {
 
     llvm::Function *callee = ctx.module->getFunction(call->name);
     if (!callee) {
-      scu_perror(const_cast<char *>("Unknown function '%s' at line %" PRIu64),
-                 call->name, term->line);
+      scu_perror(
+          const_cast<char *>("Unknown function '%s' at line %" PRIu64 "\n"),
+          call->name, term->line);
       return nullptr;
     }
 
@@ -158,9 +161,9 @@ static llvm::Value *llvm_irgen_term(llvm_backend_ctx &ctx, term_node *term) {
   case TERM_DEREF: {
     auto it = named_values.find(term->identifier.name);
     if (it == named_values.end()) {
-      scu_perror(
-          const_cast<char *>("Unknown pointer variable '%s' at line %" PRIu64),
-          term->identifier.name, term->line);
+      scu_perror(const_cast<char *>(
+                     "Unknown pointer variable '%s' at line %" PRIu64 "\n"),
+                 term->identifier.name, term->line);
       return nullptr;
     }
 
@@ -176,8 +179,9 @@ static llvm::Value *llvm_irgen_term(llvm_backend_ctx &ctx, term_node *term) {
   case TERM_ADDOF: {
     auto it = named_values.find(term->identifier.name);
     if (it == named_values.end()) {
-      scu_perror(const_cast<char *>("Unknown variable '%s' at line %" PRIu64),
-                 term->identifier.name, term->line);
+      scu_perror(
+          const_cast<char *>("Unknown variable '%s' at line %" PRIu64 "\n"),
+          term->identifier.name, term->line);
       return nullptr;
     }
 
@@ -189,7 +193,7 @@ static llvm::Value *llvm_irgen_term(llvm_backend_ctx &ctx, term_node *term) {
 
     auto it = named_values.find(access->array_var.name);
     if (it == named_values.end()) {
-      scu_perror(const_cast<char *>("Unknown array '%s' at line %" PRIu64),
+      scu_perror(const_cast<char *>("Unknown array '%s' at line %" PRIu64 "\n"),
                  access->array_var.name, term->line);
       return nullptr;
     }
@@ -222,15 +226,15 @@ static llvm::Value *llvm_irgen_term(llvm_backend_ctx &ctx, term_node *term) {
   }
 
   case TERM_ARRAY_LITERAL: {
-    scu_perror(
-        const_cast<char *>(
-            "Array literal only valid in initialization at line %" PRIu64),
-        term->line);
+    scu_perror(const_cast<char *>(
+                   "Array literal only valid in initialization at line %" PRIu64
+                   "\n"),
+               term->line);
     return nullptr;
   }
 
   default:
-    scu_perror(const_cast<char *>("Unknown term kind %d at line %" PRIu64),
+    scu_perror(const_cast<char *>("Unknown term kind %d at line %" PRIu64 "\n"),
                term->kind, term->line);
     return nullptr;
   }
@@ -239,10 +243,14 @@ static llvm::Value *llvm_irgen_term(llvm_backend_ctx &ctx, term_node *term) {
 static llvm::Value *llvm_irgen_arithmetic_expr(llvm_backend_ctx &ctx,
                                                arithmetic_expr_node *expr) {
   switch (expr->kind) {
-  case EXPR_AR_TERM:
+  case AR_EXPR_INVALID:
+    llvm_unreachable("AR_EXPR_INVALID reached IR gen");
+    break;
+
+  case AR_EXPR_TERM:
     return llvm_irgen_term(ctx, &expr->term);
 
-  case EXPR_ADD: {
+  case AR_EXPR_ADD: {
     llvm::Value *lhs = llvm_irgen_arithmetic_expr(ctx, expr->binary.left);
     llvm::Value *rhs = llvm_irgen_arithmetic_expr(ctx, expr->binary.right);
     if (!lhs || !rhs)
@@ -250,7 +258,7 @@ static llvm::Value *llvm_irgen_arithmetic_expr(llvm_backend_ctx &ctx,
     return ctx.builder->CreateAdd(lhs, rhs, "addtmp");
   }
 
-  case EXPR_SUBTRACT: {
+  case AR_EXPR_SUBTRACT: {
     llvm::Value *lhs = llvm_irgen_arithmetic_expr(ctx, expr->binary.left);
     llvm::Value *rhs = llvm_irgen_arithmetic_expr(ctx, expr->binary.right);
     if (!lhs || !rhs)
@@ -258,7 +266,7 @@ static llvm::Value *llvm_irgen_arithmetic_expr(llvm_backend_ctx &ctx,
     return ctx.builder->CreateSub(lhs, rhs, "subtmp");
   }
 
-  case EXPR_MULTIPLY: {
+  case AR_EXPR_MULTIPLY: {
     llvm::Value *lhs = llvm_irgen_arithmetic_expr(ctx, expr->binary.left);
     llvm::Value *rhs = llvm_irgen_arithmetic_expr(ctx, expr->binary.right);
     if (!lhs || !rhs)
@@ -266,7 +274,7 @@ static llvm::Value *llvm_irgen_arithmetic_expr(llvm_backend_ctx &ctx,
     return ctx.builder->CreateMul(lhs, rhs, "multmp");
   }
 
-  case EXPR_DIVIDE: {
+  case AR_EXPR_DIVIDE: {
     llvm::Value *lhs = llvm_irgen_arithmetic_expr(ctx, expr->binary.left);
     llvm::Value *rhs = llvm_irgen_arithmetic_expr(ctx, expr->binary.right);
     if (!lhs || !rhs)
@@ -274,7 +282,7 @@ static llvm::Value *llvm_irgen_arithmetic_expr(llvm_backend_ctx &ctx,
     return ctx.builder->CreateSDiv(lhs, rhs, "divtmp");
   }
 
-  case EXPR_MODULO: {
+  case AR_EXPR_MODULO: {
     llvm::Value *lhs = llvm_irgen_arithmetic_expr(ctx, expr->binary.left);
     llvm::Value *rhs = llvm_irgen_arithmetic_expr(ctx, expr->binary.right);
     if (!lhs || !rhs)
@@ -282,7 +290,7 @@ static llvm::Value *llvm_irgen_arithmetic_expr(llvm_backend_ctx &ctx,
     return ctx.builder->CreateSRem(lhs, rhs, "modtmp");
   }
 
-  case EXPR_UNARY_MINUS: {
+  case AR_EXPR_UNARY_MINUS: {
     llvm::Value *operand = llvm_irgen_arithmetic_expr(ctx, expr->unary);
     if (!operand)
       return nullptr;
@@ -302,6 +310,10 @@ static llvm::Value *llvm_irgen_relational(llvm_backend_ctx &ctx,
     return nullptr;
 
   switch (rel->kind) {
+  case REL_INVALID:
+    llvm_unreachable("REL_INVALID reached IR gen\n");
+    break;
+
   case REL_IS_EQUAL:
     return ctx.builder->CreateICmpEQ(lhs, rhs, "cmpeq");
   case REL_NOT_EQUAL:
@@ -320,6 +332,10 @@ static llvm::Value *llvm_irgen_relational(llvm_backend_ctx &ctx,
 static llvm::Value *llvm_irgen_logical(llvm_backend_ctx &ctx,
                                        logical_node *log) {
   switch (log->kind) {
+  case LOG_INVALID:
+    llvm_unreachable("LOG_INVALID reached IR gen\n");
+    break;
+
   case LOG_AND: {
     llvm::Value *lhs = llvm_irgen_expr(ctx, log->binary.lhs);
     llvm::Value *rhs = llvm_irgen_expr(ctx, log->binary.rhs);
@@ -347,12 +363,19 @@ static llvm::Value *llvm_irgen_logical(llvm_backend_ctx &ctx,
 
 static llvm::Value *llvm_irgen_expr(llvm_backend_ctx &ctx, expr_node *expr) {
   switch (expr->kind) {
+  case EXPR_INVALID:
+    llvm_unreachable("EXPR_INVALID reached IR gen\n");
+    break;
+
   case EXPR_TERM:
     return llvm_irgen_term(ctx, &expr->term);
+
   case EXPR_LOGICAL:
     return llvm_irgen_logical(ctx, &expr->logical);
+
   case EXPR_RELATIONAL:
     return llvm_irgen_relational(ctx, &expr->relational);
+
   case EXPR_BOOL:
     return llvm::ConstantInt::get(llvm::Type::getInt1Ty(*ctx.context),
                                   expr->boolean ? 1 : 0);
@@ -779,6 +802,10 @@ static void llvm_irgen_instr_match(llvm_backend_ctx &ctx,
     }
 
     switch (case_node.kind) {
+    case MATCH_CASE_INVALID:
+      llvm_unreachable("MATCH_CASE_INVALID reached IR gen\n");
+      break;
+
     case MATCH_CASE_VALUES: {
       llvm::Value *match_cond = nullptr;
 
@@ -921,6 +948,10 @@ static void llvm_irgen_instr_loop(llvm_backend_ctx &ctx, loop_node *loop) {
   ctx.builder->SetInsertPoint(loop_header);
 
   switch (loop->kind) {
+  case LOOP_INVALID:
+    llvm_unreachable("LOOP_INVALID reached IR gen\n");
+    break;
+
   case LOOP_UNCONDITIONAL: {
     ctx.builder->CreateBr(loop_body);
     break;
@@ -1167,6 +1198,10 @@ static void llvm_irgen_instr_fn_call(llvm_backend_ctx &ctx,
 
 void llvm_irgen_instr(llvm_backend_ctx &ctx, instr_node *instr) {
   switch (instr->kind) {
+  case INSTR_INVALID:
+    llvm_unreachable("INSTR_INVALID found in IR gen");
+    break;
+
   case INSTR_DECLARE:
     llvm_irgen_instr_declare(ctx, &instr->declare_variable);
     break;

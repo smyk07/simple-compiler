@@ -7,6 +7,7 @@
 
 #include "frontend/semantic.h"
 #include "frontend/ast.h"
+#include "frontend/types.h"
 #include "frontend/var.h"
 
 #include "core/ds/dynamic_array.h"
@@ -24,44 +25,52 @@ u32 evaluate_const_expr(arithmetic_expr_node *expr) {
   }
 
   switch (expr->kind) {
-  case EXPR_AR_TERM:
+  case AR_EXPR_INVALID:
+    scu_perror("Invalid arithmetic expression found\n");
+    return 0;
+    break;
+
+  case AR_EXPR_TERM:
     if (expr->term.kind == TERM_INT) {
       return expr->term.value.integer;
     }
-    scu_perror("Array size must be a constant expression\n");
+    scu_perror("Array size must be a constant expression [line %" PRIu64 "]\n",
+               expr->line);
     return 0;
 
-  case EXPR_ADD:
+  case AR_EXPR_ADD:
     return evaluate_const_expr(expr->binary.left) +
            evaluate_const_expr(expr->binary.right);
 
-  case EXPR_SUBTRACT:
+  case AR_EXPR_SUBTRACT:
     return evaluate_const_expr(expr->binary.left) -
            evaluate_const_expr(expr->binary.right);
 
-  case EXPR_MULTIPLY:
+  case AR_EXPR_MULTIPLY:
     return evaluate_const_expr(expr->binary.left) *
            evaluate_const_expr(expr->binary.right);
 
-  case EXPR_DIVIDE: {
+  case AR_EXPR_DIVIDE: {
     u32 right = evaluate_const_expr(expr->binary.right);
     if (right == 0) {
-      scu_perror("Division by zero in array size\n");
+      scu_perror("Division by zero in array size [line %" PRIu64 "]\n",
+                 expr->line);
       return 0;
     }
     return evaluate_const_expr(expr->binary.left) / right;
   }
 
-  case EXPR_MODULO: {
+  case AR_EXPR_MODULO: {
     u32 right = evaluate_const_expr(expr->binary.right);
     if (right == 0) {
-      scu_perror("Division by zero in array size\n");
+      scu_perror("Division by zero in array size [line %" PRIu64 "]\n",
+                 expr->line);
       return 0;
     }
     return evaluate_const_expr(expr->binary.left) % right;
   }
 
-  case EXPR_UNARY_MINUS: {
+  case AR_EXPR_UNARY_MINUS: {
     return evaluate_const_expr(expr->unary);
   }
   }
@@ -148,7 +157,7 @@ static void term_check_variables(term_node *term, ht *variables,
   case TERM_IDENTIFIER:
     variable *var = ht_search(variables, term->identifier.name);
     if (!var) {
-      scu_perror("Use of undeclared variable: %s [line %u]\n",
+      scu_perror("Use of undeclared variable: %s [line %" PRIu64 "]\n",
                  term->identifier.name, term->identifier.line);
     }
     break;
@@ -172,20 +181,24 @@ static void term_check_variables(term_node *term, ht *variables,
 static void arithmetic_expr_check_variables(arithmetic_expr_node *expr,
                                             ht *variables, ht *functions) {
   switch (expr->kind) {
-  case EXPR_AR_TERM:
+  case AR_EXPR_INVALID:
+    scu_perror("Invalid arithmetic expression found\n");
+    break;
+
+  case AR_EXPR_TERM:
     term_check_variables(&expr->term, variables, functions);
     break;
 
-  case EXPR_ADD:
-  case EXPR_SUBTRACT:
-  case EXPR_MULTIPLY:
-  case EXPR_DIVIDE:
-  case EXPR_MODULO:
+  case AR_EXPR_ADD:
+  case AR_EXPR_SUBTRACT:
+  case AR_EXPR_MULTIPLY:
+  case AR_EXPR_DIVIDE:
+  case AR_EXPR_MODULO:
     arithmetic_expr_check_variables(expr->binary.left, variables, functions);
     arithmetic_expr_check_variables(expr->binary.right, variables, functions);
     break;
 
-  case EXPR_UNARY_MINUS:
+  case AR_EXPR_UNARY_MINUS:
     arithmetic_expr_check_variables(expr->unary, variables, functions);
   }
 }
@@ -207,6 +220,10 @@ static void rel_check_variables(rel_node *rel, ht *variables, ht *functions) {
 static void logical_check_variables(logical_node *log, ht *variables,
                                     ht *functions) {
   switch (log->kind) {
+  case LOG_INVALID:
+    scu_perror("Invalid logical expression found\n");
+    break;
+
   case LOG_AND:
   case LOG_OR:
     expr_check_variables(log->binary.lhs, variables, functions);
@@ -222,6 +239,10 @@ static void logical_check_variables(logical_node *log, ht *variables,
 static void expr_check_variables(expr_node *expr, ht *variables,
                                  ht *functions) {
   switch (expr->kind) {
+  case EXPR_INVALID:
+    scu_perror("Invalid expression found\n");
+    break;
+
   case EXPR_TERM:
     term_check_variables(&expr->term, variables, functions);
     break;
@@ -374,6 +395,10 @@ static void instr_check_variables(instr_node *instr, ht *variables,
       dynamic_array_get(&instr->match.cases, i, &case_node);
 
       switch (case_node.kind) {
+      case MATCH_CASE_INVALID:
+        scu_perror("Invalid match case node found\n");
+        break;
+
       case MATCH_CASE_VALUES:
         for (u64 j = 0; j < case_node.values.values.count; j++) {
           arithmetic_expr_node *expr;
@@ -416,8 +441,8 @@ static void check_label(dynamic_array *labels, instr_node *instr) {
     char *existing;
     dynamic_array_get(labels, i, &existing);
     if (strcmp(label_name, existing) == 0) {
-      scu_perror("Duplicate label declaration: %s [line %u]\n", label_name,
-                 instr->line);
+      scu_perror("Duplicate label declaration: %s [line %" PRIu64 "]\n",
+                 label_name, instr->line);
       return;
     }
   }
@@ -441,8 +466,8 @@ static void check_goto(dynamic_array *labels, instr_node *instr) {
     }
   }
   if (!found) {
-    scu_perror("Use of undeclared label: %s [line %u]\n", instr->goto_.label,
-               instr->line);
+    scu_perror("Use of undeclared label: %s [line %" PRIu64 "]\n",
+               instr->goto_.label, instr->line);
   }
 }
 
@@ -562,6 +587,11 @@ static bool type_is_integer(type t) {
 static type term_type(term_node *term, type expected, ht *variables,
                       ht *functions) {
   switch (term->kind) {
+  case TERM_INVALID:
+    scu_perror("Invalid term found\n");
+    return TYPE_INVALID;
+    break;
+
   case TERM_INT:
     if (type_is_integer(expected))
       return expected;
@@ -672,31 +702,37 @@ static type term_type(term_node *term, type expected, ht *variables,
  */
 static type arithmetic_expr_type(arithmetic_expr_node *expr, type target_type,
                                  ht *variables, ht *functions) {
-  type lhs, rhs;
+  type lhs = {0};
+  type rhs = {0};
 
   switch (expr->kind) {
-  case EXPR_AR_TERM:
+  case AR_EXPR_INVALID:
+    scu_perror("Invalid arithmetic expression found\n");
+    break;
+
+  case AR_EXPR_TERM:
     return term_type(&expr->term, target_type, variables, functions);
 
-  case EXPR_ADD:
-  case EXPR_SUBTRACT:
-  case EXPR_MULTIPLY:
-  case EXPR_DIVIDE:
-  case EXPR_MODULO:
+  case AR_EXPR_ADD:
+  case AR_EXPR_SUBTRACT:
+  case AR_EXPR_MULTIPLY:
+  case AR_EXPR_DIVIDE:
+  case AR_EXPR_MODULO:
     lhs = arithmetic_expr_type(expr->binary.left, target_type, variables,
                                functions);
     rhs = arithmetic_expr_type(expr->binary.right, target_type, variables,
                                functions);
     break;
 
-  case EXPR_UNARY_MINUS:
+  case AR_EXPR_UNARY_MINUS:
     return arithmetic_expr_type(expr->unary, target_type, variables, functions);
   }
 
   if (lhs != rhs) {
     const char *lhs_type_str = type_to_str(lhs);
     const char *rhs_type_str = type_to_str(rhs);
-    scu_perror("Type mismatch in arithmetic expression: %s vs %s [line %u]\n",
+    scu_perror("Type mismatch in arithmetic expression: %s vs %s [line %" PRIu64
+               "]\n",
                lhs_type_str, rhs_type_str, expr->line);
   }
 
@@ -720,13 +756,18 @@ static void rel_typecheck(rel_node *rel, ht *variables, ht *functions) {
   if (lhs != rhs) {
     const char *lhs_type_str = type_to_str(lhs);
     const char *rhs_type_str = type_to_str(rhs);
-    scu_perror("Type mismatch in conditional statement: %s vs %s [line %u]\n",
+    scu_perror("Type mismatch in conditional statement: %s vs %s [line %" PRIu64
+               "]\n",
                lhs_type_str, rhs_type_str, rel->line);
   }
 }
 
 static void logical_typecheck(logical_node *log, ht *variables, ht *functions) {
   switch (log->kind) {
+  case LOG_INVALID:
+    scu_perror("Invalid logical expression found\n");
+    break;
+
   case LOG_AND:
   case LOG_OR:
     expr_typecheck(log->binary.lhs, variables, functions);
@@ -741,6 +782,10 @@ static void logical_typecheck(logical_node *log, ht *variables, ht *functions) {
 
 static void expr_typecheck(expr_node *expr, ht *variables, ht *functions) {
   switch (expr->kind) {
+  case EXPR_INVALID:
+    scu_perror("Invalid expression found\n");
+    break;
+
   case EXPR_TERM: {
     type t = term_type(&expr->term, TYPE_BOOL, variables, functions);
     if (t != TYPE_BOOL)
@@ -748,12 +793,15 @@ static void expr_typecheck(expr_node *expr, ht *variables, ht *functions) {
                  type_to_str(t), expr->term.line);
     break;
   }
+
   case EXPR_LOGICAL:
     logical_typecheck(&expr->logical, variables, functions);
     break;
+
   case EXPR_RELATIONAL:
     rel_typecheck(&expr->relational, variables, functions);
     break;
+
   case EXPR_BOOL:
     break;
   }
@@ -815,7 +863,8 @@ static void instr_typecheck(instr_node *instr, ht *variables, ht *functions) {
     } else if (target_type != expr_result) {
       const char *target_type_str = type_to_str(target_type);
       const char *expr_result_str = type_to_str(expr_result);
-      scu_perror("Type mismatch in assignment to %s - %s to %s [line %u]\n",
+      scu_perror("Type mismatch in assignment to %s - %s to %s [line %" PRIu64
+                 "]\n",
                  instr->assign.identifier.name, expr_result_str,
                  target_type_str, instr->line);
     }
@@ -842,7 +891,8 @@ static void instr_typecheck(instr_node *instr, ht *variables, ht *functions) {
       const char *expr_result_str = type_to_str(expr_result);
       scu_perror(
 
-          "Type mismatch in array assignment to %s - %s to %s [line %u]\n",
+          "Type mismatch in array assignment to %s - %s to %s [line %" PRIu64
+          "]\n",
           instr->assign_to_array_subscript.var.name, expr_result_str,
           array_type_str, instr->line);
     }
@@ -870,6 +920,10 @@ static void instr_typecheck(instr_node *instr, ht *variables, ht *functions) {
       dynamic_array_get(&instr->match.cases, i, &case_node);
 
       switch (case_node.kind) {
+      case MATCH_CASE_INVALID:
+        scu_perror("Invalid match case node found\n");
+        break;
+
       case MATCH_CASE_VALUES: {
         for (u64 j = 0; j < case_node.values.values.count; j++) {
           arithmetic_expr_node *expr;
@@ -881,7 +935,7 @@ static void instr_typecheck(instr_node *instr, ht *variables, ht *functions) {
             const char *match_type_str = type_to_str(match_expr_type);
             const char *value_type_str = type_to_str(value_type);
             scu_perror("Type mismatch in match case - expected %s but got %s "
-                       "[line %u]\n",
+                       "[line %" PRIu64 "]\n",
                        match_type_str, value_type_str, instr->line);
           }
         }
@@ -895,7 +949,7 @@ static void instr_typecheck(instr_node *instr, ht *variables, ht *functions) {
           const char *match_type_str = type_to_str(match_expr_type);
           const char *start_type_str = type_to_str(start_type);
           scu_perror("Type mismatch in match range start - expected %s but got "
-                     "%s [line %u]\n",
+                     "%s [line %" PRIu64 "]\n",
                      match_type_str, start_type_str, instr->line);
         }
 
@@ -905,7 +959,7 @@ static void instr_typecheck(instr_node *instr, ht *variables, ht *functions) {
           const char *match_type_str = type_to_str(match_expr_type);
           const char *end_type_str = type_to_str(end_type);
           scu_perror("Type mismatch in match range end - expected %s but got "
-                     "%s [line %u]\n",
+                     "%s [line %" PRIu64 "]\n",
                      match_type_str, end_type_str, instr->line);
         }
         break;
