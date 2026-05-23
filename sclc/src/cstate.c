@@ -323,8 +323,9 @@ void cstate_free(cstate *cst) {
     fstate *fst;
     dynamic_array_get(&cst->files, i, &fst);
     fstate_free(fst);
-    arena_free(&cst->file_arena);
   }
+
+  arena_free(&cst->file_arena);
 
   for (u64 i = 0; i < cst->obj_file_list.count; i++) {
     char *objfname;
