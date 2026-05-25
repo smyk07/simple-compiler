@@ -84,6 +84,8 @@ u32 evaluate_const_expr(arithmetic_expr_node *expr) {
  * @param variables: pointer to the variables hash table (for argument
  * expressions).
  * @param line: line number of the function call.
+ *
+ * @return: SCU_SUCCESS on success, or the first error encountered
  */
 static scu_result check_function_call(fn_call_node *fn_call, ht *functions,
                                       ht *variables, u64 line);
@@ -93,6 +95,8 @@ static scu_result check_function_call(fn_call_node *fn_call, ht *functions,
  *
  * @param instr: pointer to an instr_node.
  * @param variables: pointer to the variables hash table.
+ *
+ * @return: SCU_SUCCESS on success, or the first error encountered
  */
 static scu_result instr_typecheck(instr_node *instr, ht *variables,
                                   ht *functions);
@@ -107,6 +111,8 @@ static u64 current_stack_offset = 0;
  *
  * @param var_to_declare: the variable struct to append.
  * @param variables: pointer to the variables hash table.
+ *
+ * @return: SCU_SUCCESS on success, or the first error encountered
  */
 static scu_result declare_variables(variable *var_to_declare, ht *variables) {
   if (!var_to_declare)
@@ -135,6 +141,8 @@ static scu_result declare_variables(variable *var_to_declare, ht *variables) {
  *
  * @param var_to_declare: the variable struct to append.
  * @param variables: pointer to the variables hash table.
+ *
+ * @return: SCU_SUCCESS on success, or the first error encountered
  */
 static scu_result declare_array(variable *arr_to_declare,
                                 arithmetic_expr_node *size_expr,
@@ -169,6 +177,8 @@ static scu_result declare_array(variable *arr_to_declare,
  * @param term: pointer to a term_node.
  * @param variables: pointer to the variables hash table.
  * @param functions: pointer to the functions hash table.
+ *
+ * @return: SCU_SUCCESS on success, or the first error encountered
  */
 static scu_result term_check_variables(term_node *term, ht *variables,
                                        ht *functions) {
@@ -200,6 +210,8 @@ static scu_result term_check_variables(term_node *term, ht *variables,
  * @param expr: pointer to an expr_node.
  * @param variables: pointer to the variables hash table.
  * @param functions: pointer to the functions hash table.
+ *
+ * @return: SCU_SUCCESS on success, or the first error encountered
  */
 static scu_result arithmetic_expr_check_variables(arithmetic_expr_node *expr,
                                                   ht *variables,
@@ -240,6 +252,8 @@ static scu_result expr_check_variables(expr_node *expr, ht *variables,
  * @param rel: pointer to a rel_node.
  * @param variables: pointer to the variables hash table.
  * @param functions: pointer to the functions hash table.
+ *
+ * @return: SCU_SUCCESS on success, or the first error encountered
  */
 static scu_result rel_check_variables(rel_node *rel, ht *variables,
                                       ht *functions) {
@@ -326,6 +340,8 @@ static scu_result cond_block_check_variables(cond_block_node *blk,
  * @param loop: pointer to the loop node.
  * @param variables: pointer to the parent scope's variables hash table.
  * @param functions: pointer to the functions hash table.
+ *
+ * @return: SCU_SUCCESS on success, or the first error encountered
  */
 static scu_result check_loop(loop_node *loop, ht *parent_variables,
                              ht *functions) {
@@ -376,6 +392,8 @@ static scu_result check_loop(loop_node *loop, ht *parent_variables,
  * @param instr: pointer to an instr_node.
  * @param variables: pointer to the variables hash table.
  * @param functions: pointer to the functions hash table.
+ *
+ * @return: SCU_SUCCESS on success, or the first error encountered
  */
 static scu_result instr_check_variables(instr_node *instr, ht *variables,
                                         ht *functions) {
@@ -492,6 +510,8 @@ static scu_result instr_check_variables(instr_node *instr, ht *variables,
  *
  * @param labels: pointer to the labels dynamic_array.
  * @param instr: pointer to an instr_node.
+ *
+ * @return: SCU_SUCCESS on success, or the first error encountered
  */
 static scu_result check_label(dynamic_array *labels, instr_node *instr) {
   const char *label_name = instr->label.label;
@@ -514,6 +534,8 @@ static scu_result check_label(dynamic_array *labels, instr_node *instr) {
  *
  * @param labels: pointer to the labels dynamic_array.
  * @param instr: pointer to an instr_node.
+ *
+ * @return: SCU_SUCCESS on success, or the first error encountered
  */
 static scu_result check_goto(dynamic_array *labels, instr_node *instr) {
   u32 found = 0;
@@ -577,6 +599,8 @@ static scu_result cond_block_check_labels(cond_block_node *block,
  *
  * @param instr: pointer to an instr_node.
  * @param labels: pointer to the labels dynamic_array.
+ *
+ * @return: SCU_SUCCESS on success, or the first error encountered
  */
 static scu_result instrs_check_labels(dynamic_array *instrs,
                                       dynamic_array *labels) {
@@ -816,6 +840,8 @@ static scu_result expr_typecheck(expr_node *expr, ht *variables, ht *functions);
  *
  * @param rel: pointer to a rel_node.
  * @param variables: pointer to the variables hash table.
+ *
+ * @return: SCU_SUCCESS on success, or the first error encountered
  */
 static scu_result rel_typecheck(rel_node *rel, ht *variables, ht *functions) {
   type lhs, rhs;
@@ -893,6 +919,8 @@ static scu_result expr_typecheck(expr_node *expr, ht *variables,
  *
  * @param instr: pointer to an instr_node.
  * @param variables: pointer to the variables hash table.
+ *
+ * @return: SCU_SUCCESS on success, or the first error encountered
  */
 static scu_result instr_typecheck(instr_node *instr, ht *variables,
                                   ht *functions) {
@@ -1086,6 +1114,8 @@ static scu_result instr_typecheck(instr_node *instr, ht *variables,
  *
  * @param fn: pointer to the function node to register.
  * @param functions: pointer to the functions hash table.
+ *
+ * @return: SCU_SUCCESS on success, or the first error encountered
  */
 static scu_result register_function(fn_node *fn, ht *functions) {
   if (!fn)
@@ -1147,6 +1177,8 @@ static scu_result register_function(fn_node *fn, ht *functions) {
  * @param variables: pointer to the variables hash table (for argument
  * expressions).
  * @param line: line number of the function call.
+ *
+ * @return: SCU_SUCCESS on success, or the first error encountered
  */
 static scu_result check_function_call(fn_call_node *fn_call, ht *functions,
                                       ht *variables, u64 line) {
@@ -1213,6 +1245,8 @@ static scu_result check_function_call(fn_call_node *fn_call, ht *functions,
  * @param fn: pointer to the containing function node.
  * @param variables: pointer to the variables hash table.
  * @param line: line number of the return statement.
+ *
+ * @return: SCU_SUCCESS on success, or the first error encountered
  */
 static scu_result check_return_statement(return_node *ret, fn_node *fn,
                                          ht *variables, ht *functions,
@@ -1255,6 +1289,8 @@ static scu_result check_return_statement(return_node *ret, fn_node *fn,
  *
  * @param fn: pointer to the containing function node.
  * @param functions: pointer to the functions hash table.
+ *
+ * @return: SCU_SUCCESS on success, or the first error encountered
  */
 static scu_result check_function_body(fn_node *fn, ht *functions) {
   if (!fn)

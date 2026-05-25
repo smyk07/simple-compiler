@@ -63,7 +63,7 @@ static void parser_advance(parser *p) { p->index++; }
  * @param p: pointer to the parser state.
  * @param instr: pointer to a newly malloc'd instr struct.
  *
- * @return: (bool) weather an instruction was parsed
+ * @return: SCU_SUCCESS on success, or the first error encountered
  */
 static scu_result parse_instr(parser *p, instr_node *instr);
 
@@ -71,6 +71,8 @@ static scu_result parse_instr(parser *p, instr_node *instr);
  * @brief: parse a term. (declaration)
  *
  * @param p: pointer to the parser state.
+ *
+ * @return: SCU_SUCCESS on success, or the first error encountered
  */
 static scu_result parse_term(parser *p, arithmetic_expr_node **aexpr);
 
@@ -78,6 +80,8 @@ static scu_result parse_term(parser *p, arithmetic_expr_node **aexpr);
  * @brief: parse a arithmetic expression. (declaration)
  *
  * @param p: pointer to the parser state.
+ *
+ * @return: SCU_SUCCESS on success, or the first error encountered
  */
 static scu_result parse_arithmetic_expr(parser *p,
                                         arithmetic_expr_node **aexpr);
@@ -87,6 +91,8 @@ static scu_result parse_arithmetic_expr(parser *p,
  *
  * @param p: pointer to the parser state.
  * @param term: pointer to an un-initialized term_node struct.
+ *
+ * @return: SCU_SUCCESS on success, or the first error encountered
  */
 static scu_result parse_term_for_expr(parser *p, term_node *term) {
   token token = {0};
@@ -194,6 +200,8 @@ static scu_result parse_term_for_expr(parser *p, term_node *term) {
  * @brief: parse a factor inside an arithmetic expression.
  *
  * @param p: pointer to the parser state.
+ *
+ * @return: SCU_SUCCESS on success, or the first error encountered
  */
 static scu_result parse_factor(parser *p, arithmetic_expr_node **aexpr) {
   token token = {0};
@@ -328,6 +336,8 @@ static scu_result parse_factor(parser *p, arithmetic_expr_node **aexpr) {
  * @brief: parse a term.
  *
  * @param p: pointer to the parser state.
+ *
+ * @return: SCU_SUCCESS on success, or the first error encountered
  */
 static scu_result parse_term(parser *p, arithmetic_expr_node **aexpr) {
   arithmetic_expr_node *left = NULL;
@@ -370,6 +380,8 @@ static scu_result parse_term(parser *p, arithmetic_expr_node **aexpr) {
  * @brief: parse a arithmetic expression. (definition)
  *
  * @param p: pointer to the parser state.
+ *
+ * @return: SCU_SUCCESS on success, or the first error encountered
  */
 static scu_result parse_arithmetic_expr(parser *p,
                                         arithmetic_expr_node **aexpr) {
@@ -547,6 +559,8 @@ static scu_result parse_expr(parser *p, expr_node *expr) {
  *
  * @param p: pointer to the parser state.
  * @param instr: pointer to a newly malloc'd instr struct.
+ *
+ * @return: SCU_SUCCESS on success, or the first error encountered
  */
 static scu_result parse_initialize(parser *p, instr_node *instr, type _type,
                                    char *_name) {
@@ -569,6 +583,8 @@ static scu_result parse_initialize(parser *p, instr_node *instr, type _type,
  *
  * @param p: pointer to the parser state.
  * @param instr: pointer to a newly malloc'd instr struct.
+ *
+ * @return: SCU_SUCCESS on success, or the first error encountered
  */
 static scu_result parse_initialize_array(parser *p, instr_node *instr,
                                          type _type, char *_name,
@@ -622,6 +638,8 @@ static scu_result parse_initialize_array(parser *p, instr_node *instr,
  *
  * @param p: pointer to the parser state.
  * @param instr: pointer to a newly malloc'd instr struct.
+ *
+ * @return: SCU_SUCCESS on success, or the first error encountered
  */
 static scu_result parse_declare(parser *p, instr_node *instr) {
   token token = {0};
@@ -690,6 +708,8 @@ static scu_result parse_declare(parser *p, instr_node *instr) {
  *
  * @param p: pointer to the parser state.
  * @param instr: pointer to a newly malloc'd instr struct.
+ *
+ * @return: SCU_SUCCESS on success, or the first error encountered
  */
 static scu_result parse_fn_call(parser *p, instr_node *instr) {
   token token = {0};
@@ -739,6 +759,8 @@ static scu_result parse_fn_call(parser *p, instr_node *instr) {
  *
  * @param p: pointer to the parser state.
  * @param instr: pointer to a newly malloc'd instr struct.
+ *
+ * @return: SCU_SUCCESS on success, or the first error encountered
  */
 static scu_result parse_assign(parser *p, instr_node *instr) {
   token token = {0};
@@ -810,6 +832,8 @@ static scu_result parse_assign(parser *p, instr_node *instr) {
  *
  * @param p: pointer to the parser state.
  * @param block: pointer to the condiitonal block.
+ *
+ * @return: SCU_SUCCESS on success, or the first error encountered
  */
 static scu_result parse_cond_block(parser *p, cond_block_node *block) {
   token token = {0};
@@ -851,6 +875,8 @@ static scu_result parse_cond_block(parser *p, cond_block_node *block) {
  *
  * @param p: pointer to the parser state.
  * @param instr: pointer to a newly malloc'd instr struct.
+ *
+ * @return: SCU_SUCCESS on success, or the first error encountered
  */
 static scu_result parse_if(parser *p, instr_node *instr) {
   token token = {0};
@@ -896,6 +922,8 @@ static scu_result parse_if(parser *p, instr_node *instr) {
  *
  * @param p: pointer to the parser state.
  * @param instr: pointer to a newly malloc'd instr struct.
+ *
+ * @return: SCU_SUCCESS on success, or the first error encountered
  */
 static scu_result parse_match(parser *p, instr_node *instr) {
   token token = {0};
@@ -992,6 +1020,8 @@ static scu_result parse_match(parser *p, instr_node *instr) {
  *
  * @param p: pointer to the parser state.
  * @param instr: pointer to a newly malloc'd instr struct.
+ *
+ * @return: SCU_SUCCESS on success, or the first error encountered
  */
 static scu_result parse_goto(parser *p, instr_node *instr) {
   token token = {0};
@@ -1019,6 +1049,8 @@ static scu_result parse_goto(parser *p, instr_node *instr) {
  *
  * @param p: pointer to the parser state.
  * @param instr: pointer to a newly malloc'd instr struct.
+ *
+ * @return: SCU_SUCCESS on success, or the first error encountered
  */
 static scu_result parse_label(parser *p, instr_node *instr) {
   token token = {0};
@@ -1040,6 +1072,8 @@ static scu_result parse_label(parser *p, instr_node *instr) {
  * @param p: pointer to the parser state.
  * @param instr: pointer to a newly malloc'd instr struct.
  * @param kind: the kind of loop to parse (UNCONDITIONAL or WHILE).
+ *
+ * @return: SCU_SUCCESS on success, or the first error encountered
  */
 static scu_result parse_loop(parser *p, instr_node *instr, loop_kind kind) {
   token token = {0};
@@ -1143,6 +1177,8 @@ static scu_result parse_loop(parser *p, instr_node *instr, loop_kind kind) {
  *
  * @param p: pointer to the parser state.
  * @param instr: pointer to a newly malloc'd instr struct.
+ *
+ * @return: SCU_SUCCESS on success, or the first error encountered
  */
 static scu_result parse_fn(parser *p, instr_node *instr) {
   token token = {0};
@@ -1257,6 +1293,8 @@ static scu_result parse_fn(parser *p, instr_node *instr) {
  *
  * @param p: pointer to the parser state.
  * @param instr: pointer to a newly malloc'd instr struct.
+ *
+ * @return: SCU_SUCCESS on success, or the first error encountered
  */
 static scu_result parse_ret(parser *p, instr_node *instr) {
   token token = {0};
@@ -1293,7 +1331,7 @@ static scu_result parse_ret(parser *p, instr_node *instr) {
  * @param p: pointer to the parser state.
  * @param instr: pointer to a newly malloc'd instr struct.
  *
- * @return: (bool) weather an instruction was parsed
+ * @return: SCU_SUCCESS on success, or the first error encountered
  */
 static scu_result parse_instr(parser *p, instr_node *instr) {
   token token = {0};
