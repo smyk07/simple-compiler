@@ -275,7 +275,7 @@ scu_result cstate_init(cstate *cst, u32 argc, char *argv[]) {
     dynamic_array_get(&filenames, i, &filepath);
 
     fstate *fst = arena_push_struct(&cst->file_arena, fstate);
-    fstate_init(fst, filepath);
+    SCU_TRY(fstate_init(fst, filepath));
     dynamic_array_append(&cst->files, &fst);
 
     u64 len;
