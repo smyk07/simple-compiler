@@ -6,14 +6,18 @@
  * Licensed under the GNU/GPL Version 3
  */
 
-#include "sclc/cstate.h"
-#include "sclc/backend/backend.h"
-#include "sclc/fstate.h"
-
 #include "core/common.h"
 #include "core/ds/arena.h"
 #include "core/ds/dynamic_array.h"
 #include "core/utils.h"
+
+#include "frontend/lexer.h"
+#include "frontend/parser.h"
+#include "frontend/semantic.h"
+
+#include "sclc/backend/backend.h"
+#include "sclc/cstate.h"
+#include "sclc/fstate.h"
 
 #include <llvm-c/Core.h>
 #include <llvm-c/TargetMachine.h>
@@ -23,8 +27,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <time.h>
 
-void cstate_init(cstate *cst, u32 argc, char *argv[]) {
+scu_result cstate_init(cstate *cst, u32 argc, char *argv[]) {
   if (argc <= 1) {
     /*
      * Default output.
@@ -62,15 +67,7 @@ void cstate_init(cstate *cst, u32 argc, char *argv[]) {
 
     printf("--help                        OR  -h  Display this help prompt\n");
 
-    /*
-    printf("Available Targets:\n");
-    for (int i = 0; i <= TARGET_C; i++) {
-      printf("%s ", target_kind_to_string((target_kind)i));
-    }
-    printf("\n");
-    */
-
-    exit(0);
+    return SCU_SUCCESS;
   }
 
   u32 i = 1;
@@ -92,7 +89,7 @@ void cstate_init(cstate *cst, u32 argc, char *argv[]) {
 
       if (i + 1 >= argc) {
         scu_perror("Missing target after %s\n", arg);
-        exit(1);
+        return SCU_ERR_ARGS;
       }
 
       char *target_str = argv[i + 1];
@@ -105,7 +102,7 @@ void cstate_init(cstate *cst, u32 argc, char *argv[]) {
 
         if (err)
           LLVMDisposeMessage(err);
-        exit(1);
+        return SCU_ERR_ARGS;
       }
 
       cst->options.target_specified = true;
@@ -122,12 +119,12 @@ void cstate_init(cstate *cst, u32 argc, char *argv[]) {
     if (strcmp(arg, "--output") == 0 || strcmp(arg, "-o") == 0) {
       if (i + 1 >= argc) {
         scu_perror("Missing filename after %s\n", arg);
-        exit(1);
+        return SCU_ERR_ARGS;
       }
 
       if (cst->output_filepath != NULL) {
         scu_perror("Output specified more than once: %s\n", argv[i + 1]);
-        exit(1);
+        return SCU_ERR_ARGS;
       }
 
       cst->output_filepath = strdup(argv[i + 1]);
@@ -145,24 +142,24 @@ void cstate_init(cstate *cst, u32 argc, char *argv[]) {
     if (strcmp(arg, "--include_dir") == 0 || strcmp(arg, "-i") == 0) {
       if (i + 1 >= argc) {
         scu_perror("Missing directory path after %s\n", arg);
-        exit(1);
+        return SCU_ERR_ARGS;
       }
 
       if (cst->include_dir != NULL) {
         scu_perror("Include directory specified more than once: %s\n",
                    argv[i + 1]);
-        exit(1);
+        return SCU_ERR_ARGS;
       }
 
       struct stat st;
       if (stat(argv[i + 1], &st) != 0) {
         scu_perror("Include directory does not exist: %s\n", argv[i + 1]);
-        exit(1);
+        return SCU_ERR_IO;
       }
 
       if (!S_ISDIR(st.st_mode)) {
         scu_perror("Path is not a directory: %s\n", argv[i + 1]);
-        exit(1);
+        return SCU_ERR_ARGS;
       }
 
       cst->include_dir = strdup(argv[i + 1]);
@@ -240,7 +237,7 @@ void cstate_init(cstate *cst, u32 argc, char *argv[]) {
     }
 
     scu_perror("Unknown option: %s\n", arg);
-    exit(1);
+    return SCU_ERR_ARGS;
   }
 
   if (cst->include_dir == NULL)
@@ -248,7 +245,7 @@ void cstate_init(cstate *cst, u32 argc, char *argv[]) {
 
   if (filenames.count == 0) {
     scu_perror("Missing input filename\n");
-    exit(1);
+    return SCU_ERR_ARGS;
   }
 
   bool compile_mode = cst->options.compile_only || cst->options.emit_llvm ||
@@ -257,7 +254,7 @@ void cstate_init(cstate *cst, u32 argc, char *argv[]) {
   if (compile_mode && cst->output_filepath != NULL && filenames.count > 1) {
     scu_perror("-o cannot be used with multiple input files in compile mode. "
                "Compile each file separately or remove -o\n");
-    exit(1);
+    return SCU_ERR_ARGS;
   }
 
   if (cst->output_filepath == NULL) {
@@ -266,7 +263,7 @@ void cstate_init(cstate *cst, u32 argc, char *argv[]) {
     cst->output_filepath = scu_extract_name(first_filename);
     if (!cst->output_filepath) {
       scu_perror("Failed to extract filename.\n");
-      exit(1);
+      return SCU_ERR_ARGS;
     }
   }
 
@@ -304,6 +301,74 @@ void cstate_init(cstate *cst, u32 argc, char *argv[]) {
   }
 
   dynamic_array_free(&filenames);
+
+  return SCU_SUCCESS;
+}
+
+scu_result cstate_compile(cstate *cst) {
+  SCU_TRY(backend_init(&cst->backend, cst));
+
+  clock_t start, end;
+  double time_taken;
+  start = clock();
+
+  for (u64 i = 0; i < cst->files.count; i++) {
+    fstate *fst;
+    dynamic_array_get(&cst->files, i, &fst);
+
+    // Lexing
+    SCU_TRY(lexer_tokenize(fst->code_buffer, fst->code_buffer_len, &fst->tokens,
+                           cst->include_dir));
+
+    // Lexing debug statements
+    if (cst->options.verbose) {
+      scu_pdebug("Lexing Debug Statements for %s:\n", fst->filepath);
+      token_print_tokens(&fst->tokens);
+    }
+
+    // Parsing
+    SCU_TRY(parser_parse_program(&fst->tokens, &fst->program_ast));
+
+    // Parsing debug statements
+    if (cst->options.verbose) {
+      scu_pdebug("Parsing Debug Statements for %s:\n", fst->filepath);
+      print_ast(&fst->program_ast);
+    }
+
+    // Semantic Analysis
+    SCU_TRY(check_semantics(&fst->program_ast.instrs, &fst->variables,
+                            &fst->functions));
+
+    // Semantic Debug Statement
+    if (cst->options.verbose)
+      scu_pdebug("Semantic Analysis Complete for %s\n", fst->filepath);
+
+    // Initiate backend compilation
+    SCU_TRY(backend_compile(&cst->backend, cst, fst));
+
+    // Codegen Debug Statements
+    if (cst->options.verbose)
+      scu_pdebug("Codegen Complete for %s\n", fst->filepath);
+
+    if (cst->options.verbose)
+      scu_psuccess("COMPILED %s\n", fst->filepath);
+  }
+
+  if (!(cst->options.compile_only))
+    SCU_TRY(cst->backend.link(cst));
+
+  if (cst->options.emit_llvm || cst->options.emit_asm) {
+    return SCU_SUCCESS;
+  }
+
+  end = clock();
+  time_taken = (double)(end - start) / CLOCKS_PER_SEC;
+
+  if (cst->options.verbose)
+    scu_psuccess("  LINKED %s - %.2fs total time taken\n", cst->output_filepath,
+                 time_taken);
+
+  return SCU_SUCCESS;
 }
 
 void cstate_free(cstate *cst) {
@@ -336,4 +401,6 @@ void cstate_free(cstate *cst) {
   dynamic_array_free(&cst->obj_file_list);
 
   dynamic_array_free(&cst->files);
+
+  backend_free(&cst->backend);
 }

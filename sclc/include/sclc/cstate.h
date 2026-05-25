@@ -10,9 +10,11 @@
 #define CSTATE_H
 
 #include "core/common.h"
-#include "core/creg.h"
 #include "core/ds/arena.h"
 #include "core/ds/dynamic_array.h"
+#include "core/utils.h"
+
+#include "sclc/backend/backend.h"
 
 /*
  * @enum opt_level: represents optimization levels
@@ -31,90 +33,61 @@ typedef enum opt_level {
  * binary is executed.
  */
 typedef struct coptions {
-  /*
-   * Print progress messages for various stages.
-   */
+  opt_level opt_level;
+
   bool verbose;
 
-  /*
-   * Write output to output_filename instead of the default filename.
-   */
+  // output control
   bool explicit_output_specified;
-
-  /*
-   * Output object file only (compile but don't link)
-   */
   bool compile_only;
-
-  /*
-   * Weather an include directory was specified in the command.
-   */
-  bool include_dir_specified;
-
-  /*
-   * Weather target is specified explicitly.
-   */
-  bool target_specified;
-
-  /*
-   * Emit LLVM IR
-   */
   bool emit_llvm;
-
-  /*
-   * Emit target assembly
-   */
   bool emit_asm;
 
-  opt_level opt_level;
+  // input control
+  bool include_dir_specified;
+  bool target_specified;
 } coptions;
 
 /*
  * @struct cstate: represents the compiler state.
  */
 typedef struct cstate {
-  /*
-   * Arena for the fstates
-   */
-  mem_arena file_arena;
-
-  /*
-   * An array of fstates.
-   */
-  dynamic_array files;
-
-  /*
-   * State in which directory the scl files to be included are located
-   */
-  char *include_dir;
-
-  /*
-   * all the '.o' object files seperated with spaces
-   */
-  dynamic_array obj_file_list;
-
-  /*
-   * Path to the output file regardless of compile mode. Default is extracted
-   * from the first filepath. Ex: main.sclc => main
-   */
-  char *output_filepath;
+  coptions options;
 
   char *llvm_target_triple;
 
-  /*
-   * Options for the compilation process.
-   */
-  coptions options;
+  /* input */
+  char *include_dir;
+  mem_arena file_arena;
+  dynamic_array files;
+
+  /* output */
+  char *output_filepath;
+  dynamic_array obj_file_list;
+
+  backend backend;
 } cstate;
 
 /*
  * @brief: Initialize a already allocated compiler state from CLI arguments.
  *
+ * @param cst: pointer to an initialized cst object
  * @param argc: count of args
  * @param argv: array of arguments (string)
  *
+ * @return: SCU_SUCCESS on success, or the first error encountered
  */
-void cstate_init(cstate *cst, u32 argc, char *argv[]);
+scu_result cstate_init(cstate *cst, u32 argc, char *argv[]);
+
+/*
+ * @brief: runs the full compilation pipeline for each file in a cstate
+ *
+ * @param cst: pointer to an initialized cst object
+ *
+ * @return: SCU_SUCCESS on success, or the first error encountered in the
+ * pipeline
+ */
+scu_result cstate_compile(cstate *cst);
 
 /*
  * @brief: Free all associated memory of a compiler state

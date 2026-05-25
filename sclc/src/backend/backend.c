@@ -6,11 +6,12 @@
  */
 
 #include "sclc/backend/backend.h"
+#include "core/utils.h"
 #include "sclc/backend/llvm/llvm.h"
 
 #include <stdlib.h>
 
-void backend_init(backend *backend, cstate *cst) {
+scu_result backend_init(backend *backend, cstate *cst) {
   backend->setup = llvm_backend_init;
 
   backend->compile = llvm_backend_compile;
@@ -21,21 +22,25 @@ void backend_init(backend *backend, cstate *cst) {
   backend->link = llvm_backend_link;
 
   // one-time backend setup
-  backend->setup(cst);
+  SCU_TRY(backend->setup(cst));
+
+  return SCU_SUCCESS;
 }
 
-void backend_compile(backend *backend, cstate *cst, fstate *fst) {
+scu_result backend_compile(backend *backend, cstate *cst, fstate *fst) {
   if (backend->compile)
-    backend->compile(cst, fst);
+    SCU_TRY(backend->compile(cst, fst));
 
   if (backend->optimize)
-    backend->optimize(cst, fst);
+    SCU_TRY(backend->optimize(cst, fst));
 
   if (backend->emit)
-    backend->emit(cst, fst);
+    SCU_TRY(backend->emit(cst, fst));
 
   if (backend->cleanup)
-    backend->cleanup(cst, fst);
+    SCU_TRY(backend->cleanup(cst, fst));
+
+  return SCU_SUCCESS;
 }
 
 void backend_free(backend *backend) {

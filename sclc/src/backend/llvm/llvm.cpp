@@ -5,9 +5,6 @@
  * Licensed under the GNU/GPL Version 3
  */
 
-#include "sclc/backend/llvm/ld_utils.hpp"
-#include "sclc/backend/llvm/llvm_irgen.hpp"
-
 extern "C" {
 #include "sclc/backend/llvm/llvm.h"
 #include "sclc/cstate.h"
@@ -19,6 +16,9 @@ extern "C" {
 #include "core/ds/dynamic_array.h"
 #include "core/utils.h"
 }
+
+#include "sclc/backend/llvm/ld_utils.hpp"
+#include "sclc/backend/llvm/llvm_irgen.hpp"
 
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/LLVMContext.h>
@@ -42,7 +42,8 @@ typedef struct llvm_backend_ctx llvm_backend_ctx;
 static llvm_backend_ctx bctx;
 
 extern "C" {
-void llvm_backend_init(cstate *cst) {
+
+scu_result llvm_backend_init(cstate *cst) {
   llvm::InitializeNativeTarget();
   llvm::InitializeNativeTargetAsmParser();
   llvm::InitializeNativeTargetAsmPrinter();
@@ -65,7 +66,7 @@ void llvm_backend_init(cstate *cst) {
   if (!target) {
     scu_perror(const_cast<char *>("Failed to look up target: %s\n"),
                error.c_str());
-    return;
+    return SCU_ERR_BACKEND;
   }
 
   llvm::TargetOptions opt;
@@ -77,23 +78,26 @@ void llvm_backend_init(cstate *cst) {
 
   if (!bctx.target_machine) {
     scu_perror(const_cast<char *>("Failed to create target machine\n"));
-    return;
+    return SCU_ERR_BACKEND;
   }
 
   bctx.module->setDataLayout(bctx.target_machine->createDataLayout());
+
+  return SCU_SUCCESS;
 }
 
-void llvm_backend_compile(cstate *, fstate *fst) {
+scu_result llvm_backend_compile(cstate *, fstate *fst) {
   for (u64 i = 0; i < fst->program_ast.instrs.count; i++) {
     instr_node instr;
     dynamic_array_get(&fst->program_ast.instrs, i, &instr);
-
-    llvm_irgen_instr(bctx, &instr);
+    SCU_TRY(llvm_irgen_instr(bctx, &instr));
   }
   llvm_irgen_clear_symbol_table();
+
+  return SCU_SUCCESS;
 }
 
-void llvm_backend_optimize(cstate *cst, fstate *) {
+scu_result llvm_backend_optimize(cstate *cst, fstate *) {
   using namespace llvm;
 
   OptimizationLevel opt_level;
@@ -120,7 +124,7 @@ void llvm_backend_optimize(cstate *cst, fstate *) {
   }
 
   if (opt_level == OptimizationLevel::O0)
-    return;
+    return SCU_SUCCESS;
 
   LoopAnalysisManager LAM;
   FunctionAnalysisManager FAM;
@@ -139,9 +143,11 @@ void llvm_backend_optimize(cstate *cst, fstate *) {
   ModulePassManager MPM = PB.buildPerModuleDefaultPipeline(opt_level);
 
   MPM.run(*bctx.module, MAM);
+
+  return SCU_SUCCESS;
 }
 
-void llvm_backend_emit(cstate *cst, fstate *fst) {
+scu_result llvm_backend_emit(cstate *cst, fstate *fst) {
   std::string error_str;
   std::error_code ec;
   llvm::raw_string_ostream error_stream(error_str);
@@ -150,7 +156,7 @@ void llvm_backend_emit(cstate *cst, fstate *fst) {
     error_stream.flush();
     scu_perror(const_cast<char *>("Module verification failed: %s\n"),
                error_str.c_str());
-    return;
+    return SCU_ERR_BACKEND;
   }
 
   if (cst->options.emit_llvm) {
@@ -170,9 +176,10 @@ void llvm_backend_emit(cstate *cst, fstate *fst) {
     } else {
       scu_pwarning(const_cast<char *>("Could not write IR file: %s\n"),
                    ec.message().c_str());
+      return SCU_ERR_BACKEND;
     }
 
-    return;
+    return SCU_SUCCESS;
   }
 
   if (cst->options.emit_asm) {
@@ -189,7 +196,7 @@ void llvm_backend_emit(cstate *cst, fstate *fst) {
     if (ec) {
       scu_pwarning(const_cast<char *>("Could not open asm file: %s\n"),
                    ec.message().c_str());
-      return;
+      return SCU_ERR_BACKEND;
     }
 
     llvm::legacy::PassManager asm_pass;
@@ -201,7 +208,7 @@ void llvm_backend_emit(cstate *cst, fstate *fst) {
       asm_dest.flush();
     }
 
-    return;
+    return SCU_SUCCESS;
   }
 
   std::string obj_filename;
@@ -226,7 +233,7 @@ void llvm_backend_emit(cstate *cst, fstate *fst) {
         scu_perror(
             const_cast<char *>("Could not create temporary directory: %s\n"),
             mkdir_ec.message().c_str());
-        return;
+        return SCU_ERR_BACKEND;
       }
     }
   }
@@ -236,7 +243,7 @@ void llvm_backend_emit(cstate *cst, fstate *fst) {
   if (ec) {
     scu_perror(const_cast<char *>("Could not open output file: %s\n"),
                ec.message().c_str());
-    return;
+    return SCU_ERR_BACKEND;
   }
 
   llvm::legacy::PassManager pass;
@@ -244,14 +251,16 @@ void llvm_backend_emit(cstate *cst, fstate *fst) {
   if (bctx.target_machine->addPassesToEmitFile(
           pass, dest, nullptr, llvm::CodeGenFileType::ObjectFile)) {
     scu_perror(const_cast<char *>("TargetMachine can't emit object file\n"));
-    return;
+    return SCU_ERR_BACKEND;
   }
 
   pass.run(*bctx.module);
   dest.flush();
+
+  return SCU_SUCCESS;
 }
 
-void llvm_backend_cleanup(cstate *, fstate *) {
+scu_result llvm_backend_cleanup(cstate *, fstate *) {
   delete bctx.builder;
   delete bctx.module;
   delete bctx.context;
@@ -264,9 +273,11 @@ void llvm_backend_cleanup(cstate *, fstate *) {
   bctx.module = nullptr;
   bctx.context = nullptr;
   bctx.target_machine = nullptr;
+
+  return SCU_SUCCESS;
 }
 
-void llvm_backend_link(cstate *cst) {
+scu_result llvm_backend_link(cstate *cst) {
   std::vector<const char *> obj_files;
 
   for (u64 i = 0; i < cst->obj_file_list.count; i++) {
@@ -275,6 +286,8 @@ void llvm_backend_link(cstate *cst) {
     obj_files.push_back(obj);
   }
 
-  ld_link(cst->output_filepath, obj_files);
+  SCU_TRY(ld_link(cst->output_filepath, obj_files));
+
+  return SCU_SUCCESS;
 }
 }

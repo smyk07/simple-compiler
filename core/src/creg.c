@@ -27,8 +27,10 @@ void creg_register(creg *creg, void *obj, creg_cleanup_fn fn) {
 
 void creg_cleanup(creg *creg) {
   creg_entry entry = {0};
-  while (!stack_pop(creg, &entry))
+  while (creg->count != 0) {
+    stack_pop(creg, &entry);
     entry.fn(entry.obj);
+  }
 
   stack_free(creg);
 }

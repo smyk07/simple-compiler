@@ -42,10 +42,8 @@ void *dynamic_array_get_ptr(dynamic_array *da, u64 index);
  * @param da: pointer to a dynamic_array
  * @param index: index of the item to get
  * @param item: pointer to store the retrieved item
- *
- * @return: 0 if successful, 1 if index out of bounds
  */
-u32 dynamic_array_get(dynamic_array *da, u64 index, void *item);
+void dynamic_array_get(dynamic_array *da, u64 index, void *item);
 
 /*
  * @brief: Sets an item at the specified index.
@@ -53,20 +51,16 @@ u32 dynamic_array_get(dynamic_array *da, u64 index, void *item);
  * @param da: pointer to a dynamic_array
  * @param index: index of the item to set
  * @param item: pointer to the item to store
- *
- * @return: 0 if successful, 1 if index out of bounds
  */
-u32 dynamic_array_set(dynamic_array *da, u64 index, void *item);
+void dynamic_array_set(dynamic_array *da, u64 index, void *item);
 
 /*
  * @brief: Appends an item to the end of the array.
  *
  * @param da: pointer to a dynamic_array
  * @param item: pointer to the item to append
- *
- * @return: 0 if successful, -1 on allocation failure
  */
-u32 dynamic_array_append(dynamic_array *da, void *item);
+void dynamic_array_append(dynamic_array *da, void *item);
 
 /*
  * @brief: Inserts an item at the specified index.
@@ -74,10 +68,8 @@ u32 dynamic_array_append(dynamic_array *da, void *item);
  * @param da: pointer to a dynamic_array
  * @param index: index at which to insert the item
  * @param item: pointer to the item to insert
- *
- * @return: 0 if successful, -1 on allocation failure or invalid index
  */
-u32 dynamic_array_insert(dynamic_array *da, u64 index, void *item);
+void dynamic_array_insert(dynamic_array *da, u64 index, void *item);
 
 /*
  * @brief: Removes an item at the specified index.
@@ -87,17 +79,15 @@ u32 dynamic_array_insert(dynamic_array *da, u64 index, void *item);
  *
  * @return: 0 if successful, 1 if index out of bounds
  */
-u32 dynamic_array_remove(dynamic_array *da, u64 index);
+void dynamic_array_remove(dynamic_array *da, u64 index);
 
 /*
  * @brief: Removes and returns the last item in the array.
  *
  * @param da: pointer to a dynamic_array
  * @param item: pointer to store the popped item (can be NULL)
- *
- * @return: 0 if successful, 1 if array is empty
  */
-u32 dynamic_array_pop(dynamic_array *da, void *item);
+void dynamic_array_pop(dynamic_array *da, void *item);
 
 /*
  * @brief: Frees the dynamic array structure.

@@ -13,6 +13,7 @@
 #include "core/common.h"
 #include "core/ds/dynamic_array.h"
 #include "core/ds/ht.h"
+#include "core/utils.h"
 
 #include <stddef.h>
 
@@ -32,7 +33,9 @@ u32 evaluate_const_expr(arithmetic_expr_node *expr);
  * @param instrs: pointer to the dynamic_array of instructions.
  * @param variables: pointer to hash table of variable.
  * @param functions: pointer to the functions hash table.
+ *
+ * @return: SCU_SUCCESS on success, or the first error encountered
  */
-void check_semantics(dynamic_array *instrs, ht *variables, ht *functions);
+scu_result check_semantics(dynamic_array *instrs, ht *variables, ht *functions);
 
 #endif // !SEMANTIC_H

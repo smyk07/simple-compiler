@@ -22,30 +22,24 @@ typedef struct stack {
  *
  * @param s: pointer to a stack
  * @param item_size: size of each element in bytes
- *
- * @return: 0 if successful, 1 on allocation failure
  */
-u32 stack_init(stack *s, u64 item_size);
+void stack_init(stack *s, u64 item_size);
 
 /*
  * @brief: Pushes an item onto the stack.
  *
  * @param s: pointer to a stack
  * @param item: pointer to the item to push
- *
- * @return: 0 if successful, 1 on allocation failure
  */
-u32 stack_push(stack *s, void *item);
+void stack_push(stack *s, void *item);
 
 /*
  * @brief: Pops and returns the top item from the stack.
  *
  * @param s: pointer to a stack
  * @param item: pointer to store the popped item
- *
- * @return: 0 if successful, 1 if stack is empty
  */
-u32 stack_pop(stack *s, void *item);
+void stack_pop(stack *s, void *item);
 
 /*
  * @brief: Returns the top item without popping.

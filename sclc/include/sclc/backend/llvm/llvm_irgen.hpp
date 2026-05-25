@@ -9,6 +9,7 @@
 #define LLVM_IRGEN_H
 
 extern "C" {
+#include "core/utils.h"
 #include "frontend/ast.h"
 }
 
@@ -37,7 +38,9 @@ void llvm_irgen_clear_symbol_table();
  *
  * @param ctx: Reference to LLVM backend context
  * @param instr: Pointer to the instruction node to generate IR for
+ *
+ * @return: SCU_SUCCESS on success, or the first error encountered
  */
-void llvm_irgen_instr(llvm_backend_ctx &ctx, instr_node *instr);
+scu_result llvm_irgen_instr(llvm_backend_ctx &ctx, instr_node *instr);
 
 #endif // !LLVM_IRGEN_H

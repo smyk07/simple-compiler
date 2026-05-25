@@ -25,16 +25,16 @@ PTEST(da_append) {
   u32 val1 = 42;
   u32 val2 = 84;
 
-  PROVA_ASSERT_EQUAL(0, dynamic_array_append(&da, &val1));
+  dynamic_array_append(&da, &val1);
   PROVA_ASSERT_EQUAL(1, da.count);
   PROVA_ASSERT_GREATER_THAN(0, da.capacity);
 
-  PROVA_ASSERT_EQUAL(0, dynamic_array_append(&da, &val2));
+  dynamic_array_append(&da, &val2);
   PROVA_ASSERT_EQUAL(2, da.count);
 
   u32 out1 = 0, out2 = 0;
-  PROVA_ASSERT_EQUAL(0, dynamic_array_get(&da, 0, &out1));
-  PROVA_ASSERT_EQUAL(0, dynamic_array_get(&da, 1, &out2));
+  dynamic_array_get(&da, 0, &out1);
+  dynamic_array_get(&da, 1, &out2);
   PROVA_ASSERT_EQUAL(42, out1);
   PROVA_ASSERT_EQUAL(84, out2);
 
@@ -57,19 +57,12 @@ PTEST(da_get_set) {
   PROVA_ASSERT_EQUAL_STRING("Bob", ptr->name);
 
   TestItem item3 = {3, "Charlie"};
-  PROVA_ASSERT_EQUAL(0, dynamic_array_set(&da, 0, &item3));
+  dynamic_array_set(&da, 0, &item3);
 
   TestItem out;
   dynamic_array_get(&da, 0, &out);
   PROVA_ASSERT_EQUAL(3, out.id);
   PROVA_ASSERT_EQUAL_STRING("Charlie", out.name);
-
-  PROVA_MUTE_STDERR
-
-  PROVA_ASSERT_EQUAL(1, dynamic_array_set(&da, 5, &item3));
-  PROVA_ASSERT_EQUAL(1, dynamic_array_get(&da, 5, &out));
-
-  PROVA_UNMUTE_STDERR
 
   dynamic_array_free(&da);
 }
@@ -82,7 +75,7 @@ PTEST(da_insert) {
   dynamic_array_append(&da, &v1);
   dynamic_array_append(&da, &v2);
 
-  PROVA_ASSERT_EQUAL(0, dynamic_array_insert(&da, 1, &v3));
+  dynamic_array_insert(&da, 1, &v3);
   PROVA_ASSERT_EQUAL(3, da.count);
 
   u32 r0, r1, r2;
@@ -93,12 +86,6 @@ PTEST(da_insert) {
   PROVA_ASSERT_EQUAL(10, r0);
   PROVA_ASSERT_EQUAL(30, r1);
   PROVA_ASSERT_EQUAL(20, r2);
-
-  PROVA_MUTE_STDERR
-
-  PROVA_ASSERT_EQUAL(1, dynamic_array_insert(&da, 5, &v3));
-
-  PROVA_UNMUTE_STDERR
 
   dynamic_array_free(&da);
 }
@@ -112,7 +99,7 @@ PTEST(da_remove) {
   dynamic_array_append(&da, &v2);
   dynamic_array_append(&da, &v3);
 
-  PROVA_ASSERT_EQUAL(0, dynamic_array_remove(&da, 1));
+  dynamic_array_remove(&da, 1);
   PROVA_ASSERT_EQUAL(2, da.count);
 
   u32 r0, r1;
@@ -121,12 +108,6 @@ PTEST(da_remove) {
 
   PROVA_ASSERT_EQUAL(10, r0);
   PROVA_ASSERT_EQUAL(30, r1);
-
-  PROVA_MUTE_STDERR
-
-  PROVA_ASSERT_EQUAL(1, dynamic_array_remove(&da, 5));
-
-  PROVA_UNMUTE_STDERR
 
   dynamic_array_free(&da);
 }
@@ -140,19 +121,13 @@ PTEST(da_pop) {
   dynamic_array_append(&da, &v2);
 
   u32 pop_val = 0;
-  PROVA_ASSERT_EQUAL(0, dynamic_array_pop(&da, &pop_val));
+  dynamic_array_pop(&da, &pop_val);
   PROVA_ASSERT_EQUAL(200, pop_val);
   PROVA_ASSERT_EQUAL(1, da.count);
 
-  PROVA_ASSERT_EQUAL(0, dynamic_array_pop(&da, NULL));
+  dynamic_array_pop(&da, &pop_val);
 
   PROVA_ASSERT_EQUAL(0, da.count);
-
-  PROVA_MUTE_STDERR
-
-  PROVA_ASSERT_EQUAL(1, dynamic_array_pop(&da, &pop_val));
-
-  PROVA_UNMUTE_STDERR
 
   dynamic_array_free(&da);
 }

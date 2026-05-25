@@ -17,18 +17,15 @@
 #include <stdlib.h>
 #include <string.h>
 
-void fstate_init(fstate *fst, const char *filepath) {
+scu_result fstate_init(fstate *fst, const char *filepath) {
   fst->filepath_len = strlen(filepath) + 1;
   fst->filepath = scu_checked_malloc(fst->filepath_len * sizeof(char));
   strcpy(fst->filepath, filepath);
 
   fst->extracted_filepath = scu_extract_name(fst->filepath);
 
-  fst->code_buffer_len = scu_read_file(fst->filepath, &fst->code_buffer);
-  if (fst->code_buffer == NULL) {
-    scu_perror("Failed to read file: %s\n", fst->filepath);
-    exit(1);
-  }
+  SCU_TRY(
+      scu_read_file(fst->filepath, &fst->code_buffer, &fst->code_buffer_len));
 
   dynamic_array_init(&fst->tokens, sizeof(token));
 
@@ -39,6 +36,8 @@ void fstate_init(fstate *fst, const char *filepath) {
   ht_init(&fst->variables, sizeof(variable));
 
   ht_init(&fst->functions, sizeof(fn_node));
+
+  return SCU_SUCCESS;
 }
 
 void fstate_free(fstate *fst) {

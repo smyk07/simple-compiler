@@ -6,7 +6,6 @@
  */
 
 #include "sclc/backend/llvm/llvm_irgen.hpp"
-#include "llvm/Support/ErrorHandling.h"
 
 extern "C" {
 #include "frontend/ast.h"
@@ -17,12 +16,13 @@ extern "C" {
 #include "core/utils.h"
 }
 
-#include <inttypes.h>
+#include "llvm/Support/ErrorHandling.h"
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Type.h>
 #include <llvm/Target/TargetMachine.h>
 
+#include <cinttypes>
 #include <map>
 
 static llvm::Type *scl_type_to_llvm(llvm_backend_ctx &ctx, type t) {
@@ -244,7 +244,7 @@ static llvm::Value *llvm_irgen_arithmetic_expr(llvm_backend_ctx &ctx,
                                                arithmetic_expr_node *expr) {
   switch (expr->kind) {
   case AR_EXPR_INVALID:
-    llvm_unreachable("AR_EXPR_INVALID reached IR gen");
+    scu_punreachable("AR_EXPR_INVALID reached IR gen");
     break;
 
   case AR_EXPR_TERM:
@@ -311,7 +311,7 @@ static llvm::Value *llvm_irgen_relational(llvm_backend_ctx &ctx,
 
   switch (rel->kind) {
   case REL_INVALID:
-    llvm_unreachable("REL_INVALID reached IR gen\n");
+    scu_punreachable("REL_INVALID reached IR gen\n");
     break;
 
   case REL_IS_EQUAL:
@@ -333,7 +333,7 @@ static llvm::Value *llvm_irgen_logical(llvm_backend_ctx &ctx,
                                        logical_node *log) {
   switch (log->kind) {
   case LOG_INVALID:
-    llvm_unreachable("LOG_INVALID reached IR gen\n");
+    scu_punreachable("LOG_INVALID reached IR gen\n");
     break;
 
   case LOG_AND: {
@@ -364,7 +364,7 @@ static llvm::Value *llvm_irgen_logical(llvm_backend_ctx &ctx,
 static llvm::Value *llvm_irgen_expr(llvm_backend_ctx &ctx, expr_node *expr) {
   switch (expr->kind) {
   case EXPR_INVALID:
-    llvm_unreachable("EXPR_INVALID reached IR gen\n");
+    scu_punreachable("EXPR_INVALID reached IR gen\n");
     break;
 
   case EXPR_TERM:
@@ -382,7 +382,8 @@ static llvm::Value *llvm_irgen_expr(llvm_backend_ctx &ctx, expr_node *expr) {
   }
 }
 
-static void llvm_irgen_instr_declare(llvm_backend_ctx &ctx, variable *var) {
+static scu_result llvm_irgen_instr_declare(llvm_backend_ctx &ctx,
+                                           variable *var) {
   llvm::Type *var_type = scl_type_to_llvm(ctx, var->type);
 
   if (var->is_array && var->dimensions > 0) {
@@ -398,16 +399,19 @@ static void llvm_irgen_instr_declare(llvm_backend_ctx &ctx, variable *var) {
                    "Variable declaration '%s' outside function at line %" PRIu64
                    "\n"),
                var->name, var->line);
-    return;
+    return SCU_ERR_CODEGEN;
   }
 
   llvm::AllocaInst *alloca = create_entry_block_alloca(fn, var->name, var_type);
 
   named_values[var->name] = alloca;
+
+  return SCU_SUCCESS;
 }
 
-static void llvm_irgen_instr_initialize(llvm_backend_ctx &ctx,
-                                        initialize_variable_node *init_var) {
+static scu_result
+llvm_irgen_instr_initialize(llvm_backend_ctx &ctx,
+                            initialize_variable_node *init_var) {
   variable *var = &init_var->var;
   llvm::Type *var_type = scl_type_to_llvm(ctx, var->type);
 
@@ -425,7 +429,7 @@ static void llvm_irgen_instr_initialize(llvm_backend_ctx &ctx,
             "Variable initialization '%s' outside function at line %" PRIu64
             "\n"),
         var->name, var->line);
-    return;
+    return SCU_ERR_CODEGEN;
   }
 
   llvm::AllocaInst *alloca = create_entry_block_alloca(fn, var->name, var_type);
@@ -444,16 +448,18 @@ static void llvm_irgen_instr_initialize(llvm_backend_ctx &ctx,
     scu_perror(const_cast<char *>("Failed to generate intiialization "
                                   "expression for '%s' at line %" PRIu64 "\n"),
                var->name, var->line);
-    return;
+    return SCU_ERR_CODEGEN;
   }
 
   init_value = cast_to_type(ctx, init_value, var_type);
 
   ctx.builder->CreateStore(init_value, alloca);
+
+  return SCU_SUCCESS;
 }
 
-static void llvm_irgen_instr_declare_array(llvm_backend_ctx &ctx,
-                                           declare_array_node *arr) {
+static scu_result llvm_irgen_instr_declare_array(llvm_backend_ctx &ctx,
+                                                 declare_array_node *arr) {
   variable *var = &arr->var;
 
   llvm::Type *elem_type = scl_type_to_llvm(ctx, var->type);
@@ -466,7 +472,7 @@ static void llvm_irgen_instr_declare_array(llvm_backend_ctx &ctx,
                      "Failed to evaluate array size for '%s' at line %" PRIu64
                      "\n"),
                  var->name, var->line);
-      return;
+      return SCU_ERR_CODEGEN;
     }
   }
 
@@ -476,7 +482,7 @@ static void llvm_irgen_instr_declare_array(llvm_backend_ctx &ctx,
                    "Array declaration '%s' outside function at line %" PRIu64
                    "\n"),
                var->name, var->line);
-    return;
+    return SCU_ERR_CODEGEN;
   }
 
   llvm::AllocaInst *alloca = nullptr;
@@ -489,7 +495,7 @@ static void llvm_irgen_instr_declare_array(llvm_backend_ctx &ctx,
   } else {
     scu_perror(
         const_cast<char *>("Non-constant array sizes not supported yet\n"));
-    return;
+    return SCU_ERR_CODEGEN;
   }
 
   llvm::Type *array_type = llvm::ArrayType::get(elem_type, array_size);
@@ -501,14 +507,16 @@ static void llvm_irgen_instr_declare_array(llvm_backend_ctx &ctx,
                    "Failed to create array alloca for '%s' at line %" PRIu64
                    "\n"),
                var->name, var->line);
-    return;
+    return SCU_ERR_CODEGEN;
   }
 
   named_values[var->name] = alloca;
+
+  return SCU_SUCCESS;
 }
 
-static void llvm_irgen_initialize_array(llvm_backend_ctx &ctx,
-                                        initialize_array_node *arr) {
+static scu_result llvm_irgen_initialize_array(llvm_backend_ctx &ctx,
+                                              initialize_array_node *arr) {
   variable *var = &arr->var;
 
   llvm::Type *elem_type = scl_type_to_llvm(ctx, var->type);
@@ -519,7 +527,7 @@ static void llvm_irgen_initialize_array(llvm_backend_ctx &ctx,
                    "Array initialization '%s' outside function at line %" PRIu64
                    "\n"),
                var->name, var->line);
-    return;
+    return SCU_ERR_CODEGEN;
   }
 
   llvm::Value *size_val = nullptr;
@@ -528,7 +536,7 @@ static void llvm_irgen_initialize_array(llvm_backend_ctx &ctx,
     if (!size_val) {
       scu_perror(const_cast<char *>("Failed to evaluate array size for '%s'\n"),
                  var->name);
-      return;
+      return SCU_ERR_CODEGEN;
     }
   } else {
     size_val = llvm::ConstantInt::get(llvm::Type::getInt32Ty(*ctx.context),
@@ -546,7 +554,7 @@ static void llvm_irgen_initialize_array(llvm_backend_ctx &ctx,
   } else {
     scu_perror(
         const_cast<char *>("Non-constant array sizes not supported yet\n"));
-    return;
+    return SCU_ERR_CODEGEN;
   }
 
   llvm::Type *array_type = llvm::ArrayType::get(elem_type, array_size);
@@ -574,15 +582,17 @@ static void llvm_irgen_initialize_array(llvm_backend_ctx &ctx,
 
     ctx.builder->CreateStore(elem_val, elem_ptr);
   }
+
+  return SCU_SUCCESS;
 }
 
-static void llvm_irgen_instr_assign(llvm_backend_ctx &ctx,
-                                    assign_node *assign) {
+static scu_result llvm_irgen_instr_assign(llvm_backend_ctx &ctx,
+                                          assign_node *assign) {
   auto it = named_values.find(assign->identifier.name);
   if (it == named_values.end()) {
     scu_perror(const_cast<char *>("Unknown variable '%s' in assignment\n"),
                assign->identifier.name);
-    return;
+    return SCU_ERR_CODEGEN;
   }
 
   llvm::AllocaInst *var_alloca = it->second;
@@ -592,16 +602,18 @@ static void llvm_irgen_instr_assign(llvm_backend_ctx &ctx,
     scu_perror(const_cast<char *>(
                    "Failed to evaluate expression in assignment to '%s'\n"),
                assign->identifier.name);
-    return;
+    return SCU_ERR_CODEGEN;
   }
 
   llvm::Type *target_type = var_alloca->getAllocatedType();
   expr_val = cast_to_type(ctx, expr_val, target_type);
 
   ctx.builder->CreateStore(expr_val, var_alloca);
+
+  return SCU_SUCCESS;
 }
 
-static void llvm_irgen_instr_assign_to_array_subscript(
+static scu_result llvm_irgen_instr_assign_to_array_subscript(
     llvm_backend_ctx &ctx, assign_to_array_subscript_node *assign) {
 
   variable *var = &assign->var;
@@ -609,7 +621,7 @@ static void llvm_irgen_instr_assign_to_array_subscript(
   auto it = named_values.find(var->name);
   if (it == named_values.end()) {
     scu_perror(const_cast<char *>("Unknown array variable '%s'\n"), var->name);
-    return;
+    return SCU_ERR_CODEGEN;
   }
 
   llvm::AllocaInst *array_alloca = it->second;
@@ -617,7 +629,7 @@ static void llvm_irgen_instr_assign_to_array_subscript(
 
   if (!array_type->isArrayTy()) {
     scu_perror(const_cast<char *>("'%s' is not an array\n"), var->name);
-    return;
+    return SCU_ERR_CODEGEN;
   }
 
   llvm::Type *elem_type = array_type->getArrayElementType();
@@ -625,7 +637,7 @@ static void llvm_irgen_instr_assign_to_array_subscript(
   llvm::Value *index = llvm_irgen_arithmetic_expr(ctx, assign->index_expr);
 
   if (!index)
-    return;
+    return SCU_ERR_CODEGEN;
 
   index = cast_to_type(ctx, index, llvm::Type::getInt32Ty(*ctx.context));
 
@@ -638,18 +650,20 @@ static void llvm_irgen_instr_assign_to_array_subscript(
   llvm::Value *rhs = llvm_irgen_arithmetic_expr(ctx, assign->expr_to_assign);
 
   if (!rhs)
-    return;
+    return SCU_ERR_CODEGEN;
 
   rhs = cast_to_type(ctx, rhs, elem_type);
 
   ctx.builder->CreateStore(rhs, elem_ptr);
+
+  return SCU_SUCCESS;
 }
 
-static void llvm_irgen_instr_if(llvm_backend_ctx &ctx, if_node *if_stmt) {
+static scu_result llvm_irgen_instr_if(llvm_backend_ctx &ctx, if_node *if_stmt) {
   llvm::Function *fn = ctx.builder->GetInsertBlock()->getParent();
   if (!fn) {
     scu_perror(const_cast<char *>("If statement outside function\n"));
-    return;
+    return SCU_ERR_CODEGEN;
   }
 
   llvm::BasicBlock *merge_bb =
@@ -658,7 +672,7 @@ static void llvm_irgen_instr_if(llvm_backend_ctx &ctx, if_node *if_stmt) {
   llvm::Value *cond_val = llvm_irgen_expr(ctx, &if_stmt->condition);
   if (!cond_val) {
     scu_perror(const_cast<char *>("Failed to generate if condition\n"));
-    return;
+    return SCU_ERR_CODEGEN;
   }
 
   llvm::BasicBlock *then_bb =
@@ -677,12 +691,12 @@ static void llvm_irgen_instr_if(llvm_backend_ctx &ctx, if_node *if_stmt) {
 
   ctx.builder->SetInsertPoint(then_bb);
   if (if_stmt->then.kind == COND_SINGLE_INSTR) {
-    llvm_irgen_instr(ctx, if_stmt->then.single);
+    SCU_TRY(llvm_irgen_instr(ctx, if_stmt->then.single));
   } else {
     for (u64 i = 0; i < if_stmt->then.multi.count; i++) {
       instr_node instr;
       dynamic_array_get(&if_stmt->then.multi, i, &instr);
-      llvm_irgen_instr(ctx, &instr);
+      SCU_TRY(llvm_irgen_instr(ctx, &instr));
     }
   }
   if (!ctx.builder->GetInsertBlock()->getTerminator()) {
@@ -699,7 +713,7 @@ static void llvm_irgen_instr_if(llvm_backend_ctx &ctx, if_node *if_stmt) {
     llvm::Value *elif_cond = llvm_irgen_expr(ctx, &elif.condition);
     if (!elif_cond) {
       scu_perror(const_cast<char *>("Failed to generate else-if condition\n"));
-      return;
+      return SCU_ERR_CODEGEN;
     }
 
     char buf[32];
@@ -721,12 +735,12 @@ static void llvm_irgen_instr_if(llvm_backend_ctx &ctx, if_node *if_stmt) {
 
     ctx.builder->SetInsertPoint(elif_then_bb);
     if (elif.then.kind == COND_SINGLE_INSTR) {
-      llvm_irgen_instr(ctx, elif.then.single);
+      SCU_TRY(llvm_irgen_instr(ctx, elif.then.single));
     } else {
       for (u64 j = 0; j < elif.then.multi.count; j++) {
         instr_node instr;
         dynamic_array_get(&elif.then.multi, j, &instr);
-        llvm_irgen_instr(ctx, &instr);
+        SCU_TRY(llvm_irgen_instr(ctx, &instr));
       }
     }
     if (!ctx.builder->GetInsertBlock()->getTerminator()) {
@@ -740,12 +754,12 @@ static void llvm_irgen_instr_if(llvm_backend_ctx &ctx, if_node *if_stmt) {
     ctx.builder->SetInsertPoint(else_target);
 
     if (if_stmt->else_->kind == COND_SINGLE_INSTR) {
-      llvm_irgen_instr(ctx, if_stmt->else_->single);
+      SCU_TRY(llvm_irgen_instr(ctx, if_stmt->else_->single));
     } else {
       for (u64 i = 0; i < if_stmt->else_->multi.count; i++) {
         instr_node instr;
         dynamic_array_get(&if_stmt->else_->multi, i, &instr);
-        llvm_irgen_instr(ctx, &instr);
+        SCU_TRY(llvm_irgen_instr(ctx, &instr));
       }
     }
 
@@ -755,20 +769,22 @@ static void llvm_irgen_instr_if(llvm_backend_ctx &ctx, if_node *if_stmt) {
   }
 
   ctx.builder->SetInsertPoint(merge_bb);
+
+  return SCU_SUCCESS;
 }
 
-static void llvm_irgen_instr_match(llvm_backend_ctx &ctx,
-                                   match_node *match_stmt) {
+static scu_result llvm_irgen_instr_match(llvm_backend_ctx &ctx,
+                                         match_node *match_stmt) {
   llvm::Function *fn = ctx.builder->GetInsertBlock()->getParent();
   if (!fn) {
     scu_perror(const_cast<char *>("Match statement outside function\n"));
-    return;
+    return SCU_ERR_CODEGEN;
   }
 
   llvm::Value *match_val = llvm_irgen_arithmetic_expr(ctx, match_stmt->expr);
   if (!match_val) {
     scu_perror(const_cast<char *>("Failed to generate match expression\n"));
-    return;
+    return SCU_ERR_CODEGEN;
   }
 
   llvm::BasicBlock *merge_bb =
@@ -803,7 +819,7 @@ static void llvm_irgen_instr_match(llvm_backend_ctx &ctx,
 
     switch (case_node.kind) {
     case MATCH_CASE_INVALID:
-      llvm_unreachable("MATCH_CASE_INVALID reached IR gen\n");
+      scu_punreachable("MATCH_CASE_INVALID reached IR gen\n");
       break;
 
     case MATCH_CASE_VALUES: {
@@ -850,12 +866,12 @@ static void llvm_irgen_instr_match(llvm_backend_ctx &ctx,
 
     ctx.builder->SetInsertPoint(case_body_bb);
     if (case_node.body.kind == COND_SINGLE_INSTR) {
-      llvm_irgen_instr(ctx, case_node.body.single);
+      SCU_TRY(llvm_irgen_instr(ctx, case_node.body.single));
     } else {
       for (u64 j = 0; j < case_node.body.multi.count; j++) {
         instr_node instr;
         dynamic_array_get(&case_node.body.multi, j, &instr);
-        llvm_irgen_instr(ctx, &instr);
+        SCU_TRY(llvm_irgen_instr(ctx, &instr));
       }
     }
 
@@ -869,13 +885,16 @@ static void llvm_irgen_instr_match(llvm_backend_ctx &ctx,
   }
 
   ctx.builder->SetInsertPoint(merge_bb);
+
+  return SCU_SUCCESS;
 }
 
-static void llvm_irgen_instr_goto(llvm_backend_ctx &ctx, goto_node *goto_stmt) {
+static scu_result llvm_irgen_instr_goto(llvm_backend_ctx &ctx,
+                                        goto_node *goto_stmt) {
   llvm::Function *fn = ctx.builder->GetInsertBlock()->getParent();
   if (!fn) {
     scu_perror(const_cast<char *>("Goto statement outside function\n"));
-    return;
+    return SCU_ERR_CODEGEN;
   }
 
   llvm::BasicBlock *target_bb = label_blocks[goto_stmt->label];
@@ -885,14 +904,16 @@ static void llvm_irgen_instr_goto(llvm_backend_ctx &ctx, goto_node *goto_stmt) {
   }
 
   ctx.builder->CreateBr(target_bb);
+
+  return SCU_SUCCESS;
 }
 
-static void llvm_irgen_instr_label(llvm_backend_ctx &ctx,
-                                   label_node *label_stmt) {
+static scu_result llvm_irgen_instr_label(llvm_backend_ctx &ctx,
+                                         label_node *label_stmt) {
   llvm::Function *fn = ctx.builder->GetInsertBlock()->getParent();
   if (!fn) {
     scu_perror(const_cast<char *>("Label outside function\n"));
-    return;
+    return SCU_ERR_CODEGEN;
   }
 
   llvm::BasicBlock *label_bb = label_blocks[label_stmt->label];
@@ -906,16 +927,19 @@ static void llvm_irgen_instr_label(llvm_backend_ctx &ctx,
   }
 
   ctx.builder->SetInsertPoint(label_bb);
+
+  return SCU_SUCCESS;
 }
 
 static llvm::BasicBlock *current_loop_header = nullptr;
 static llvm::BasicBlock *current_loop_exit = nullptr;
 
-static void llvm_irgen_instr_loop(llvm_backend_ctx &ctx, loop_node *loop) {
+static scu_result llvm_irgen_instr_loop(llvm_backend_ctx &ctx,
+                                        loop_node *loop) {
   llvm::Function *fn = ctx.builder->GetInsertBlock()->getParent();
   if (!fn) {
     scu_perror(const_cast<char *>("Loop outside function\n"));
-    return;
+    return SCU_ERR_CODEGEN;
   }
 
   llvm::BasicBlock *prev_loop_header = current_loop_header;
@@ -949,7 +973,7 @@ static void llvm_irgen_instr_loop(llvm_backend_ctx &ctx, loop_node *loop) {
 
   switch (loop->kind) {
   case LOOP_INVALID:
-    llvm_unreachable("LOOP_INVALID reached IR gen\n");
+    scu_punreachable("LOOP_INVALID reached IR gen\n");
     break;
 
   case LOOP_UNCONDITIONAL: {
@@ -964,7 +988,7 @@ static void llvm_irgen_instr_loop(llvm_backend_ctx &ctx, loop_node *loop) {
       scu_perror(const_cast<char *>("Failed to generate while condition\n"));
       current_loop_header = prev_loop_header;
       current_loop_exit = prev_loop_exit;
-      return;
+      return SCU_ERR_CODEGEN;
     }
     ctx.builder->CreateCondBr(cond, loop_body, loop_exit);
     break;
@@ -993,7 +1017,7 @@ static void llvm_irgen_instr_loop(llvm_backend_ctx &ctx, loop_node *loop) {
     instr_node instr;
     dynamic_array_get(&loop->instrs, i, &instr);
 
-    llvm_irgen_instr(ctx, &instr);
+    SCU_TRY(llvm_irgen_instr(ctx, &instr));
 
     if (ctx.builder->GetInsertBlock()->getTerminator()) {
       break;
@@ -1034,27 +1058,34 @@ static void llvm_irgen_instr_loop(llvm_backend_ctx &ctx, loop_node *loop) {
   current_loop_exit = prev_loop_exit;
 
   ctx.builder->SetInsertPoint(loop_exit);
+
+  return SCU_SUCCESS;
 }
 
-static void llvm_irgen_instr_loop_break(llvm_backend_ctx &ctx) {
+static scu_result llvm_irgen_instr_loop_break(llvm_backend_ctx &ctx) {
   if (!current_loop_exit) {
     scu_perror(const_cast<char *>("Break statement outside loop\n"));
-    return;
+    return SCU_ERR_CODEGEN;
   }
 
   ctx.builder->CreateBr(current_loop_exit);
+
+  return SCU_SUCCESS;
 }
 
-static void llvm_irgen_instr_loop_continue(llvm_backend_ctx &ctx) {
+static scu_result llvm_irgen_instr_loop_continue(llvm_backend_ctx &ctx) {
   if (!current_loop_header) {
     scu_perror(const_cast<char *>("Continue statement outside loop\n"));
-    return;
+    return SCU_ERR_CODEGEN;
   }
 
   ctx.builder->CreateBr(current_loop_header);
+
+  return SCU_SUCCESS;
 }
 
-static void llvm_irgen_instr_fn_define(llvm_backend_ctx &ctx, fn_node *fn) {
+static scu_result llvm_irgen_instr_fn_define(llvm_backend_ctx &ctx,
+                                             fn_node *fn) {
   named_values.clear();
   label_blocks.clear();
 
@@ -1106,7 +1137,7 @@ static void llvm_irgen_instr_fn_define(llvm_backend_ctx &ctx, fn_node *fn) {
     instr_node instr;
     dynamic_array_get(&fn->defined.instrs, i, &instr);
 
-    llvm_irgen_instr(ctx, &instr);
+    SCU_TRY(llvm_irgen_instr(ctx, &instr));
 
     if (ctx.builder->GetInsertBlock()->getTerminator()) {
       break;
@@ -1121,9 +1152,12 @@ static void llvm_irgen_instr_fn_define(llvm_backend_ctx &ctx, fn_node *fn) {
       ctx.builder->CreateRet(zero);
     }
   }
+
+  return SCU_SUCCESS;
 }
 
-static void llvm_irgen_instr_fn_declare(llvm_backend_ctx &ctx, fn_node *fn) {
+static scu_result llvm_irgen_instr_fn_declare(llvm_backend_ctx &ctx,
+                                              fn_node *fn) {
   std::vector<llvm::Type *> param_types;
   for (u64 i = 0; i < fn->parameters.count; i++) {
     variable param;
@@ -1145,9 +1179,12 @@ static void llvm_irgen_instr_fn_declare(llvm_backend_ctx &ctx, fn_node *fn) {
 
   llvm::Function::Create(fn_type, llvm::Function::ExternalLinkage, fn->name,
                          ctx.module);
+
+  return SCU_SUCCESS;
 }
 
-static void llvm_irgen_instr_return(llvm_backend_ctx &ctx, return_node *ret) {
+static scu_result llvm_irgen_instr_return(llvm_backend_ctx &ctx,
+                                          return_node *ret) {
   if (ret->returnvals.count == 0) {
     ctx.builder->CreateRetVoid();
   } else {
@@ -1159,21 +1196,23 @@ static void llvm_irgen_instr_return(llvm_backend_ctx &ctx, return_node *ret) {
     if (!ret_val) {
       scu_perror(const_cast<char *>("Failed to generate return expression\n"));
       ctx.builder->CreateRetVoid();
-      return;
+      return SCU_ERR_CODEGEN;
     }
 
     ctx.builder->CreateRet(ret_val);
   }
+
+  return SCU_SUCCESS;
 }
 
-static void llvm_irgen_instr_fn_call(llvm_backend_ctx &ctx,
-                                     fn_call_node *call) {
+static scu_result llvm_irgen_instr_fn_call(llvm_backend_ctx &ctx,
+                                           fn_call_node *call) {
   llvm::Function *callee = ctx.module->getFunction(call->name);
 
   if (!callee) {
     scu_perror(const_cast<char *>("Unknown function '%s' in call\n"),
                call->name);
-    return;
+    return SCU_ERR_CODEGEN;
   }
 
   std::vector<llvm::Value *> args;
@@ -1187,88 +1226,92 @@ static void llvm_irgen_instr_fn_call(llvm_backend_ctx &ctx,
       scu_perror(const_cast<char *>("Failed to evaluate argument %" PRIu64
                                     " in call to '%s'\n"),
                  i, call->name);
-      return;
+      return SCU_ERR_CODEGEN;
     }
 
     args.push_back(arg_val);
   }
 
   ctx.builder->CreateCall(callee, args);
+
+  return SCU_SUCCESS;
 }
 
-void llvm_irgen_instr(llvm_backend_ctx &ctx, instr_node *instr) {
+scu_result llvm_irgen_instr(llvm_backend_ctx &ctx, instr_node *instr) {
   switch (instr->kind) {
   case INSTR_INVALID:
-    llvm_unreachable("INSTR_INVALID found in IR gen");
+    scu_punreachable("INSTR_INVALID found in IR gen");
     break;
 
   case INSTR_DECLARE:
-    llvm_irgen_instr_declare(ctx, &instr->declare_variable);
+    SCU_TRY(llvm_irgen_instr_declare(ctx, &instr->declare_variable));
     break;
 
   case INSTR_INITIALIZE:
-    llvm_irgen_instr_initialize(ctx, &instr->initialize_variable);
+    SCU_TRY(llvm_irgen_instr_initialize(ctx, &instr->initialize_variable));
     break;
 
   case INSTR_DECLARE_ARRAY:
-    llvm_irgen_instr_declare_array(ctx, &instr->declare_array);
+    SCU_TRY(llvm_irgen_instr_declare_array(ctx, &instr->declare_array));
     break;
 
   case INSTR_INITIALIZE_ARRAY:
-    llvm_irgen_initialize_array(ctx, &instr->initialize_array);
+    SCU_TRY(llvm_irgen_initialize_array(ctx, &instr->initialize_array));
     break;
 
   case INSTR_ASSIGN:
-    llvm_irgen_instr_assign(ctx, &instr->assign);
+    SCU_TRY(llvm_irgen_instr_assign(ctx, &instr->assign));
     break;
 
   case INSTR_ASSIGN_TO_ARRAY_SUBSCRIPT:
-    llvm_irgen_instr_assign_to_array_subscript(
-        ctx, &instr->assign_to_array_subscript);
+    SCU_TRY(llvm_irgen_instr_assign_to_array_subscript(
+        ctx, &instr->assign_to_array_subscript));
     break;
 
   case INSTR_IF:
-    llvm_irgen_instr_if(ctx, &instr->if_);
+    SCU_TRY(llvm_irgen_instr_if(ctx, &instr->if_));
     break;
 
   case INSTR_MATCH:
-    llvm_irgen_instr_match(ctx, &instr->match);
+    SCU_TRY(llvm_irgen_instr_match(ctx, &instr->match));
     break;
 
   case INSTR_GOTO:
-    llvm_irgen_instr_goto(ctx, &instr->goto_);
+    SCU_TRY(llvm_irgen_instr_goto(ctx, &instr->goto_));
     break;
 
   case INSTR_LABEL:
-    llvm_irgen_instr_label(ctx, &instr->label);
+    SCU_TRY(llvm_irgen_instr_label(ctx, &instr->label));
     break;
 
   case INSTR_LOOP:
-    llvm_irgen_instr_loop(ctx, &instr->loop);
+    SCU_TRY(llvm_irgen_instr_loop(ctx, &instr->loop));
     break;
 
   case INSTR_LOOP_BREAK:
-    llvm_irgen_instr_loop_break(ctx);
+    SCU_TRY(llvm_irgen_instr_loop_break(ctx));
     break;
 
   case INSTR_LOOP_CONTINUE:
-    llvm_irgen_instr_loop_continue(ctx);
+    SCU_TRY(llvm_irgen_instr_loop_continue(ctx));
     break;
 
   case INSTR_FN_DEFINE:
-    llvm_irgen_instr_fn_define(ctx, &instr->fn_define_node);
+    SCU_TRY(llvm_irgen_instr_fn_define(ctx, &instr->fn_define_node));
     break;
 
   case INSTR_FN_DECLARE:
-    llvm_irgen_instr_fn_declare(ctx, &instr->fn_declare_node);
+    SCU_TRY(llvm_irgen_instr_fn_declare(ctx, &instr->fn_declare_node));
     break;
 
   case INSTR_RETURN:
-    llvm_irgen_instr_return(ctx, &instr->ret_node);
+    SCU_TRY(llvm_irgen_instr_return(ctx, &instr->ret_node));
     break;
 
   case INSTR_FN_CALL:
-    llvm_irgen_instr_fn_call(ctx, &instr->fn_call);
+    SCU_TRY(llvm_irgen_instr_fn_call(ctx, &instr->fn_call));
     break;
   }
+
+  return SCU_SUCCESS;
 }

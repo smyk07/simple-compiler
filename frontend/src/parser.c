@@ -46,9 +46,6 @@ static void parser_init(dynamic_array *tokens, parser *p) {
  */
 static void parser_current(parser *p, token *token) {
   dynamic_array_get(&p->tokens, p->index, token);
-  if (token->kind == TOKEN_END) {
-    scu_check_errors();
-  }
 }
 
 /*
@@ -66,21 +63,22 @@ static void parser_advance(parser *p) { p->index++; }
  *
  * @return: (bool) weather an instruction was parsed
  */
-static bool parse_instr(parser *p, instr_node *instr);
+static scu_result parse_instr(parser *p, instr_node *instr);
 
 /*
  * @brief: parse a term. (declaration)
  *
  * @param p: pointer to the parser state.
  */
-static arithmetic_expr_node *parse_term(parser *p);
+static scu_result parse_term(parser *p, arithmetic_expr_node **aexpr);
 
 /*
  * @brief: parse a arithmetic expression. (declaration)
  *
  * @param p: pointer to the parser state.
  */
-static arithmetic_expr_node *parse_arithmetic_expr(parser *p);
+static scu_result parse_arithmetic_expr(parser *p,
+                                        arithmetic_expr_node **aexpr);
 
 /*
  * @brief: parse an individual term.
@@ -88,7 +86,7 @@ static arithmetic_expr_node *parse_arithmetic_expr(parser *p);
  * @param p: pointer to the parser state.
  * @param term: pointer to an un-initialized term_node struct.
  */
-static void parse_term_for_expr(parser *p, term_node *term) {
+static scu_result parse_term_for_expr(parser *p, term_node *term) {
   token token = {0};
 
   parser_current(p, &token);
@@ -125,10 +123,13 @@ static void parse_term_for_expr(parser *p, term_node *term) {
       term->array_access.array_var.name = term->identifier.name;
       term->array_access.array_var.line = term->identifier.line;
       parser_advance(p);
-      term->array_access.index_expr = parse_arithmetic_expr(p);
+
+      SCU_TRY(parse_arithmetic_expr(p, &term->array_access.index_expr));
+
       parser_current(p, &token);
       if (token.kind != TOKEN_RSQBR) {
         scu_perror("Expected ']' at line %d\n", token.line);
+        return SCU_ERR_PARSE;
       }
       parser_advance(p);
     }
@@ -143,7 +144,8 @@ static void parse_term_for_expr(parser *p, term_node *term) {
       parser_current(p, &token);
 
       while (token.kind != TOKEN_RPAREN) {
-        arithmetic_expr_node *arg = parse_arithmetic_expr(p);
+        arithmetic_expr_node *arg = NULL;
+        SCU_TRY(parse_arithmetic_expr(p, &arg));
         dynamic_array_append(&term->fn_call.parameters, arg);
 
         parser_current(p, &token);
@@ -155,6 +157,7 @@ static void parse_term_for_expr(parser *p, term_node *term) {
 
       if (token.kind != TOKEN_RPAREN) {
         scu_perror("Expected ')' at line %d\n", token.line);
+        return SCU_ERR_PARSE;
       }
 
       parser_advance(p);
@@ -179,8 +182,10 @@ static void parse_term_for_expr(parser *p, term_node *term) {
     scu_perror("Expected a term (input, int, char, identifier, addof, "
                "pointer), got %s [line %d]\n",
                token_kind_to_str(token.kind), token.line);
-    parser_advance(p);
+    return SCU_ERR_PARSE;
   }
+
+  return SCU_SUCCESS;
 }
 
 /*
@@ -188,20 +193,22 @@ static void parse_term_for_expr(parser *p, term_node *term) {
  *
  * @param p: pointer to the parser state.
  */
-static arithmetic_expr_node *parse_factor(parser *p) {
+static scu_result parse_factor(parser *p, arithmetic_expr_node **aexpr) {
   token token = {0};
   parser_current(p, &token);
 
   if (token.kind == TOKEN_SUBTRACT) {
     parser_advance(p);
-    arithmetic_expr_node *operand = parse_term(p);
+    arithmetic_expr_node *operand = NULL;
+    SCU_TRY(parse_term(p, &operand));
 
     arithmetic_expr_node *node =
         arena_push_struct(ast_arena, arithmetic_expr_node);
     node->kind = AR_EXPR_UNARY_MINUS;
     node->line = token.line;
     node->unary = operand;
-    return node;
+    *aexpr = node;
+    return SCU_SUCCESS;
   }
 
   if (token.kind == TOKEN_INT_LITERAL || token.kind == TOKEN_CHAR_LITERAL ||
@@ -216,24 +223,21 @@ static arithmetic_expr_node *parse_factor(parser *p) {
       node->term.kind = TERM_INT;
       node->term.value.integer = token.value.integer;
       parser_advance(p);
-      return node;
-    }
-
-    else if (token.kind == TOKEN_CHAR_LITERAL) {
+      *aexpr = node;
+      return SCU_SUCCESS;
+    } else if (token.kind == TOKEN_CHAR_LITERAL) {
       node->term.kind = TERM_CHAR;
       node->term.value.character = token.value.character;
       parser_advance(p);
-      return node;
-    }
-
-    else if (token.kind == TOKEN_STRING_LITERAL) {
+      *aexpr = node;
+      return SCU_SUCCESS;
+    } else if (token.kind == TOKEN_STRING_LITERAL) {
       node->term.kind = TERM_STRING;
       node->term.value.str = token.value.str;
       parser_advance(p);
-      return node;
-    }
-
-    else if (token.kind == TOKEN_IDENTIFIER) {
+      *aexpr = node;
+      return SCU_SUCCESS;
+    } else if (token.kind == TOKEN_IDENTIFIER) {
       node->term.kind = TERM_IDENTIFIER;
       node->term.identifier.line = token.line;
       node->term.identifier.name = token.value.str;
@@ -248,12 +252,12 @@ static arithmetic_expr_node *parse_factor(parser *p) {
 
         parser_advance(p);
 
-        node->term.array_access.index_expr = parse_arithmetic_expr(p);
+        SCU_TRY(parse_arithmetic_expr(p, &node->term.array_access.index_expr));
 
         parser_current(p, &token);
-
         if (token.kind != TOKEN_RSQBR) {
           scu_perror("Expected ']' at line %d\n", token.line);
+          return SCU_ERR_PARSE;
         }
         parser_advance(p);
       } else if (token.kind == TOKEN_LPAREN) {
@@ -266,7 +270,8 @@ static arithmetic_expr_node *parse_factor(parser *p) {
         parser_current(p, &token);
 
         while (token.kind != TOKEN_RPAREN) {
-          arithmetic_expr_node *arg = parse_arithmetic_expr(p);
+          arithmetic_expr_node *arg = NULL;
+          SCU_TRY(parse_arithmetic_expr(p, &arg));
           dynamic_array_append(&node->term.fn_call.parameters, arg);
 
           parser_current(p, &token);
@@ -278,45 +283,43 @@ static arithmetic_expr_node *parse_factor(parser *p) {
 
         if (token.kind != TOKEN_RPAREN) {
           scu_perror("Expected ')' at line %d\n", token.line);
+          return SCU_ERR_PARSE;
         }
         parser_advance(p);
       }
-      return node;
-    }
-
-    else if (token.kind == TOKEN_POINTER) {
+      *aexpr = node;
+      return SCU_SUCCESS;
+    } else if (token.kind == TOKEN_POINTER) {
       node->term.kind = TERM_DEREF;
       node->term.identifier.line = token.line;
       node->term.identifier.name = token.value.str;
       parser_advance(p);
-      return node;
-    }
-
-    else if (token.kind == TOKEN_ADDRESS_OF) {
+      *aexpr = node;
+      return SCU_SUCCESS;
+    } else if (token.kind == TOKEN_ADDRESS_OF) {
       node->term.kind = TERM_ADDOF;
       node->term.identifier.line = token.line;
       node->term.identifier.name = token.value.str;
       parser_advance(p);
-      return node;
+      *aexpr = node;
+      return SCU_SUCCESS;
     }
-  }
-
-  else if (token.kind == TOKEN_LPAREN) {
+  } else if (token.kind == TOKEN_LPAREN) {
     parser_advance(p);
-    arithmetic_expr_node *node = parse_arithmetic_expr(p);
+    arithmetic_expr_node *node = NULL;
+    SCU_TRY(parse_arithmetic_expr(p, &node));
     parser_current(p, &token);
     if (token.kind != TOKEN_RPAREN) {
       scu_perror("Syntax error: expected ')' at line %d\n", token.line);
+      return SCU_ERR_PARSE;
     }
     parser_advance(p);
-    return node;
+    *aexpr = node;
+    return SCU_SUCCESS;
   }
 
-  else {
-    scu_perror("Syntax error: expected term or '(' at line %d\n", token.line);
-    scu_check_errors();
-  }
-  return NULL;
+  scu_perror("Syntax error: expected term or '(' at line %d\n", token.line);
+  return SCU_ERR_PARSE;
 }
 
 /*
@@ -324,8 +327,10 @@ static arithmetic_expr_node *parse_factor(parser *p) {
  *
  * @param p: pointer to the parser state.
  */
-static arithmetic_expr_node *parse_term(parser *p) {
-  arithmetic_expr_node *left = parse_factor(p);
+static scu_result parse_term(parser *p, arithmetic_expr_node **aexpr) {
+  arithmetic_expr_node *left = NULL;
+  SCU_TRY(parse_factor(p, &left));
+
   while (1) {
     token token = {0};
     parser_current(p, &token);
@@ -333,20 +338,20 @@ static arithmetic_expr_node *parse_term(parser *p) {
     if (token.kind == TOKEN_MULTIPLY || token.kind == TOKEN_DIVIDE ||
         token.kind == TOKEN_MODULO) {
       parser_advance(p);
-      arithmetic_expr_node *right = parse_factor(p);
+      arithmetic_expr_node *right = NULL;
+      SCU_TRY(parse_factor(p, &right));
 
       arithmetic_expr_node *parent =
           arena_push_struct(ast_arena, arithmetic_expr_node);
-
       parent->line = token.line;
 
-      if (token.kind == TOKEN_MULTIPLY) {
+      if (token.kind == TOKEN_MULTIPLY)
         parent->kind = AR_EXPR_MULTIPLY;
-      } else if (token.kind == TOKEN_DIVIDE) {
+      else if (token.kind == TOKEN_DIVIDE)
         parent->kind = AR_EXPR_DIVIDE;
-      } else {
+      else
         parent->kind = AR_EXPR_MODULO;
-      }
+
       parent->binary.left = left;
       parent->binary.right = right;
       left = parent;
@@ -354,7 +359,9 @@ static arithmetic_expr_node *parse_term(parser *p) {
       break;
     }
   }
-  return left;
+
+  *aexpr = left;
+  return SCU_SUCCESS;
 }
 
 /*
@@ -362,15 +369,19 @@ static arithmetic_expr_node *parse_term(parser *p) {
  *
  * @param p: pointer to the parser state.
  */
-static arithmetic_expr_node *parse_arithmetic_expr(parser *p) {
-  arithmetic_expr_node *left = parse_term(p);
+static scu_result parse_arithmetic_expr(parser *p,
+                                        arithmetic_expr_node **aexpr) {
+  arithmetic_expr_node *left = NULL;
+  SCU_TRY(parse_term(p, &left));
+
   while (1) {
     token token = {0};
     parser_current(p, &token);
 
     if (token.kind == TOKEN_ADD || token.kind == TOKEN_SUBTRACT) {
       parser_advance(p);
-      arithmetic_expr_node *right = parse_term(p);
+      arithmetic_expr_node *right = NULL;
+      SCU_TRY(parse_term(p, &right));
 
       arithmetic_expr_node *parent =
           arena_push_struct(ast_arena, arithmetic_expr_node);
@@ -383,10 +394,12 @@ static arithmetic_expr_node *parse_arithmetic_expr(parser *p) {
       break;
     }
   }
-  return left;
+
+  *aexpr = left;
+  return SCU_SUCCESS;
 }
 
-static bool try_parse_rel(parser *p, rel_node *rel, term_node *lhs) {
+static scu_result try_parse_rel(parser *p, rel_node *rel, term_node *lhs) {
   typedef struct {
     token_kind token_type;
     rel_kind rel_type;
@@ -408,64 +421,67 @@ static bool try_parse_rel(parser *p, rel_node *rel, term_node *lhs) {
     if (token.kind == mappings[i].token_type) {
       parser_advance(p);
       term_node rhs = {0};
-      parse_term_for_expr(p, &rhs);
+      SCU_TRY(parse_term_for_expr(p, &rhs));
       rel->kind = mappings[i].rel_type;
       rel->comparison.lhs = *lhs;
       rel->comparison.rhs = rhs;
-      return true;
+      return SCU_SUCCESS;
     }
   }
-  return false;
+  return SCU_ERR_PARSE;
 }
 
-static void parse_logical_or(parser *p, expr_node *expr);
+static scu_result parse_logical_or(parser *p, expr_node *expr);
 
-static void parse_logical_not(parser *p, expr_node *expr) {
+static scu_result parse_logical_not(parser *p, expr_node *expr) {
   token token = {0};
   parser_current(p, &token);
 
   if (token.kind == TOKEN_LPAREN) {
     parser_advance(p);
-    parse_logical_or(p, expr);
+    SCU_TRY(parse_logical_or(p, expr));
     parser_current(p, &token);
-    if (token.kind != TOKEN_RPAREN)
+    if (token.kind != TOKEN_RPAREN) {
       scu_perror("Expected ')' [line %u]\n", token.line);
+      return SCU_ERR_PARSE;
+    }
     parser_advance(p);
-    return;
+    return SCU_SUCCESS;
   }
 
   if (token.kind == TOKEN_NOT) {
     parser_advance(p);
     expr_node *operand = arena_push_struct(ast_arena, expr_node);
-    parse_logical_not(p, operand);
+    SCU_TRY(parse_logical_not(p, operand));
     expr->kind = EXPR_LOGICAL;
     expr->logical.kind = LOG_NOT;
     expr->logical.line = token.line;
     expr->logical.unary.operand = operand;
-    return;
+    return SCU_SUCCESS;
   }
 
   if (token.kind == TOKEN_BOOL_LITERAL) {
     expr->kind = EXPR_BOOL;
     expr->boolean = token.value.boolean;
     parser_advance(p);
-    return;
+    return SCU_SUCCESS;
   }
 
-  // parse the lhs term, then decide: relational or standalone bool var
   term_node lhs = {0};
-  parse_term_for_expr(p, &lhs);
+  SCU_TRY(parse_term_for_expr(p, &lhs));
 
-  if (try_parse_rel(p, &expr->relational, &lhs)) {
+  if (try_parse_rel(p, &expr->relational, &lhs) == SCU_SUCCESS) {
     expr->kind = EXPR_RELATIONAL;
   } else {
     expr->kind = EXPR_TERM;
     expr->term = lhs;
   }
+
+  return SCU_SUCCESS;
 }
 
-static void parse_logical_and(parser *p, expr_node *expr) {
-  parse_logical_not(p, expr);
+static scu_result parse_logical_and(parser *p, expr_node *expr) {
+  SCU_TRY(parse_logical_not(p, expr));
 
   token token = {0};
   parser_current(p, &token);
@@ -477,7 +493,7 @@ static void parse_logical_and(parser *p, expr_node *expr) {
     expr_node *rhs = arena_push_struct(ast_arena, expr_node);
     *lhs = *expr;
 
-    parse_logical_not(p, rhs);
+    SCU_TRY(parse_logical_not(p, rhs));
 
     expr->kind = EXPR_LOGICAL;
     expr->logical.kind = LOG_AND;
@@ -487,10 +503,12 @@ static void parse_logical_and(parser *p, expr_node *expr) {
 
     parser_current(p, &token);
   }
+
+  return SCU_SUCCESS;
 }
 
-static void parse_logical_or(parser *p, expr_node *expr) {
-  parse_logical_and(p, expr);
+static scu_result parse_logical_or(parser *p, expr_node *expr) {
+  SCU_TRY(parse_logical_and(p, expr));
 
   token token = {0};
   parser_current(p, &token);
@@ -502,7 +520,7 @@ static void parse_logical_or(parser *p, expr_node *expr) {
     expr_node *rhs = arena_push_struct(ast_arena, expr_node);
     *lhs = *expr;
 
-    parse_logical_and(p, rhs);
+    SCU_TRY(parse_logical_and(p, rhs));
 
     expr->kind = EXPR_LOGICAL;
     expr->logical.kind = LOG_OR;
@@ -512,10 +530,14 @@ static void parse_logical_or(parser *p, expr_node *expr) {
 
     parser_current(p, &token);
   }
+
+  return SCU_SUCCESS;
 }
 
-static void parse_expr(parser *p, expr_node *expr) {
-  parse_logical_or(p, expr);
+static scu_result parse_expr(parser *p, expr_node *expr) {
+  SCU_TRY(parse_logical_or(p, expr));
+
+  return SCU_SUCCESS;
 }
 
 /*
@@ -524,18 +546,20 @@ static void parse_expr(parser *p, expr_node *expr) {
  * @param p: pointer to the parser state.
  * @param instr: pointer to a newly malloc'd instr struct.
  */
-static void parse_initialize(parser *p, instr_node *instr, type _type,
-                             char *_name) {
+static scu_result parse_initialize(parser *p, instr_node *instr, type _type,
+                                   char *_name) {
   instr->kind = INSTR_INITIALIZE;
   instr->initialize_variable.var.type = _type;
   instr->initialize_variable.var.name = _name;
   parser_advance(p);
 
   if (_type == TYPE_BOOL) {
-    parse_expr(p, &instr->initialize_variable.boolean);
+    SCU_TRY(parse_expr(p, &instr->initialize_variable.boolean));
   } else {
-    instr->initialize_variable.arithmetic = parse_arithmetic_expr(p);
+    SCU_TRY(parse_arithmetic_expr(p, &instr->initialize_variable.arithmetic));
   }
+
+  return SCU_SUCCESS;
 }
 
 /*
@@ -544,9 +568,9 @@ static void parse_initialize(parser *p, instr_node *instr, type _type,
  * @param p: pointer to the parser state.
  * @param instr: pointer to a newly malloc'd instr struct.
  */
-static void parse_initialize_array(parser *p, instr_node *instr, type _type,
-                                   char *_name,
-                                   arithmetic_expr_node *size_expr) {
+static scu_result parse_initialize_array(parser *p, instr_node *instr,
+                                         type _type, char *_name,
+                                         arithmetic_expr_node *size_expr) {
   instr->kind = INSTR_INITIALIZE_ARRAY;
   instr->initialize_array.var.type = _type;
   instr->initialize_array.var.name = _name;
@@ -558,7 +582,7 @@ static void parse_initialize_array(parser *p, instr_node *instr, type _type,
 
   if (token.kind != TOKEN_LBRACE) {
     scu_perror("Expected '{' at line %d\n", token.line);
-    return;
+    return SCU_ERR_PARSE;
   }
   parser_advance(p);
 
@@ -571,7 +595,8 @@ static void parse_initialize_array(parser *p, instr_node *instr, type _type,
       break;
     }
 
-    arithmetic_expr_node *elem = parse_arithmetic_expr(p);
+    arithmetic_expr_node *elem = NULL;
+    SCU_TRY(parse_arithmetic_expr(p, &elem));
     dynamic_array_append(&instr->initialize_array.literal.elements, elem);
 
     parser_current(p, &token);
@@ -581,11 +606,13 @@ static void parse_initialize_array(parser *p, instr_node *instr, type _type,
       break;
     } else {
       scu_perror("Expected '}' or ',' at line %d\n", token.line);
-      return;
+      return SCU_ERR_PARSE;
     }
   }
 
   parser_advance(p);
+
+  return SCU_SUCCESS;
 }
 
 /*
@@ -594,7 +621,7 @@ static void parse_initialize_array(parser *p, instr_node *instr, type _type,
  * @param p: pointer to the parser state.
  * @param instr: pointer to a newly malloc'd instr struct.
  */
-static void parse_declare(parser *p, instr_node *instr) {
+static scu_result parse_declare(parser *p, instr_node *instr) {
   token token = {0};
 
   type _type = TYPE_VOID;
@@ -620,12 +647,12 @@ static void parse_declare(parser *p, instr_node *instr) {
     is_array = true;
     parser_advance(p);
 
-    size_expr = parse_arithmetic_expr(p);
+    SCU_TRY(parse_arithmetic_expr(p, &size_expr));
 
     parser_current(p, &token);
     if (token.kind != TOKEN_RSQBR) {
       scu_perror("Expected ']' at line %d\n", token.line);
-      return;
+      return SCU_ERR_PARSE;
     }
     parser_advance(p);
   }
@@ -634,9 +661,9 @@ static void parse_declare(parser *p, instr_node *instr) {
 
   if (token.kind == TOKEN_ASSIGN) {
     if (is_array) {
-      parse_initialize_array(p, instr, _type, _name, size_expr);
+      SCU_TRY(parse_initialize_array(p, instr, _type, _name, size_expr));
     } else {
-      parse_initialize(p, instr, _type, _name);
+      SCU_TRY(parse_initialize(p, instr, _type, _name));
     }
   } else {
     if (is_array) {
@@ -652,6 +679,8 @@ static void parse_declare(parser *p, instr_node *instr) {
       instr->declare_variable.line = _line;
     }
   }
+
+  return SCU_SUCCESS;
 }
 
 /*
@@ -660,7 +689,7 @@ static void parse_declare(parser *p, instr_node *instr) {
  * @param p: pointer to the parser state.
  * @param instr: pointer to a newly malloc'd instr struct.
  */
-static void parse_fn_call(parser *p, instr_node *instr) {
+static scu_result parse_fn_call(parser *p, instr_node *instr) {
   token token = {0};
   parser_current(p, &token);
 
@@ -673,6 +702,7 @@ static void parse_fn_call(parser *p, instr_node *instr) {
 
   if (token.kind != TOKEN_LPAREN) {
     scu_perror("Expected '(' after function name [line %d]\n", token.line);
+    return SCU_ERR_PARSE;
   }
 
   parser_advance(p);
@@ -681,7 +711,8 @@ static void parse_fn_call(parser *p, instr_node *instr) {
   dynamic_array_init(&instr->fn_call.parameters, sizeof(arithmetic_expr_node));
 
   while (token.kind != TOKEN_RPAREN) {
-    arithmetic_expr_node *arg = parse_arithmetic_expr(p);
+    arithmetic_expr_node *arg = NULL;
+    SCU_TRY(parse_arithmetic_expr(p, &arg));
     dynamic_array_append(&instr->fn_call.parameters, arg);
 
     parser_current(p, &token);
@@ -693,9 +724,12 @@ static void parse_fn_call(parser *p, instr_node *instr) {
 
   if (token.kind != TOKEN_RPAREN) {
     scu_perror("Expected ')' after function arguments [line %d]\n", token.line);
+    return SCU_ERR_PARSE;
   }
 
   parser_advance(p);
+
+  return SCU_SUCCESS;
 }
 
 /*
@@ -704,7 +738,7 @@ static void parse_fn_call(parser *p, instr_node *instr) {
  * @param p: pointer to the parser state.
  * @param instr: pointer to a newly malloc'd instr struct.
  */
-static void parse_assign(parser *p, instr_node *instr) {
+static scu_result parse_assign(parser *p, instr_node *instr) {
   token token = {0};
 
   parser_current(p, &token);
@@ -727,13 +761,14 @@ static void parse_assign(parser *p, instr_node *instr) {
 
     parser_advance(p);
 
-    arithmetic_expr_node *index_expr = parse_arithmetic_expr(p);
-    instr->assign_to_array_subscript.index_expr = index_expr;
+    SCU_TRY(
+        parse_arithmetic_expr(p, &instr->assign_to_array_subscript.index_expr));
 
     parser_current(p, &token);
     if (token.kind != TOKEN_RSQBR) {
       scu_perror("Expected ], found %s [line %d]\n",
                  token_kind_to_str(token.kind), token.line);
+      return SCU_ERR_PARSE;
     }
     parser_advance(p);
     parser_current(p, &token);
@@ -741,13 +776,15 @@ static void parse_assign(parser *p, instr_node *instr) {
     if (token.kind != TOKEN_ASSIGN) {
       scu_perror("Expected assign, found %s [line %d]\n",
                  token_kind_to_str(token.kind), token.line);
+      return SCU_ERR_PARSE;
     }
     parser_advance(p);
 
-    instr->assign_to_array_subscript.expr_to_assign = parse_arithmetic_expr(p);
+    SCU_TRY(parse_arithmetic_expr(
+        p, &instr->assign_to_array_subscript.expr_to_assign));
   } else if (token.kind == TOKEN_LPAREN) {
     p->index--;
-    parse_fn_call(p, instr);
+    SCU_TRY(parse_fn_call(p, instr));
   } else {
     instr->kind = INSTR_ASSIGN;
     instr->line = ident_line;
@@ -756,11 +793,14 @@ static void parse_assign(parser *p, instr_node *instr) {
     if (token.kind != TOKEN_ASSIGN) {
       scu_perror("Expected assign, found %s [line %d]\n",
                  token_kind_to_str(token.kind), token.line);
+      return SCU_ERR_PARSE;
     }
     parser_advance(p);
 
-    instr->assign.expr = parse_arithmetic_expr(p);
+    SCU_TRY(parse_arithmetic_expr(p, &instr->assign.expr));
   }
+
+  return SCU_SUCCESS;
 }
 
 /*
@@ -769,7 +809,7 @@ static void parse_assign(parser *p, instr_node *instr) {
  * @param p: pointer to the parser state.
  * @param block: pointer to the condiitonal block.
  */
-static void parse_cond_block(parser *p, cond_block_node *block) {
+static scu_result parse_cond_block(parser *p, cond_block_node *block) {
   token token = {0};
   parser_current(p, &token);
 
@@ -782,24 +822,26 @@ static void parse_cond_block(parser *p, cond_block_node *block) {
     parser_current(p, &token);
     while (token.kind != TOKEN_RBRACE && token.kind != TOKEN_END) {
       instr_node *new_instr = arena_push_struct(ast_arena, instr_node);
-      if (parse_instr(p, new_instr))
-        dynamic_array_append(&block->multi, new_instr);
+      SCU_TRY(parse_instr(p, new_instr));
+      dynamic_array_append(&block->multi, new_instr);
 
       parser_current(p, &token);
     }
 
     parser_advance(p);
-    return;
+    return SCU_SUCCESS;
   } else {
     block->kind = COND_SINGLE_INSTR;
 
     block->single = arena_push_struct(ast_arena, instr_node);
-    parse_instr(p, block->single);
-    return;
+    SCU_TRY(parse_instr(p, block->single));
+
+    return SCU_SUCCESS;
   }
 
   scu_perror("Expected a statement or '{', found %s [line %d]\n",
              token_kind_to_str(token.kind), token.line);
+  return SCU_ERR_PARSE;
 }
 
 /*
@@ -808,19 +850,19 @@ static void parse_cond_block(parser *p, cond_block_node *block) {
  * @param p: pointer to the parser state.
  * @param instr: pointer to a newly malloc'd instr struct.
  */
-static void parse_if(parser *p, instr_node *instr) {
+static scu_result parse_if(parser *p, instr_node *instr) {
   token token = {0};
 
   instr->kind = INSTR_IF;
   instr->if_.else_ = NULL;
 
   parser_advance(p);
-  parse_expr(p, &instr->if_.condition);
+  SCU_TRY(parse_expr(p, &instr->if_.condition));
 
   parser_current(p, &token);
   instr->line = token.line;
 
-  parse_cond_block(p, &instr->if_.then);
+  SCU_TRY(parse_cond_block(p, &instr->if_.then));
 
   parser_current(p, &token);
 
@@ -833,16 +875,18 @@ static void parse_if(parser *p, instr_node *instr) {
     if (token.kind == TOKEN_IF) {
       if_node else_if = {0};
       parser_advance(p);
-      parse_expr(p, &else_if.condition);
-      parse_cond_block(p, &else_if.then);
+      SCU_TRY(parse_expr(p, &else_if.condition));
+      SCU_TRY(parse_cond_block(p, &else_if.then));
       dynamic_array_append(&instr->if_.else_ifs, &else_if);
       parser_current(p, &token);
     } else {
       instr->if_.else_ = arena_push_struct(ast_arena, cond_block_node);
-      parse_cond_block(p, instr->if_.else_);
+      SCU_TRY(parse_cond_block(p, instr->if_.else_));
       break;
     }
   }
+
+  return SCU_SUCCESS;
 }
 
 /*
@@ -851,7 +895,7 @@ static void parse_if(parser *p, instr_node *instr) {
  * @param p: pointer to the parser state.
  * @param instr: pointer to a newly malloc'd instr struct.
  */
-static void parse_match(parser *p, instr_node *instr) {
+static scu_result parse_match(parser *p, instr_node *instr) {
   token token = {0};
 
   instr->kind = INSTR_MATCH;
@@ -859,14 +903,14 @@ static void parse_match(parser *p, instr_node *instr) {
 
   parser_advance(p);
 
-  instr->match.expr = parse_arithmetic_expr(p);
+  SCU_TRY(parse_arithmetic_expr(p, &instr->match.expr));
 
   parser_current(p, &token);
   instr->line = token.line;
 
   if (token.kind != TOKEN_LBRACE) {
     scu_perror("expected '{' after match expression [line %d]\n", token.line);
-    scu_check_errors();
+    return SCU_ERR_PARSE;
   }
   parser_advance(p);
 
@@ -882,7 +926,7 @@ static void parse_match(parser *p, instr_node *instr) {
     } else {
       arithmetic_expr_node *first_expr =
           arena_push_struct(ast_arena, arithmetic_expr_node);
-      first_expr = parse_arithmetic_expr(p);
+      SCU_TRY(parse_arithmetic_expr(p, &first_expr));
 
       parser_current(p, &token);
 
@@ -894,7 +938,7 @@ static void parse_match(parser *p, instr_node *instr) {
 
         case_node.range.end =
             arena_push_struct(ast_arena, arithmetic_expr_node);
-        case_node.range.end = parse_arithmetic_expr(p);
+        SCU_TRY(parse_arithmetic_expr(p, &case_node.range.end));
       } else {
         case_node.kind = MATCH_CASE_VALUES;
         dynamic_array_init(&case_node.values.values,
@@ -907,7 +951,8 @@ static void parse_match(parser *p, instr_node *instr) {
 
           arithmetic_expr_node *next_expr =
               arena_push_struct(ast_arena, arithmetic_expr_node);
-          next_expr = parse_arithmetic_expr(p);
+
+          SCU_TRY(parse_arithmetic_expr(p, &next_expr));
           dynamic_array_append(&case_node.values.values, &next_expr);
 
           parser_current(p, &token);
@@ -919,11 +964,11 @@ static void parse_match(parser *p, instr_node *instr) {
     if (token.kind != TOKEN_DARROW) {
       scu_perror("Expected '=>' after match case pattern [line %d]\n",
                  token.line);
-      scu_check_errors();
+      return SCU_ERR_PARSE;
     }
     parser_advance(p);
 
-    parse_cond_block(p, &case_node.body);
+    SCU_TRY(parse_cond_block(p, &case_node.body));
 
     dynamic_array_append(&instr->match.cases, &case_node);
 
@@ -932,9 +977,12 @@ static void parse_match(parser *p, instr_node *instr) {
 
   if (token.kind != TOKEN_RBRACE) {
     scu_perror("expected '}' to close match block [line %d]\n", token.line);
-    scu_check_errors();
+    return SCU_ERR_PARSE;
   }
+
   parser_advance(p);
+
+  return SCU_SUCCESS;
 }
 
 /*
@@ -943,7 +991,7 @@ static void parse_match(parser *p, instr_node *instr) {
  * @param p: pointer to the parser state.
  * @param instr: pointer to a newly malloc'd instr struct.
  */
-static void parse_goto(parser *p, instr_node *instr) {
+static scu_result parse_goto(parser *p, instr_node *instr) {
   token token = {0};
 
   instr->kind = INSTR_GOTO;
@@ -955,10 +1003,13 @@ static void parse_goto(parser *p, instr_node *instr) {
   if (token.kind != TOKEN_LABEL) {
     scu_perror("Expected label, found %s [line %d]\n",
                token_kind_to_str(token.kind), token.line);
+    return SCU_ERR_PARSE;
   }
   parser_advance(p);
 
   instr->goto_.label = token.value.str;
+
+  return SCU_SUCCESS;
 }
 
 /*
@@ -967,7 +1018,7 @@ static void parse_goto(parser *p, instr_node *instr) {
  * @param p: pointer to the parser state.
  * @param instr: pointer to a newly malloc'd instr struct.
  */
-static void parse_label(parser *p, instr_node *instr) {
+static scu_result parse_label(parser *p, instr_node *instr) {
   token token = {0};
 
   instr->kind = INSTR_LABEL;
@@ -977,6 +1028,8 @@ static void parse_label(parser *p, instr_node *instr) {
   instr->label.label = token.value.str;
 
   parser_advance(p);
+
+  return SCU_SUCCESS;
 }
 
 /*
@@ -986,7 +1039,7 @@ static void parse_label(parser *p, instr_node *instr) {
  * @param instr: pointer to a newly malloc'd instr struct.
  * @param kind: the kind of loop to parse (UNCONDITIONAL or WHILE).
  */
-static void parse_loop(parser *p, instr_node *instr, loop_kind kind) {
+static scu_result parse_loop(parser *p, instr_node *instr, loop_kind kind) {
   token token = {0};
 
   parser_current(p, &token);
@@ -1001,7 +1054,7 @@ static void parse_loop(parser *p, instr_node *instr, loop_kind kind) {
 
     if (token.kind != TOKEN_IDENTIFIER) {
       scu_perror("expected identifier after 'for' [line %d]\n", token.line);
-      scu_check_errors();
+      return SCU_ERR_PARSE;
     }
 
     instr->loop._for.iterator.name = token.value.str;
@@ -1012,31 +1065,31 @@ static void parse_loop(parser *p, instr_node *instr, loop_kind kind) {
 
     if (token.kind != TOKEN_IN) {
       scu_perror("expected 'in' after loop variable [line %d]\n", token.line);
-      scu_check_errors();
+      return SCU_ERR_PARSE;
     }
 
     parser_advance(p);
 
     instr->loop._for.range_start =
         arena_push_struct(ast_arena, arithmetic_expr_node);
-    instr->loop._for.range_start = parse_arithmetic_expr(p);
+    SCU_TRY(parse_arithmetic_expr(p, &instr->loop._for.range_start));
 
     parser_current(p, &token);
 
     if (token.kind != TOKEN_ELLIPSIS) {
       scu_perror("expected '...' in for loop range [line %d]\n", token.line);
-      scu_check_errors();
+      return SCU_ERR_PARSE;
     }
 
     parser_advance(p);
 
     instr->loop._for.range_end =
         arena_push_struct(ast_arena, arithmetic_expr_node);
-    instr->loop._for.range_end = parse_arithmetic_expr(p);
+    SCU_TRY(parse_arithmetic_expr(p, &instr->loop._for.range_end));
 
   } else if (kind == LOOP_WHILE) {
     parser_current(p, &token);
-    parse_expr(p, &instr->loop.conditional.break_condition);
+    SCU_TRY(parse_expr(p, &instr->loop.conditional.break_condition));
   }
 
   instr->loop.variables = ht_create(sizeof(variable));
@@ -1060,6 +1113,7 @@ static void parse_loop(parser *p, instr_node *instr, loop_kind kind) {
       break;
     }
     scu_perror("no opening brace for %s loop at %d\n", loop_type, token.line);
+    return SCU_ERR_PARSE;
   }
 
   parser_advance(p);
@@ -1067,8 +1121,8 @@ static void parse_loop(parser *p, instr_node *instr, loop_kind kind) {
 
   while (token.kind != TOKEN_RBRACE) {
     instr_node *_instr = arena_push_struct(ast_arena, instr_node);
-    if (parse_instr(p, _instr))
-      dynamic_array_append(&instr->loop.instrs, _instr);
+    SCU_TRY(parse_instr(p, _instr));
+    dynamic_array_append(&instr->loop.instrs, _instr);
     parser_current(p, &token);
   }
 
@@ -1076,8 +1130,10 @@ static void parse_loop(parser *p, instr_node *instr, loop_kind kind) {
 
   if (kind == LOOP_DO_WHILE) {
     parser_current(p, &token);
-    parse_expr(p, &instr->loop.conditional.break_condition);
+    SCU_TRY(parse_expr(p, &instr->loop.conditional.break_condition));
   }
+
+  return SCU_SUCCESS;
 }
 
 /*
@@ -1086,7 +1142,7 @@ static void parse_loop(parser *p, instr_node *instr, loop_kind kind) {
  * @param p: pointer to the parser state.
  * @param instr: pointer to a newly malloc'd instr struct.
  */
-static void parse_fn(parser *p, instr_node *instr) {
+static scu_result parse_fn(parser *p, instr_node *instr) {
   token token = {0};
   parser_current(p, &token);
   instr->kind = INSTR_FN_DECLARE;
@@ -1101,7 +1157,7 @@ static void parse_fn(parser *p, instr_node *instr) {
   parser_current(p, &token);
   if (token.kind != TOKEN_LPAREN) {
     scu_perror("Syntax error: expected '('\n");
-    return;
+    return SCU_ERR_PARSE;
   }
   parser_advance(p);
 
@@ -1121,9 +1177,11 @@ static void parse_fn(parser *p, instr_node *instr) {
 
     variable param = {0};
     param.type = type_from_specifier_token(token.kind);
-    if (param.type == TYPE_INVALID)
+    if (param.type == TYPE_INVALID) {
       scu_perror("Expected type, got %s line %d\n",
                  token_kind_to_str(token.kind), token.line);
+      return SCU_ERR_PARSE;
+    }
     parser_advance(p);
 
     parser_current(p, &token);
@@ -1182,12 +1240,14 @@ static void parse_fn(parser *p, instr_node *instr) {
     parser_current(p, &token);
     while (token.kind != TOKEN_RBRACE && token.kind != TOKEN_END) {
       instr_node *_instr = arena_push_struct(ast_arena, instr_node);
-      if (parse_instr(p, _instr))
-        dynamic_array_append(&instr->fn_define_node.defined.instrs, _instr);
+      SCU_TRY(parse_instr(p, _instr));
+      dynamic_array_append(&instr->fn_define_node.defined.instrs, _instr);
       parser_current(p, &token);
     }
     parser_advance(p);
   }
+
+  return SCU_SUCCESS;
 }
 
 /*
@@ -1196,7 +1256,7 @@ static void parse_fn(parser *p, instr_node *instr) {
  * @param p: pointer to the parser state.
  * @param instr: pointer to a newly malloc'd instr struct.
  */
-static void parse_ret(parser *p, instr_node *instr) {
+static scu_result parse_ret(parser *p, instr_node *instr) {
   token token = {0};
   parser_current(p, &token);
   instr->kind = INSTR_RETURN;
@@ -1208,7 +1268,8 @@ static void parse_ret(parser *p, instr_node *instr) {
   parser_current(p, &token);
 
   while (token.kind != TOKEN_RBRACE) {
-    arithmetic_expr_node *expr = parse_arithmetic_expr(p);
+    arithmetic_expr_node *expr = NULL;
+    SCU_TRY(parse_arithmetic_expr(p, &expr));
     dynamic_array_append(&instr->ret_node.returnvals, expr);
 
     parser_current(p, &token);
@@ -1220,6 +1281,8 @@ static void parse_ret(parser *p, instr_node *instr) {
       break;
     }
   }
+
+  return SCU_SUCCESS;
 }
 
 /*
@@ -1230,7 +1293,7 @@ static void parse_ret(parser *p, instr_node *instr) {
  *
  * @return: (bool) weather an instruction was parsed
  */
-static bool parse_instr(parser *p, instr_node *instr) {
+static scu_result parse_instr(parser *p, instr_node *instr) {
   token token = {0};
 
   parser_current(p, &token);
@@ -1248,77 +1311,77 @@ static bool parse_instr(parser *p, instr_node *instr) {
   case TOKEN_TYPE_U128:
   case TOKEN_TYPE_BOOL:
   case TOKEN_TYPE_CHAR:
-    parse_declare(p, instr);
-    return true;
+    SCU_TRY(parse_declare(p, instr));
+    break;
 
   case TOKEN_IDENTIFIER:
   case TOKEN_POINTER:
-    parse_assign(p, instr);
-    return true;
+    SCU_TRY(parse_assign(p, instr));
+    break;
 
   case TOKEN_IF:
-    parse_if(p, instr);
-    return true;
+    SCU_TRY(parse_if(p, instr));
+    break;
 
   case TOKEN_MATCH:
-    parse_match(p, instr);
-    return true;
+    SCU_TRY(parse_match(p, instr));
+    break;
 
   case TOKEN_GOTO:
-    parse_goto(p, instr);
-    return true;
+    SCU_TRY(parse_goto(p, instr));
+    break;
 
   case TOKEN_LABEL:
-    parse_label(p, instr);
-    return true;
+    SCU_TRY(parse_label(p, instr));
+    break;
 
   case TOKEN_LOOP:
-    parse_loop(p, instr, LOOP_UNCONDITIONAL);
-    return true;
+    SCU_TRY(parse_loop(p, instr, LOOP_UNCONDITIONAL));
+    break;
 
   case TOKEN_WHILE:
-    parse_loop(p, instr, LOOP_WHILE);
-    return true;
+    SCU_TRY(parse_loop(p, instr, LOOP_WHILE));
+    break;
 
   case TOKEN_DO_WHILE:
-    parse_loop(p, instr, LOOP_DO_WHILE);
-    return true;
+    SCU_TRY(parse_loop(p, instr, LOOP_DO_WHILE));
+    break;
 
   case TOKEN_FOR:
-    parse_loop(p, instr, LOOP_FOR);
-    return true;
+    SCU_TRY(parse_loop(p, instr, LOOP_FOR));
+    break;
 
   case TOKEN_BREAK:
     instr->kind = INSTR_LOOP_BREAK;
     instr->line = token.line;
     parser_advance(p);
-    return true;
+    break;
 
   case TOKEN_CONTINUE:
     instr->kind = INSTR_LOOP_CONTINUE;
     instr->line = token.line;
     parser_advance(p);
-    return true;
+    break;
 
   case TOKEN_FN:
-    parse_fn(p, instr);
-    return true;
+    SCU_TRY(parse_fn(p, instr));
+    break;
 
   case TOKEN_RETURN:
-    parse_ret(p, instr);
-    return true;
+    SCU_TRY(parse_ret(p, instr));
+    break;
 
   default:
     scu_perror("unexpected token: %s - '%s' [line %d]\n",
                token_kind_to_str(token.kind), token_get_value(token),
                token.line);
+    return SCU_ERR_PARSE;
   }
 
-  scu_check_errors();
-  return false;
+  return SCU_SUCCESS;
 }
 
-void parser_parse_program(dynamic_array *tokens, ast *program) {
+scu_result parser_parse_program(dynamic_array *tokens, ast *program) {
   ast_arena = &program->arena;
   parser p;
   parser_init(tokens, &p);
@@ -1328,12 +1391,12 @@ void parser_parse_program(dynamic_array *tokens, ast *program) {
 
   while (token.kind != TOKEN_END) {
     instr_node *instr = arena_push_struct(ast_arena, instr_node);
-    scu_check_errors();
-    if (parse_instr(&p, instr))
-      dynamic_array_append(&program->instrs, instr);
-
+    SCU_TRY(parse_instr(&p, instr));
+    dynamic_array_append(&program->instrs, instr);
     parser_current(&p, &token);
   }
 
   ast_arena = NULL;
+
+  return SCU_SUCCESS;
 }

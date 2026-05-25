@@ -10,6 +10,7 @@
 
 #include "core/common.h"
 #include "core/ds/dynamic_array.h"
+#include "core/utils.h"
 
 /*
  * @struct lexer: maintains state of the lexer for tokenizing the source buffer.
@@ -36,8 +37,10 @@ typedef struct lexer {
  * @param buffer: string to be tokenized.
  * @param buffer_len size of buffer (in bytes).
  * @param tokens: dynamic_array of tokens (should be initialized).
+ *
+ * @return: SCU_SUCCESS on success, or the first error encountered
  */
-void lexer_tokenize(const char *buffer, u64 buffer_len, dynamic_array *tokens,
-                    const char *include_dir);
+scu_result lexer_tokenize(const char *buffer, u64 buffer_len,
+                          dynamic_array *tokens, const char *include_dir);
 
 #endif // !LEXER_H

@@ -47,7 +47,8 @@ PTEST(scu_read_file) {
   char *buff = NULL;
   char *expected_contents = "Hello tester\n";
 
-  u32 bytes = scu_read_file(filepath, &buff);
+  u64 bytes = 0;
+  scu_read_file(filepath, &buff, &bytes);
 
   PROVA_ASSERT_EQUAL(13, bytes);
   PROVA_ASSERT_EQUAL_STRING(expected_contents, buff);

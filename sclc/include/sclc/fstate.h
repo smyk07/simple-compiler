@@ -8,6 +8,7 @@
 #ifndef FSTATE_H
 #define FSTATE_H
 
+#include "core/utils.h"
 #include "frontend/ast.h"
 
 #include "core/common.h"
@@ -50,8 +51,10 @@ typedef struct fstate {
  *
  * @param fst: Pointer to a fstate
  * @param filepath: Path to the source file to be compiled (e.g., "main.scl")
+ *
+ * @return: SCU_SUCCESS on success, or the first error encountered
  */
-void fstate_init(fstate *fst, const char *filepath);
+scu_result fstate_init(fstate *fst, const char *filepath);
 
 /*
  * @brief: Frees all memory associated with a file state.

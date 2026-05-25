@@ -8,6 +8,7 @@
 #include "core/utils.h"
 
 #include <assert.h>
+#include <errno.h>
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -15,15 +16,13 @@
 #include <string.h>
 #include <sys/stat.h>
 
-static u64 err_count = 0;
-
 void *scu_checked_malloc(u64 size) {
   if (size == 0)
     size = 1;
   void *ptr = calloc(1, size);
   if (ptr == NULL) {
     scu_perror("Memory allocation failed.");
-    exit(1);
+    abort();
   }
   return ptr;
 }
@@ -34,7 +33,7 @@ void *scu_checked_realloc(void *ptr, u64 size) {
   void *newptr = realloc(ptr, size);
   if (newptr == NULL) {
     scu_perror("Memory re-allocation failed.");
-    exit(1);
+    abort();
   }
   return newptr;
 }
@@ -58,29 +57,33 @@ char *scu_extract_name(const char *filename) {
 
 #define MAX_LEN 4096
 
-u32 scu_read_file(const char *path, char **buffer) {
+scu_result scu_read_file(const char *path, char **buffer, u64 *out_size) {
   struct stat path_stat;
   stat(path, &path_stat);
 
+  if (stat(path, &path_stat) != 0) {
+    scu_perror("Cannot access file: %s — %s\n", path, strerror(errno));
+    return SCU_ERR_IO;
+  }
+
   if (!S_ISREG(path_stat.st_mode)) {
-    scu_perror("Given path is not a valid file.\n");
-    scu_check_errors();
+    scu_perror("Not a regular file: %s\n", path);
+    return SCU_ERR_ARGS;
   }
 
   u32 tmp_capacity = MAX_LEN;
   char *tmp = scu_checked_malloc(tmp_capacity * sizeof(char));
 
-  u32 tmp_size = 0;
-
   FILE *f = fopen(path, "r");
 
   if (f == NULL) {
-    perror("fopen failed");
+    scu_perror("Cannot open file: %s — %s\n", path, strerror(errno));
     free(tmp);
-    exit(1);
+    return SCU_ERR_IO;
   }
 
-  u32 size = 0;
+  u64 tmp_size = 0;
+  u64 size = 0;
 
   do {
     if (tmp_size + MAX_LEN >= tmp_capacity) {
@@ -92,11 +95,19 @@ u32 scu_read_file(const char *path, char **buffer) {
     tmp_size += size;
   } while (size > 0);
 
+  if (ferror(f)) {
+    scu_perror("Read error on file: %s\n", path);
+    free(tmp);
+    fclose(f);
+    return SCU_ERR_IO;
+  }
+
   fclose(f);
 
   *buffer = tmp;
+  *out_size = tmp_size;
 
-  return tmp_size;
+  return SCU_SUCCESS;
 }
 
 #undef MAX_LEN
@@ -148,17 +159,9 @@ void scu_pwarning(char *__restrict __format, ...) {
 }
 
 void scu_perror(char *__restrict __format, ...) {
-  err_count++;
   va_list args;
   va_start(args, __format);
   fprintf(stderr, "\033[1;31m[ERROR] \033[0m");
   vfprintf(stderr, __format, args);
   va_end(args);
-}
-
-void scu_check_errors() {
-  if (err_count) {
-    scu_pwarning("%d error(s) found\n", err_count);
-    exit(1);
-  }
 }
