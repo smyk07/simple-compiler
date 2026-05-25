@@ -17,6 +17,8 @@
 #include "core/ds/ht.h"
 #include "core/utils.h"
 
+#include <inttypes.h>
+
 static mem_arena *ast_arena;
 
 /*
@@ -442,7 +444,7 @@ static scu_result parse_logical_not(parser *p, expr_node *expr) {
     SCU_TRY(parse_logical_or(p, expr));
     parser_current(p, &token);
     if (token.kind != TOKEN_RPAREN) {
-      scu_perror("Expected ')' [line %u]\n", token.line);
+      scu_perror("Expected ')' [line %" PRIu64 "]\n", token.line);
       return SCU_ERR_PARSE;
     }
     parser_advance(p);

@@ -10,6 +10,8 @@
 #include "core/common.h"
 #include "core/utils.h"
 
+#include <inttypes.h>
+
 type get_var_type(ht *variables, variable *var_to_find) {
   if (!variables || !var_to_find || !var_to_find->name)
     return -1;
@@ -17,8 +19,8 @@ type get_var_type(ht *variables, variable *var_to_find) {
   variable *var = ht_search(variables, var_to_find->name);
 
   if (!var) {
-    scu_perror("Use of undeclared variable: %s [line %u]\n", var_to_find->name,
-               var_to_find->line);
+    scu_perror("Use of undeclared variable: %s [line %" PRIu64 "]\n",
+               var_to_find->name, var_to_find->line);
     return -1;
   }
 
@@ -32,8 +34,8 @@ u64 get_var_stack_offset(ht *variables, variable *var_to_find) {
   variable *var = ht_search(variables, var_to_find->name);
 
   if (!var) {
-    scu_perror("Use of undeclared variable: %s [line %u]\n", var_to_find->name,
-               var_to_find->line);
+    scu_perror("Use of undeclared variable: %s [line %" PRIu64 "]\n",
+               var_to_find->name, var_to_find->line);
     return -1;
   }
 

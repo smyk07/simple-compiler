@@ -415,7 +415,7 @@ static scu_result instr_check_variables(instr_node *instr, ht *variables,
         ht_search(variables, instr->assign_to_array_subscript.var.name);
 
     if (!arr) {
-      scu_perror("Use of undeclared array: %s [line %u]\n",
+      scu_perror("Use of undeclared array: %s [line %" PRIu64 "]\n",
                  instr->assign_to_array_subscript.var.name,
                  instr->assign_to_array_subscript.var.line);
       return SCU_ERR_SEMA;
@@ -922,9 +922,11 @@ static scu_result instr_typecheck(instr_node *instr, ht *variables,
     } else if (target_type != expr_result) {
       const char *target_type_str = type_to_str(target_type);
       const char *expr_result_str = type_to_str(expr_result);
-      scu_perror("Type mismatch in initialization to %s - %s to %s [line %u]\n",
-                 instr->assign.identifier.name, expr_result_str,
-                 target_type_str, instr->line);
+      scu_perror(
+          "Type mismatch in initialization to %s - %s to %s [line %" PRIu64
+          "]\n",
+          instr->assign.identifier.name, expr_result_str, target_type_str,
+          instr->line);
       return SCU_ERR_SEMA;
     }
     break;
@@ -941,7 +943,7 @@ static scu_result instr_typecheck(instr_node *instr, ht *variables,
         const char *array_type_str = type_to_str(array_type);
         const char *elem_type_str = type_to_str(elem_type);
         scu_perror("Type mismatch in array initialization - element %" PRIu64
-                   " is %s but array is %s [line %u]\n",
+                   " is %s but array is %s [line %" PRIu64 "]\n",
                    i, elem_type_str, array_type_str, instr->line);
         return SCU_ERR_SEMA;
       }
@@ -975,7 +977,7 @@ static scu_result instr_typecheck(instr_node *instr, ht *variables,
         arithmetic_expr_type(instr->assign_to_array_subscript.index_expr,
                              TYPE_I32, variables, functions);
     if (index_type != TYPE_I32) {
-      scu_perror("Array index must be of type int, got %s [line %u]\n",
+      scu_perror("Array index must be of type int, got %s [line %" PRIu64 "]\n",
                  type_to_str(index_type), instr->line);
       return SCU_ERR_SEMA;
     }
