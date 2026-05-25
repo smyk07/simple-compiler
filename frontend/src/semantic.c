@@ -1333,29 +1333,27 @@ scu_result check_semantics(dynamic_array *instrs, ht *variables,
                            ht *functions) {
   // Define and declare any / all functions
   for (u64 i = 0; i < instrs->count; i++) {
-    instr_node instr;
-    dynamic_array_get(instrs, i, &instr);
+    instr_node *instr = *(instr_node **)dynamic_array_get_ptr(instrs, i);
 
-    if (instr.kind == INSTR_FN_DECLARE || instr.kind == INSTR_FN_DEFINE) {
+    if (instr->kind == INSTR_FN_DECLARE || instr->kind == INSTR_FN_DEFINE) {
       // since this is a union anyways
-      SCU_TRY(register_function(&instr.fn_declare_node, functions));
+      SCU_TRY(register_function(&instr->fn_declare_node, functions));
     }
 
-    if (instr.kind == INSTR_FN_CALL)
-      SCU_TRY(check_function_call(&instr.fn_call, functions, variables,
-                                  instr.line));
+    if (instr->kind == INSTR_FN_CALL)
+      SCU_TRY(check_function_call(&instr->fn_call, functions, variables,
+                                  instr->line));
   }
 
   // Validate everything
   for (u64 i = 0; i < instrs->count; i++) {
-    instr_node instr;
-    dynamic_array_get(instrs, i, &instr);
+    instr_node *instr = *(instr_node **)dynamic_array_get_ptr(instrs, i);
 
-    if (instr.kind == INSTR_FN_DEFINE) {
-      SCU_TRY(check_function_body(&instr.fn_define_node, functions));
-    } else if (instr.kind != INSTR_FN_DECLARE) {
-      SCU_TRY(instr_check_variables(&instr, variables, functions));
-      SCU_TRY(instr_typecheck(&instr, variables, functions));
+    if (instr->kind == INSTR_FN_DEFINE) {
+      SCU_TRY(check_function_body(&instr->fn_define_node, functions));
+    } else if (instr->kind != INSTR_FN_DECLARE) {
+      SCU_TRY(instr_check_variables(instr, variables, functions));
+      SCU_TRY(instr_typecheck(instr, variables, functions));
     }
   }
 

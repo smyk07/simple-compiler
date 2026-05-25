@@ -694,9 +694,10 @@ static scu_result llvm_irgen_instr_if(llvm_backend_ctx &ctx, if_node *if_stmt) {
     SCU_TRY(llvm_irgen_instr(ctx, if_stmt->then.single));
   } else {
     for (u64 i = 0; i < if_stmt->then.multi.count; i++) {
-      instr_node instr;
-      dynamic_array_get(&if_stmt->then.multi, i, &instr);
-      SCU_TRY(llvm_irgen_instr(ctx, &instr));
+      instr_node *instr =
+          *(instr_node **)dynamic_array_get_ptr(&if_stmt->then.multi, i);
+
+      SCU_TRY(llvm_irgen_instr(ctx, instr));
     }
   }
   if (!ctx.builder->GetInsertBlock()->getTerminator()) {
@@ -738,9 +739,9 @@ static scu_result llvm_irgen_instr_if(llvm_backend_ctx &ctx, if_node *if_stmt) {
       SCU_TRY(llvm_irgen_instr(ctx, elif.then.single));
     } else {
       for (u64 j = 0; j < elif.then.multi.count; j++) {
-        instr_node instr;
-        dynamic_array_get(&elif.then.multi, j, &instr);
-        SCU_TRY(llvm_irgen_instr(ctx, &instr));
+        instr_node *instr =
+            *(instr_node **)dynamic_array_get_ptr(&if_stmt->then.multi, i);
+        SCU_TRY(llvm_irgen_instr(ctx, instr));
       }
     }
     if (!ctx.builder->GetInsertBlock()->getTerminator()) {
@@ -757,9 +758,9 @@ static scu_result llvm_irgen_instr_if(llvm_backend_ctx &ctx, if_node *if_stmt) {
       SCU_TRY(llvm_irgen_instr(ctx, if_stmt->else_->single));
     } else {
       for (u64 i = 0; i < if_stmt->else_->multi.count; i++) {
-        instr_node instr;
-        dynamic_array_get(&if_stmt->else_->multi, i, &instr);
-        SCU_TRY(llvm_irgen_instr(ctx, &instr));
+        instr_node *instr =
+            *(instr_node **)dynamic_array_get_ptr(&if_stmt->else_->multi, i);
+        SCU_TRY(llvm_irgen_instr(ctx, instr));
       }
     }
 
@@ -869,9 +870,9 @@ static scu_result llvm_irgen_instr_match(llvm_backend_ctx &ctx,
       SCU_TRY(llvm_irgen_instr(ctx, case_node.body.single));
     } else {
       for (u64 j = 0; j < case_node.body.multi.count; j++) {
-        instr_node instr;
-        dynamic_array_get(&case_node.body.multi, j, &instr);
-        SCU_TRY(llvm_irgen_instr(ctx, &instr));
+        instr_node *instr =
+            *(instr_node **)dynamic_array_get_ptr(&case_node.body.multi, j);
+        SCU_TRY(llvm_irgen_instr(ctx, instr));
       }
     }
 
@@ -1014,10 +1015,9 @@ static scu_result llvm_irgen_instr_loop(llvm_backend_ctx &ctx,
   ctx.builder->SetInsertPoint(loop_body);
 
   for (u64 i = 0; i < loop->instrs.count; i++) {
-    instr_node instr;
-    dynamic_array_get(&loop->instrs, i, &instr);
+    instr_node *instr = *(instr_node **)dynamic_array_get_ptr(&loop->instrs, i);
 
-    SCU_TRY(llvm_irgen_instr(ctx, &instr));
+    SCU_TRY(llvm_irgen_instr(ctx, instr));
 
     if (ctx.builder->GetInsertBlock()->getTerminator()) {
       break;
@@ -1134,10 +1134,10 @@ static scu_result llvm_irgen_instr_fn_define(llvm_backend_ctx &ctx,
   }
 
   for (u64 i = 0; i < fn->defined.instrs.count; i++) {
-    instr_node instr;
-    dynamic_array_get(&fn->defined.instrs, i, &instr);
+    instr_node *instr =
+        *(instr_node **)dynamic_array_get_ptr(&fn->defined.instrs, i);
 
-    SCU_TRY(llvm_irgen_instr(ctx, &instr));
+    SCU_TRY(llvm_irgen_instr(ctx, instr));
 
     if (ctx.builder->GetInsertBlock()->getTerminator()) {
       break;

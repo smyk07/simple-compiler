@@ -21,7 +21,7 @@
 
 void ast_init(ast *a) {
   arena_init(&a->arena);
-  dynamic_array_init(&a->instrs, sizeof(instr_node));
+  dynamic_array_init(&a->instrs, sizeof(instr_node *));
 }
 
 /*
@@ -653,7 +653,8 @@ void print_instr(instr_node *instr) {
 
 void print_ast(ast *program_ast) {
   for (u64 i = 0; i < program_ast->instrs.count; i++) {
-    instr_node *instr = dynamic_array_get_ptr(&program_ast->instrs, i);
+    instr_node *instr =
+        *(instr_node **)dynamic_array_get_ptr(&program_ast->instrs, i);
     print_instr(instr);
   }
 }
@@ -910,7 +911,7 @@ static void free_instr(instr_node *instr) {
 
 static void free_instrs(dynamic_array *instrs) {
   for (u64 i = 0; i < instrs->count; i++) {
-    instr_node *instr = dynamic_array_get_ptr(instrs, i);
+    instr_node *instr = *(instr_node **)dynamic_array_get_ptr(instrs, i);
     free_instr(instr);
   }
   dynamic_array_free(instrs);

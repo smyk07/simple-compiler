@@ -843,13 +843,13 @@ static scu_result parse_cond_block(parser *p, cond_block_node *block) {
     block->kind = COND_MULTI_INSTR;
     parser_advance(p);
 
-    dynamic_array_init(&block->multi, sizeof(instr_node));
+    dynamic_array_init(&block->multi, sizeof(instr_node *));
 
     parser_current(p, &token);
     while (token.kind != TOKEN_RBRACE && token.kind != TOKEN_END) {
       instr_node *new_instr = arena_push_struct(ast_arena, instr_node);
       SCU_TRY(parse_instr(p, new_instr));
-      dynamic_array_append(&block->multi, new_instr);
+      dynamic_array_append(&block->multi, &new_instr);
 
       parser_current(p, &token);
     }
@@ -1129,7 +1129,7 @@ static scu_result parse_loop(parser *p, instr_node *instr, loop_kind kind) {
   }
 
   instr->loop.variables = ht_create(sizeof(variable));
-  dynamic_array_init(&instr->loop.instrs, sizeof(instr_node));
+  dynamic_array_init(&instr->loop.instrs, sizeof(instr_node *));
 
   parser_current(p, &token);
   if (token.kind != TOKEN_LBRACE) {
@@ -1158,7 +1158,7 @@ static scu_result parse_loop(parser *p, instr_node *instr, loop_kind kind) {
   while (token.kind != TOKEN_RBRACE) {
     instr_node *_instr = arena_push_struct(ast_arena, instr_node);
     SCU_TRY(parse_instr(p, _instr));
-    dynamic_array_append(&instr->loop.instrs, _instr);
+    dynamic_array_append(&instr->loop.instrs, &_instr);
     parser_current(p, &token);
   }
 
@@ -1272,14 +1272,14 @@ static scu_result parse_fn(parser *p, instr_node *instr) {
     instr->fn_define_node.kind = FN_DEFINED;
     instr->fn_define_node.defined.variables = ht_create(sizeof(variable));
     dynamic_array_init(&instr->fn_define_node.defined.instrs,
-                       sizeof(instr_node));
+                       sizeof(instr_node *));
 
     parser_advance(p);
     parser_current(p, &token);
     while (token.kind != TOKEN_RBRACE && token.kind != TOKEN_END) {
       instr_node *_instr = arena_push_struct(ast_arena, instr_node);
       SCU_TRY(parse_instr(p, _instr));
-      dynamic_array_append(&instr->fn_define_node.defined.instrs, _instr);
+      dynamic_array_append(&instr->fn_define_node.defined.instrs, &_instr);
       parser_current(p, &token);
     }
     parser_advance(p);
@@ -1423,6 +1423,7 @@ static scu_result parse_instr(parser *p, instr_node *instr) {
 
 scu_result parser_parse_program(dynamic_array *tokens, ast *program) {
   ast_arena = &program->arena;
+
   parser p;
   parser_init(tokens, &p);
 
@@ -1431,8 +1432,8 @@ scu_result parser_parse_program(dynamic_array *tokens, ast *program) {
 
   while (token.kind != TOKEN_END) {
     instr_node *instr = arena_push_struct(ast_arena, instr_node);
+    dynamic_array_append(&program->instrs, &instr);
     SCU_TRY(parse_instr(&p, instr));
-    dynamic_array_append(&program->instrs, instr);
     parser_current(&p, &token);
   }
 

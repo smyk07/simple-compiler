@@ -88,9 +88,9 @@ scu_result llvm_backend_init(cstate *cst) {
 
 scu_result llvm_backend_compile(cstate *, fstate *fst) {
   for (u64 i = 0; i < fst->program_ast.instrs.count; i++) {
-    instr_node instr;
-    dynamic_array_get(&fst->program_ast.instrs, i, &instr);
-    SCU_TRY(llvm_irgen_instr(bctx, &instr));
+    instr_node *instr =
+        *(instr_node **)dynamic_array_get_ptr(&fst->program_ast.instrs, i);
+    SCU_TRY(llvm_irgen_instr(bctx, instr));
   }
   llvm_irgen_clear_symbol_table();
 
