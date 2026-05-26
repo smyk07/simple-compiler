@@ -241,9 +241,10 @@ void token_print_tokens(dynamic_array *tokens) {
 void free_tokens(dynamic_array *tokens) {
   for (u64 i = 0; i < tokens->count; i++) {
     token *token = tokens->items + (i * tokens->item_size);
-    if (token->kind == TOKEN_IDENTIFIER || token->kind == TOKEN_LABEL ||
-        token->kind == TOKEN_INVALID || token->kind == TOKEN_ADDRESS_OF ||
-        token->kind == TOKEN_POINTER || token->kind == TOKEN_STRING_LITERAL) {
+    if ((token->kind == TOKEN_IDENTIFIER || token->kind == TOKEN_LABEL ||
+         token->kind == TOKEN_INVALID || token->kind == TOKEN_ADDRESS_OF ||
+         token->kind == TOKEN_POINTER || token->kind == TOKEN_STRING_LITERAL) &&
+        token->value.str) {
       free(token->value.str);
     }
   }
