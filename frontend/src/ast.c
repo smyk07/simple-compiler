@@ -294,7 +294,8 @@ static void print_cond_block(cond_block_node *block) {
     print_instr(block->single);
   } else {
     for (u64 i = 0; i < block->multi.count; i++) {
-      instr_node *instr = dynamic_array_get_ptr(&block->multi, i);
+      instr_node *instr =
+          *(instr_node **)dynamic_array_get_ptr(&block->multi, i);
       print_instr(instr);
     }
   }
@@ -570,14 +571,6 @@ void print_instr(instr_node *instr) {
       }
     }
     printf("\n");
-
-    if (instr->fn_declare_node.kind == FN_DEFINED) {
-      for (u64 i = 0; i < instr->fn_declare_node.defined.instrs.count; i++) {
-        instr_node *body_instr =
-            dynamic_array_get_ptr(&instr->fn_declare_node.defined.instrs, i);
-        print_instr(body_instr);
-      }
-    }
     break;
 
   case INSTR_FN_DEFINE:
@@ -611,8 +604,8 @@ void print_instr(instr_node *instr) {
     icount++;
 
     for (u64 i = 0; i < instr->fn_define_node.defined.instrs.count; i++) {
-      instr_node *body_instr =
-          dynamic_array_get_ptr(&instr->fn_define_node.defined.instrs, i);
+      instr_node *body_instr = *(instr_node **)dynamic_array_get_ptr(
+          &instr->fn_declare_node.defined.instrs, i);
       print_instr(body_instr);
     }
 
