@@ -16,6 +16,8 @@
 
 #include "core/ds/stack.h"
 
+#include <stdlib.h>
+
 typedef struct stack creg;
 
 typedef void (*creg_cleanup_fn)(void *);

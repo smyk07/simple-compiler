@@ -12,8 +12,6 @@
 
 #include "core/creg.h"
 
-#include <stdlib.h>
-
 CREG_CREATE(sclc)
 
 int main(int argc, char *argv[]) {
