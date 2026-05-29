@@ -828,6 +828,7 @@ static type arithmetic_expr_type(arithmetic_expr_node *expr, type target_type,
     scu_perror("Type mismatch in arithmetic expression: %s vs %s [line %" PRIu64
                "]\n",
                lhs_type_str, rhs_type_str, expr->line);
+    return TYPE_INVALID;
   }
 
   return lhs;
