@@ -191,7 +191,7 @@ scu_result cstate_init(cstate *cst, u32 argc, char *argv[]) {
 
     if (arg[0] != '-') {
       char *filename_copy = strdup(arg);
-      dynamic_array_append(&filenames, &filename_copy);
+      dynamic_array_push(&filenames, &filename_copy);
       i++;
       continue;
     }
@@ -276,7 +276,7 @@ scu_result cstate_init(cstate *cst, u32 argc, char *argv[]) {
 
     fstate *fst = arena_push_struct(&cst->file_arena, fstate);
     SCU_TRY(fstate_init(fst, filepath));
-    dynamic_array_append(&cst->files, &fst);
+    dynamic_array_push(&cst->files, &fst);
 
     u64 len;
     char *obj;
@@ -295,7 +295,7 @@ scu_result cstate_init(cstate *cst, u32 argc, char *argv[]) {
       snprintf(obj, len, "/tmp/sclc/%s.o", fst->extracted_filepath);
     }
 
-    dynamic_array_append(&cst->obj_file_list, &obj);
+    dynamic_array_push(&cst->obj_file_list, &obj);
 
     free(filepath);
   }

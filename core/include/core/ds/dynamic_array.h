@@ -55,12 +55,12 @@ void dynamic_array_get(dynamic_array *da, u64 index, void *item);
 void dynamic_array_set(dynamic_array *da, u64 index, void *item);
 
 /*
- * @brief: Appends an item to the end of the array.
+ * @brief: Pushes / appends an item to the end of the array.
  *
  * @param da: pointer to a dynamic_array
  * @param item: pointer to the item to append
  */
-void dynamic_array_append(dynamic_array *da, void *item);
+void dynamic_array_push(dynamic_array *da, void *item);
 
 /*
  * @brief: Inserts an item at the specified index.

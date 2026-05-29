@@ -587,7 +587,7 @@ scu_result lexer_tokenize(const char *buffer, u64 buffer_len,
       continue;
     }
 
-    dynamic_array_append(tokens, &tok);
+    dynamic_array_push(tokens, &tok);
   } while (tok.kind != TOKEN_END);
 
   return SCU_SUCCESS;

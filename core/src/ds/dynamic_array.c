@@ -67,7 +67,7 @@ void dynamic_array_set(dynamic_array *da, u64 index, void *item) {
   memcpy(dest, item, da->item_size);
 }
 
-void dynamic_array_append(dynamic_array *da, void *item) {
+void dynamic_array_push(dynamic_array *da, void *item) {
   DA_CHECK_NULL(da);
   DA_CHECK_INIT(da);
   DA_CHECK_ITEM(item);

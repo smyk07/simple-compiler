@@ -154,7 +154,7 @@ static scu_result parse_term_for_expr(parser *p, term_node *term) {
       while (token.kind != TOKEN_RPAREN) {
         arithmetic_expr_node *arg = NULL;
         SCU_TRY(parse_arithmetic_expr(p, &arg));
-        dynamic_array_append(&term->fn_call.parameters, arg);
+        dynamic_array_push(&term->fn_call.parameters, arg);
 
         parser_current(p, &token);
         if (token.kind == TOKEN_COMMA) {
@@ -282,7 +282,7 @@ static scu_result parse_factor(parser *p, arithmetic_expr_node **aexpr) {
         while (token.kind != TOKEN_RPAREN) {
           arithmetic_expr_node *arg = NULL;
           SCU_TRY(parse_arithmetic_expr(p, &arg));
-          dynamic_array_append(&node->term.fn_call.parameters, arg);
+          dynamic_array_push(&node->term.fn_call.parameters, arg);
 
           parser_current(p, &token);
           if (token.kind == TOKEN_COMMA) {
@@ -615,7 +615,7 @@ static scu_result parse_initialize_array(parser *p, instr_node *instr,
 
     arithmetic_expr_node *elem = NULL;
     SCU_TRY(parse_arithmetic_expr(p, &elem));
-    dynamic_array_append(&instr->initialize_array.literal.elements, elem);
+    dynamic_array_push(&instr->initialize_array.literal.elements, elem);
 
     parser_current(p, &token);
     if (token.kind == TOKEN_COMMA) {
@@ -735,7 +735,7 @@ static scu_result parse_fn_call(parser *p, instr_node *instr) {
   while (token.kind != TOKEN_RPAREN) {
     arithmetic_expr_node *arg = NULL;
     SCU_TRY(parse_arithmetic_expr(p, &arg));
-    dynamic_array_append(&instr->fn_call.parameters, arg);
+    dynamic_array_push(&instr->fn_call.parameters, arg);
 
     parser_current(p, &token);
     if (token.kind == TOKEN_COMMA) {
@@ -849,7 +849,7 @@ static scu_result parse_cond_block(parser *p, cond_block_node *block) {
     while (token.kind != TOKEN_RBRACE && token.kind != TOKEN_END) {
       instr_node *new_instr = arena_push_struct(ast_arena, instr_node);
       SCU_TRY(parse_instr(p, new_instr));
-      dynamic_array_append(&block->multi, &new_instr);
+      dynamic_array_push(&block->multi, &new_instr);
 
       parser_current(p, &token);
     }
@@ -905,7 +905,7 @@ static scu_result parse_if(parser *p, instr_node *instr) {
       parser_advance(p);
       SCU_TRY(parse_expr(p, &else_if.condition));
       SCU_TRY(parse_cond_block(p, &else_if.then));
-      dynamic_array_append(&instr->if_.else_ifs, &else_if);
+      dynamic_array_push(&instr->if_.else_ifs, &else_if);
       parser_current(p, &token);
     } else {
       instr->if_.else_ = arena_push_struct(ast_arena, cond_block_node);
@@ -973,7 +973,7 @@ static scu_result parse_match(parser *p, instr_node *instr) {
         case_node.kind = MATCH_CASE_VALUES;
         dynamic_array_init(&case_node.values.values,
                            sizeof(arithmetic_expr_node *));
-        dynamic_array_append(&case_node.values.values, &first_expr);
+        dynamic_array_push(&case_node.values.values, &first_expr);
 
         parser_current(p, &token);
         while (token.kind == TOKEN_COMMA) {
@@ -983,7 +983,7 @@ static scu_result parse_match(parser *p, instr_node *instr) {
               arena_push_struct(ast_arena, arithmetic_expr_node);
 
           SCU_TRY(parse_arithmetic_expr(p, &next_expr));
-          dynamic_array_append(&case_node.values.values, &next_expr);
+          dynamic_array_push(&case_node.values.values, &next_expr);
 
           parser_current(p, &token);
         }
@@ -1000,7 +1000,7 @@ static scu_result parse_match(parser *p, instr_node *instr) {
 
     SCU_TRY(parse_cond_block(p, &case_node.body));
 
-    dynamic_array_append(&instr->match.cases, &case_node);
+    dynamic_array_push(&instr->match.cases, &case_node);
 
     parser_current(p, &token);
   }
@@ -1158,7 +1158,7 @@ static scu_result parse_loop(parser *p, instr_node *instr, loop_kind kind) {
   while (token.kind != TOKEN_RBRACE) {
     instr_node *_instr = arena_push_struct(ast_arena, instr_node);
     SCU_TRY(parse_instr(p, _instr));
-    dynamic_array_append(&instr->loop.instrs, &_instr);
+    dynamic_array_push(&instr->loop.instrs, &_instr);
     parser_current(p, &token);
   }
 
@@ -1230,7 +1230,7 @@ static scu_result parse_fn(parser *p, instr_node *instr) {
 
     parser_current(p, &token);
     param.name = token.value.str;
-    dynamic_array_append(&instr->fn_declare_node.parameters, &param);
+    dynamic_array_push(&instr->fn_declare_node.parameters, &param);
     parser_advance(p);
 
     parser_current(p, &token);
@@ -1253,7 +1253,7 @@ static scu_result parse_fn(parser *p, instr_node *instr) {
       if (ret_type == TYPE_INVALID)
         ret_type = TYPE_VOID;
 
-      dynamic_array_append(&instr->fn_declare_node.returntypes, &ret_type);
+      dynamic_array_push(&instr->fn_declare_node.returntypes, &ret_type);
 
       parser_advance(p);
       parser_current(p, &token);
@@ -1279,7 +1279,7 @@ static scu_result parse_fn(parser *p, instr_node *instr) {
     while (token.kind != TOKEN_RBRACE && token.kind != TOKEN_END) {
       instr_node *_instr = arena_push_struct(ast_arena, instr_node);
       SCU_TRY(parse_instr(p, _instr));
-      dynamic_array_append(&instr->fn_define_node.defined.instrs, &_instr);
+      dynamic_array_push(&instr->fn_define_node.defined.instrs, &_instr);
       parser_current(p, &token);
     }
     parser_advance(p);
@@ -1310,7 +1310,7 @@ static scu_result parse_ret(parser *p, instr_node *instr) {
   while (token.kind != TOKEN_RBRACE) {
     arithmetic_expr_node *expr = NULL;
     SCU_TRY(parse_arithmetic_expr(p, &expr));
-    dynamic_array_append(&instr->ret_node.returnvals, expr);
+    dynamic_array_push(&instr->ret_node.returnvals, expr);
 
     parser_current(p, &token);
 
@@ -1432,7 +1432,7 @@ scu_result parser_parse_program(dynamic_array *tokens, ast *program) {
 
   while (token.kind != TOKEN_END) {
     instr_node *instr = arena_push_struct(ast_arena, instr_node);
-    dynamic_array_append(&program->instrs, &instr);
+    dynamic_array_push(&program->instrs, &instr);
     SCU_TRY(parse_instr(&p, instr));
     parser_current(&p, &token);
   }

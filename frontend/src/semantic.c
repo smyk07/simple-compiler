@@ -524,7 +524,7 @@ static scu_result check_label(dynamic_array *labels, instr_node *instr) {
       return SCU_ERR_SEMA;
     }
   }
-  dynamic_array_append(labels, &label_name);
+  dynamic_array_push(labels, &label_name);
 
   return SCU_SUCCESS;
 }

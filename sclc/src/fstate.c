@@ -31,7 +31,7 @@ scu_result fstate_init(fstate *fst, const char *filepath) {
 
   ast_init(&fst->program_ast);
 
-  stack_init(&fst->loops, sizeof(loop_node));
+  dynamic_array_init(&fst->loops, sizeof(loop_node));
 
   ht_init(&fst->variables, sizeof(variable));
 
@@ -50,7 +50,7 @@ void fstate_free(fstate *fst) {
 
   ast_free(&fst->program_ast);
 
-  stack_free(&fst->loops);
+  dynamic_array_free(&fst->loops);
 
   ht_free(&fst->variables);
 

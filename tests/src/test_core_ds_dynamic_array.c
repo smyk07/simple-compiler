@@ -25,11 +25,11 @@ PTEST(da_append) {
   u32 val1 = 42;
   u32 val2 = 84;
 
-  dynamic_array_append(&da, &val1);
+  dynamic_array_push(&da, &val1);
   PROVA_ASSERT_EQUAL(1, da.count);
   PROVA_ASSERT_GREATER_THAN(0, da.capacity);
 
-  dynamic_array_append(&da, &val2);
+  dynamic_array_push(&da, &val2);
   PROVA_ASSERT_EQUAL(2, da.count);
 
   u32 out1 = 0, out2 = 0;
@@ -48,8 +48,8 @@ PTEST(da_get_set) {
   TestItem item1 = {1, "Alice"};
   TestItem item2 = {2, "Bob"};
 
-  dynamic_array_append(&da, &item1);
-  dynamic_array_append(&da, &item2);
+  dynamic_array_push(&da, &item1);
+  dynamic_array_push(&da, &item2);
 
   TestItem *ptr = (TestItem *)dynamic_array_get_ptr(&da, 1);
   PROVA_ASSERT_NOT_NULL(ptr);
@@ -72,8 +72,8 @@ PTEST(da_insert) {
   dynamic_array_init(&da, sizeof(int));
 
   u32 v1 = 10, v2 = 20, v3 = 30;
-  dynamic_array_append(&da, &v1);
-  dynamic_array_append(&da, &v2);
+  dynamic_array_push(&da, &v1);
+  dynamic_array_push(&da, &v2);
 
   dynamic_array_insert(&da, 1, &v3);
   PROVA_ASSERT_EQUAL(3, da.count);
@@ -95,9 +95,9 @@ PTEST(da_remove) {
   dynamic_array_init(&da, sizeof(int));
 
   u32 v1 = 10, v2 = 20, v3 = 30;
-  dynamic_array_append(&da, &v1);
-  dynamic_array_append(&da, &v2);
-  dynamic_array_append(&da, &v3);
+  dynamic_array_push(&da, &v1);
+  dynamic_array_push(&da, &v2);
+  dynamic_array_push(&da, &v3);
 
   dynamic_array_remove(&da, 1);
   PROVA_ASSERT_EQUAL(2, da.count);
@@ -117,8 +117,8 @@ PTEST(da_pop) {
   dynamic_array_init(&da, sizeof(int));
 
   u32 v1 = 100, v2 = 200;
-  dynamic_array_append(&da, &v1);
-  dynamic_array_append(&da, &v2);
+  dynamic_array_push(&da, &v1);
+  dynamic_array_push(&da, &v2);
 
   u32 pop_val = 0;
   dynamic_array_pop(&da, &pop_val);

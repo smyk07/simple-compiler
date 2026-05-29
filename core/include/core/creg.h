@@ -14,11 +14,11 @@
 #ifndef CREG_H
 #define CREG_H
 
-#include "core/ds/stack.h"
+#include "core/ds/dynamic_array.h"
 
 #include <stdlib.h>
 
-typedef struct stack creg;
+typedef dynamic_array creg;
 
 typedef void (*creg_cleanup_fn)(void *);
 

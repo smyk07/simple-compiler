@@ -11,26 +11,26 @@
 
 #include "core/creg.h"
 
-#include "core/ds/stack.h"
+#include "core/ds/dynamic_array.h"
 
 typedef struct creg_entry {
   void *obj;
   creg_cleanup_fn fn;
 } creg_entry;
 
-void creg_init(creg *creg) { stack_init(creg, sizeof(creg_entry)); }
+void creg_init(creg *creg) { dynamic_array_init(creg, sizeof(creg_entry)); }
 
 void creg_register(creg *creg, void *obj, creg_cleanup_fn fn) {
   creg_entry entry = {obj, fn};
-  stack_push(creg, &entry);
+  dynamic_array_push(creg, &entry);
 }
 
 void creg_cleanup(creg *creg) {
   creg_entry entry = {0};
   while (creg->count != 0) {
-    stack_pop(creg, &entry);
+    dynamic_array_pop(creg, &entry);
     entry.fn(entry.obj);
   }
 
-  stack_free(creg);
+  dynamic_array_free(creg);
 }

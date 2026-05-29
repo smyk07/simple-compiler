@@ -14,7 +14,6 @@
 #include "core/common.h"
 #include "core/ds/dynamic_array.h"
 #include "core/ds/ht.h"
-#include "core/ds/stack.h"
 
 typedef struct fstate {
   /*
@@ -42,7 +41,7 @@ typedef struct fstate {
   dynamic_array tokens;
   ast program_ast;
   ht variables;
-  stack loops;
+  dynamic_array loops;
   ht functions;
 } fstate;
 
