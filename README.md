@@ -25,6 +25,8 @@ $ mkdir build && cd build
 $ cmake .. -DCMAKE_BUILD_TYPE=Debug
 $ cmake --build . --target llvm_project
 $ cmake --build . --target sclc
+$ cmake --build . --target run-tests
+$ cmake --build . --target examples
 
 # compile the program
 $ ./build/sclc-bin/sclc -i ./lib hello.scl
