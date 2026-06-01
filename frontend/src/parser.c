@@ -18,6 +18,7 @@
 #include "core/utils.h"
 
 #include <inttypes.h>
+#include <string.h>
 
 static mem_arena *ast_arena;
 
@@ -644,23 +645,20 @@ static scu_result parse_initialize_array(parser *p, instr_node *instr,
 static scu_result parse_declare(parser *p, instr_node *instr) {
   token token = {0};
 
-  type _type = TYPE_VOID;
-  char *_name;
-  u32 _line;
-  bool is_array = false;
-  arithmetic_expr_node *size_expr = NULL;
-
   parser_current(p, &token);
   instr->line = token.line;
-  _type = type_from_specifier_token(token.kind);
+  type _type = type_from_specifier_token(token.kind);
   parser_advance(p);
 
   parser_current(p, &token);
   if (_type == TYPE_CHAR && token.kind == TOKEN_POINTER)
     _type = TYPE_STRING;
-  _name = token.value.str;
-  _line = token.line;
+  char *_name = strdup(token.value.str);
+  u64 _line = token.line;
   parser_advance(p);
+
+  bool is_array = false;
+  arithmetic_expr_node *size_expr = NULL;
 
   parser_current(p, &token);
   if (token.kind == TOKEN_LSQBR) {
@@ -713,20 +711,14 @@ static scu_result parse_declare(parser *p, instr_node *instr) {
  */
 static scu_result parse_fn_call(parser *p, instr_node *instr) {
   token token = {0};
+
   parser_current(p, &token);
 
   instr->kind = INSTR_FN_CALL;
   instr->line = token.line;
   instr->fn_call.name = token.value.str;
 
-  parser_advance(p);
-  parser_current(p, &token);
-
-  if (token.kind != TOKEN_LPAREN) {
-    scu_perror("Expected '(' after function name [line %d]\n", token.line);
-    return SCU_ERR_PARSE;
-  }
-
+  parser_advance(p); // TOKEN_LPAREN already parsed
   parser_advance(p);
   parser_current(p, &token);
 
@@ -806,10 +798,14 @@ static scu_result parse_assign(parser *p, instr_node *instr) {
 
     SCU_TRY(parse_arithmetic_expr(
         p, &instr->assign_to_array_subscript.expr_to_assign));
-  } else if (token.kind == TOKEN_LPAREN) {
+  }
+
+  else if (token.kind == TOKEN_LPAREN) {
     p->index--;
     SCU_TRY(parse_fn_call(p, instr));
-  } else {
+  }
+
+  else {
     instr->kind = INSTR_ASSIGN;
     instr->line = ident_line;
     instr->assign.identifier.name = ident_name;
@@ -841,10 +837,9 @@ static scu_result parse_cond_block(parser *p, cond_block_node *block) {
 
   if (token.kind == TOKEN_LBRACE) {
     block->kind = COND_MULTI_INSTR;
-    parser_advance(p);
-
     dynamic_array_init(&block->multi, sizeof(instr_node *));
 
+    parser_advance(p);
     parser_current(p, &token);
     while (token.kind != TOKEN_RBRACE && token.kind != TOKEN_END) {
       instr_node *new_instr = arena_push_struct(ast_arena, instr_node);
@@ -917,6 +912,19 @@ static scu_result parse_if(parser *p, instr_node *instr) {
   return SCU_SUCCESS;
 }
 
+static bool token_can_start_case_pattern(token_kind kind) {
+  switch (kind) {
+  case TOKEN_UNDERSCORE:
+  case TOKEN_INT_LITERAL:
+  case TOKEN_CHAR_LITERAL:
+  case TOKEN_SUBTRACT:
+  case TOKEN_IDENTIFIER:
+    return true;
+  default:
+    return false;
+  }
+}
+
 /*
  * @brief: parse a match statement.
  *
@@ -939,15 +947,31 @@ static scu_result parse_match(parser *p, instr_node *instr) {
   instr->line = token.line;
 
   if (token.kind != TOKEN_LBRACE) {
-    scu_perror("expected '{' after match expression [line %d]\n", token.line);
+    scu_perror("expected '{' after match expression [line %" PRIu64 "]\n",
+               token.line);
     return SCU_ERR_PARSE;
   }
-  parser_advance(p);
 
   dynamic_array_init(&instr->match.cases, sizeof(match_case_node));
 
+  parser_advance(p);
   parser_current(p, &token);
-  while (token.kind != TOKEN_RBRACE && token.kind != TOKEN_END) {
+  while (token.kind != TOKEN_RBRACE) {
+    if (token.kind == TOKEN_END) {
+      scu_perror("expected '{' after match expression [line %" PRIu64 "]\n",
+                 token.line);
+      free_instr(instr);
+      return SCU_ERR_PARSE;
+    }
+
+    if (!token_can_start_case_pattern(token.kind)) {
+      scu_perror("Expected case pattern or '}' in match block [line %" PRIu64
+                 "]\n",
+                 token.line);
+      free_instr(instr);
+      return SCU_ERR_PARSE;
+    }
+
     match_case_node case_node = {0};
 
     if (token.kind == TOKEN_UNDERSCORE) {
@@ -1003,11 +1027,6 @@ static scu_result parse_match(parser *p, instr_node *instr) {
     dynamic_array_push(&instr->match.cases, &case_node);
 
     parser_current(p, &token);
-  }
-
-  if (token.kind != TOKEN_RBRACE) {
-    scu_perror("expected '}' to close match block [line %d]\n", token.line);
-    return SCU_ERR_PARSE;
   }
 
   parser_advance(p);
@@ -1149,6 +1168,7 @@ static scu_result parse_loop(parser *p, instr_node *instr, loop_kind kind) {
       break;
     }
     scu_perror("no opening brace for %s loop at %d\n", loop_type, token.line);
+    free_instr(instr);
     return SCU_ERR_PARSE;
   }
 
@@ -1412,9 +1432,10 @@ static scu_result parse_instr(parser *p, instr_node *instr) {
     break;
 
   default:
+    char *tok_val = token_get_value(token);
     scu_perror("unexpected token: %s - '%s' [line %d]\n",
-               token_kind_to_str(token.kind), token_get_value(token),
-               token.line);
+               token_kind_to_str(token.kind), tok_val, token.line);
+    free(tok_val);
     return SCU_ERR_PARSE;
   }
 

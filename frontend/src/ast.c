@@ -525,7 +525,8 @@ void print_instr(instr_node *instr) {
     icount++;
 
     for (u64 i = 0; i < instr->loop.instrs.count; i++) {
-      instr_node *_instr = dynamic_array_get_ptr(&instr->loop.instrs, i);
+      instr_node *_instr =
+          *(instr_node **)dynamic_array_get_ptr(&instr->loop.instrs, i);
       print_instr(_instr);
     }
 
@@ -659,7 +660,7 @@ static void free_arithmetic_exprs(dynamic_array *exprs);
 static void free_term_node(term_node *term) {
   switch (term->kind) {
   case TERM_INVALID:
-    scu_pwarning("attempting to free invalid term_node\n");
+    scu_punreachable("attempting to free invalid term_node\n");
     break;
 
   case TERM_INT:
@@ -685,7 +686,7 @@ static void free_term_node(term_node *term) {
 static void free_arithmetic_expr_node(arithmetic_expr_node *expr) {
   switch (expr->kind) {
   case AR_EXPR_INVALID:
-    scu_pwarning("attempting to free invalid arithmetic_expr_node\n");
+    scu_punreachable("attempting to free invalid arithmetic_expr_node\n");
     break;
 
   case AR_EXPR_TERM:
@@ -725,7 +726,7 @@ static void free_rel_node(rel_node *rel) {
 static void free_logical_node(logical_node *log) {
   switch (log->kind) {
   case LOG_INVALID:
-    scu_pwarning("attempting to free invalid logical_node\n");
+    scu_punreachable("attempting to free invalid logical_node\n");
     break;
 
   case LOG_AND:
@@ -742,7 +743,7 @@ static void free_logical_node(logical_node *log) {
 static void free_expr_node(expr_node *expr) {
   switch (expr->kind) {
   case EXPR_INVALID:
-    scu_pwarning("attempting to free invalid expr_node\n");
+    scu_punreachable("attempting to free invalid expr_node\n");
     break;
 
   case EXPR_TERM:
@@ -761,8 +762,6 @@ static void free_expr_node(expr_node *expr) {
 
 static void free_instrs(dynamic_array *instrs);
 
-static void free_instr(instr_node *instr);
-
 static void free_cond_block_node(cond_block_node *block) {
   if (!block)
     return;
@@ -773,24 +772,31 @@ static void free_cond_block_node(cond_block_node *block) {
     free_instr(block->single);
 }
 
-static void free_instr(instr_node *instr) {
+void free_instr(instr_node *instr) {
   switch (instr->kind) {
   case INSTR_INVALID:
-    scu_pwarning("attempting to free invalid instr_node\n");
+    scu_punreachable("attempting to free invalid instr_node\n");
+    break;
+
+  case INSTR_DECLARE:
+    free(instr->declare_variable.name);
     break;
 
   case INSTR_INITIALIZE:
     if (instr->initialize_variable.var.type != TYPE_BOOL)
       free_arithmetic_expr_node(instr->initialize_variable.arithmetic);
+    free(instr->initialize_variable.var.name);
     break;
 
   case INSTR_DECLARE_ARRAY:
     free_arithmetic_expr_node(instr->declare_array.size_expr);
+    free(instr->declare_array.var.name);
     break;
 
   case INSTR_INITIALIZE_ARRAY:
     free_arithmetic_expr_node(instr->initialize_array.size_expr);
     free_arithmetic_exprs(&instr->initialize_array.literal.elements);
+    free(instr->initialize_array.var.name);
     break;
 
   case INSTR_ASSIGN:
@@ -824,7 +830,7 @@ static void free_instr(instr_node *instr) {
 
       switch (case_node->kind) {
       case MATCH_CASE_INVALID:
-        scu_pwarning("attempting to free invalid match_case_node\n");
+        scu_punreachable("attempting to free invalid match_case_node\n");
         break;
 
       case MATCH_CASE_VALUES:
@@ -854,7 +860,7 @@ static void free_instr(instr_node *instr) {
   case INSTR_LOOP:
     switch (instr->loop.kind) {
     case LOOP_INVALID:
-      scu_pwarning("attempting to free invalid loop_node\n");
+      scu_punreachable("attempting to free invalid loop_node\n");
       break;
 
     case LOOP_DO_WHILE:
@@ -893,7 +899,6 @@ static void free_instr(instr_node *instr) {
     free_arithmetic_exprs(&instr->fn_call.parameters);
     break;
 
-  case INSTR_DECLARE:
   case INSTR_GOTO:
   case INSTR_LABEL:
   case INSTR_LOOP_BREAK:

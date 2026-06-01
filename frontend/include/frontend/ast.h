@@ -442,6 +442,13 @@ void ast_init(ast *a);
 void ast_free(ast *program_ast);
 
 /*
+ * @brief: Frees all memory associated with a single instr_node.
+ *
+ * @param instr: pointer to a instr_node
+ */
+void free_instr(instr_node *instr);
+
+/*
  * @brief: prints all information about a single instruction.
  *
  * @param program: pointer to an instruction node
