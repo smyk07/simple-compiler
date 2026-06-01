@@ -19,134 +19,283 @@
  * limitations under the License.
  */
 
+
+#include <stddef.h>
+#include <stdint.h>
+#include <unistd.h>
+#define STB_DS_IMPLEMENTATION
+#include "tests/prova.h"
+#include "tests/logs.h"
+
+#define STB_SPRINTF_DECORATE(name) stb_##name
+#include "tests/stb_sprintf.h"
+
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <sys/wait.h>
-#include <threads.h>
-#include <unistd.h>
 
-#include "tests/prova.h"
+// Once the registry of tests is prepared, we can launch test cases as
+// separate child processes. That's what prova_launch_tests does.
 
-/* global structs */
-PMeta p_metadata = {0};
-PTest *p_registry = NULL;
-thread_local PAssertCtx *p_assert_ctx = NULL;
+ProvaTest *PROVA_TEST_QUEUE = NULL;
+ProvaTest *PROVA_CURRENT_TEST = NULL;
 
-/* TODO: implement cleaner method to report errors related to pipes and forks.
- */
-void prova_run_tests(PTest *registry) {
-  PTest *curr = registry;
-  size_t total_tests = prova_count_tests(curr);
-  p_metadata.total_tests = total_tests;
+/* for inter-process test data sharing */
+static ssize_t prova_read(int fd, const void *buff, size_t count);
+static ssize_t prova_write(int fd, const void *buff, size_t count);
 
-  while (curr) {
-    int pipefd[2];
-    assert((pipe(pipefd) != -1) &&
-           "pipe: couldn't create pipe for new child process.");
+static void prova_launch_tests(void);
+static void prova_log_result(ProvaTest *test);
+static void prova_exec_test(ProvaTest *test);
+static void prova_collect_test(ProvaTest *test, int wstatus);
 
-    pid_t pid = fork();
-    assert((pid >= 0) && "fork: couldn't create child process.");
+static inline const char *prova_status_to_str(ProvaTest *test);
 
-    if (pid == 0) {
-      close(pipefd[0]);
+static ssize_t prova_read(int fd, const void *buff, size_t count) {
+    if (count <= 0 || buff == NULL) return 0;
 
-      /* execute test function within local context. assume passing by default.
-       */
-      PAssertCtx local_ctx = {TEST_PASS, 0, {0}};
-      p_assert_ctx = &local_ctx;
-      curr->function();
-
-      write(pipefd[1], p_assert_ctx, sizeof(*p_assert_ctx));
-      close(pipefd[1]);
-      _exit(local_ctx.status == TEST_PASS ? 0 : 1);
-    } else {
-      close(pipefd[1]);
-      // PStatus test_result;
-      PAssertCtx local_ctx = {0};
-      ssize_t n = read(pipefd[0], &local_ctx, sizeof(local_ctx));
-      close(pipefd[0]);
-
-      int wstatus;
-      waitpid(pid, &wstatus, 0);
-      if (n == sizeof(local_ctx) && local_ctx.status == TEST_PASS) {
-        curr->status = TEST_PASS;
-        p_metadata.passing_tests++;
-      } else if (WIFSIGNALED(wstatus)) {
-        curr->status = TEST_CRASH;
-        p_metadata.crashing_tests++;
-      } else {
-        curr->status = TEST_FAIL;
-        p_metadata.failing_tests++;
-        char *s = (char *)malloc(PROVA_FAIL_MSG_MAX);
-        strncpy(s, local_ctx.fail_msg, PROVA_FAIL_MSG_MAX);
-        curr->msg = s;
-      }
+    size_t bytes_read = 0;
+    while (bytes_read < count) {
+        ssize_t ret = read(fd, (char*) buff + bytes_read, count - bytes_read);
+        if (ret <= 0) {
+            perror("prova_read: couldn't read data from child. exiting ...\n");
+            return -1;
+        }
+        bytes_read += ret;
     }
 
-    curr = curr->next;
+    return bytes_read;
+}
+
+static ssize_t prova_write(int fd, const void *buff, size_t count) {
+    if (count <= 0 || buff == NULL) return 0;
+
+    size_t bytes_written = 0;
+    while (bytes_written < count) {
+        ssize_t ret = write(fd, (char*) buff + bytes_written, count - bytes_written);
+        if (ret <= 0) {
+            perror("prova_write: couldn't write data to parent. exiting ...\n");
+            return -1;
+        }
+        bytes_written += ret;
+    }
+
+    return bytes_written;
+}
+
+static inline const char *prova_status_to_str(ProvaTest *test) {
+  static const char untagged[] = "[UNTAGGED]";
+
+  switch (test->status) {
+  case TEST_PENDING:
+    return PROVA_PENDING_TAG;
+  case TEST_PASS:
+    return PROVA_PASSED_TAG;
+  case TEST_FAIL:
+    return PROVA_FAILED_TAG;
+  case TEST_SKIP:
+    return PROVA_SKIPPED_TAG;
+  case TEST_CRASH:
+    return PROVA_CRASHED_TAG;
+  default:
+    return untagged;
+  }
+
+  return untagged;
+}
+
+static void prova_log_result(ProvaTest *test) {
+  const char *tag = prova_status_to_str(test);
+  size_t nfail = 0, ntotal = stbds_arrlenu(test->asserts);
+
+  if (test->status == TEST_FAIL) {
+    for (size_t i = 0; i < ntotal; ++i)
+      if (test->asserts[i].status == TEST_FAIL)
+        nfail++;
+  }
+
+  /* Build one big string and log it once */
+  if (test->status == TEST_FAIL && nfail > 0) {
+    /* Headline + each failing expr: "  [FAILED] name : file\n    expr\n expr\n"
+     */
+    size_t sz = PROVA_FAIL_MSG_MAX + PROVA_FILENAME_MAX +
+                nfail * (PROVA_EXPR_LEN_MAX + 4);
+    char *buf = (char *)malloc(sz);
+    if (!buf)
+      return;
+
+    size_t pos = stb_snprintf(buf, sz, "  %s %s : %s\n", tag, test->test_name,
+                              test->asserts[0].filename);
+    for (size_t i = 0; i < ntotal; ++i) {
+      ProvaAssertion *a = &test->asserts[i];
+      if (a->status != TEST_FAIL)
+        continue;
+      pos += stb_snprintf(buf + pos, sz - pos, "    %s\n", a->expr);
+    }
+
+    buf[pos] = '\0';
+    prova_log("%s", buf);
+    free(buf);
+  } else {
+    prova_log("  %s %s\n", tag, test->test_name);
   }
 }
 
-size_t prova_count_tests(const PTest *registry) {
-  const PTest *curr = registry;
-  size_t total = 0;
-  while (curr) {
-    total++;
-    curr = curr->next;
+static void prova_exec_test(ProvaTest *test) {
+  int pipefd[2];
+  pipe(pipefd);
+  pid_t pid = fork();
+  int readfd = pipefd[0], writefd = pipefd[1];
+
+  // TODO: handle inability to create child process
+  //
+  // If the program cannot create child processes, the program should
+  // execute tests in a linar fashion and log an INFO message to
+  // stdout or the required filestream alerting that programs will not
+  // be run in parallel, bypassing default behavior.
+  assert(pid != -1 && "prova_exec_test: couldn't create child proces.");
+
+  if (pid == 0) { // inside child process
+    close(readfd);
+
+    PROVA_CURRENT_TEST = test;
+    test->test_method(); /* test->asserts has been populated */
+    size_t count = stbds_arrlen(test->asserts);
+    prova_write(writefd, &count, sizeof(count));
+    prova_write(writefd, test->asserts, count * sizeof(*test->asserts));
+
+    close(writefd);
+    _exit(0);
   }
 
-  return total;
+  close(writefd);
+  test->child_pid = pid;
+  test->readfd = readfd;
 }
 
-void prova_print_summary(const PTest *registry) {
-  if (registry == NULL) {
-    fprintf(stderr, "prova: no test cases provided.");
+static void prova_collect_test(ProvaTest *test, int wstatus) {
+  size_t count = 0;
+  int readfd = test->readfd;
+
+  if (WIFSIGNALED(wstatus)) {
+    /* Child crashed — do not attempt to read assertions from pipe. */
+    test->status = TEST_CRASH;
+
+    /* Cleanup pipe state */
+    if (readfd >= 0)
+      close(readfd);
+    test->readfd = -1;
+    test->child_pid = 0;
+    prova_log_result(test);
     return;
   }
 
-  const PTest *curr = registry;
-  while (curr) {
-    switch (curr->status) {
+  /* Child exited normally — read assertions */
+  if (readfd >= 0) {
+    if (prova_read(readfd, &count, sizeof(count)) > 0) {
+      stbds_arrsetlen(test->asserts, count);
+      prova_read(readfd, test->asserts, count * sizeof(*test->asserts));
+    } else {
+      /* No data written by child — treat as zero assertions */
+      stbds_arrsetlen(test->asserts, 0);
+      count = 0;
+    }
+    close(readfd);
+  }
+
+  test->readfd = -1;
+  test->child_pid = 0;
+
+  /* Determine pass/fail based on assertions */
+  test->status = TEST_PASS;
+  for (size_t i = 0; i < count; ++i) {
+    if (test->asserts[i].status == TEST_FAIL) {
+      test->status = TEST_FAIL;
+      break;
+    }
+  }
+
+  prova_log_result(test);
+}
+
+/* Launch tests ensuring that at any given time no more than
+ * PROVA_MAX_CONCURRENT tests are running in parallel.
+ *
+ * We launch tests and collect tests in a common loop. The loop keeps
+ * running until we've exhausted our test queue. Within the loop, we
+ * fist check if the number of tests running at the time are less than
+ * PROVA_MAX_CONCURRENT. If it is, we launch more tests until we reach
+ * that number. */
+static void prova_launch_tests(void) {
+  size_t launched = 0, running = 0;
+  size_t test_queue_length = stbds_arrlenu(PROVA_TEST_QUEUE);
+
+  ProvaTest **running_tests = NULL;
+
+  while (launched < test_queue_length || running) {
+    /* fill available slots */
+    while (launched < test_queue_length &&
+           stbds_arrlenu(running_tests) < PROVA_MAX_CONCURRENT) {
+      ProvaTest *ct = &PROVA_TEST_QUEUE[launched];
+      if (ct->status == TEST_SKIP)
+        prova_log_result(ct);
+      prova_exec_test(ct);
+      stbds_arrput(running_tests, ct);
+      launched++;
+      running++;
+    }
+
+    if (running == 0)
+      continue;
+    int wstatus;
+    pid_t pid = waitpid(-1, &wstatus, 0);
+    assert(pid > 0 && "prova_launch_tests: couldn't collect child process.");
+
+    /* identify an exiting test */
+    for (size_t i = 0; i < stbds_arrlenu(running_tests); ++i) {
+      /* TODO: replace linear search with hash table
+       *
+       * Linear search is fine for small concurrent operations but
+       * there can be hundreds of concurrent processes. In that case,
+       * a hash table is most optimal. */
+      ProvaTest *test = running_tests[i];
+      if (test->child_pid == pid) {
+        prova_collect_test(test, wstatus);
+        stbds_arrdel(running_tests, i);
+        running--;
+        break;
+      }
+    }
+  }
+  stbds_arrfreef(running_tests);
+}
+
+int main(void) {
+  prova_log_init(stdout);
+  prova_launch_tests();
+
+  size_t total = stbds_arrlenu(PROVA_TEST_QUEUE);
+  size_t passed = 0, failed = 0, crashed = 0, skipped = 0;
+  for (size_t i = 0; i < total; ++i) {
+    switch (PROVA_TEST_QUEUE[i].status) {
+    case TEST_PASS:
+      passed++;
+      break;
     case TEST_FAIL:
-      fprintf(stderr, "[FAILED] unit %s : %s\n", curr->name, curr->msg);
+      failed++;
       break;
     case TEST_CRASH:
-      fprintf(stderr, "[CRASHED] unit %s : %s\n", curr->name, curr->msg);
-      break;
-    case TEST_PENDING:
-      fprintf(stderr, "[PENDING] unit %s : %s\n", curr->name, curr->msg);
+      crashed++;
       break;
     case TEST_SKIP:
-      fprintf(stderr, "[SKIPPED] unit %s : %s\n", curr->name, curr->msg);
+      skipped++;
       break;
     default:
       break;
     }
-    curr = curr->next;
   }
-
-  printf("\n=== SUMMARY ===\n");
-  printf("Total testcases: %u\n", p_metadata.total_tests);
-  printf("Failing testcases: %u\n", p_metadata.failing_tests);
-  printf("Skipped testcases: %u\n", p_metadata.skipping_tests);
-  printf("Crashing testcases: %u\n", p_metadata.crashing_tests);
-  printf("Passing ratio: %u/%u\n", p_metadata.passing_tests,
-         p_metadata.total_tests);
-}
-
-void prova_cleanup_messages(const PTest *registry) {
-  const PTest *curr = registry;
-  while (curr) {
-    PTest *next = curr->next;
-    free(curr->msg);
-    curr = next;
-  }
-}
-
-int main(void) {
-  prova_run_tests(p_registry);
-  prova_print_summary(p_registry);
-  return (p_metadata.failing_tests + p_metadata.crashing_tests) > 0 ? 1 : 0;
+  prova_log("\nResults: %zu/%zu passed, %zu failed, %zu crashed, %zu skipped\n",
+            passed, total, failed, crashed, skipped);
+  prova_log_fini();
+  return failed > 0 || crashed > 0;
 }
