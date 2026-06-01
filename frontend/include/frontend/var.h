@@ -28,17 +28,6 @@ typedef struct variable {
 } variable;
 
 /*
- * @brief: check if a certain variable exists in a dynamic_array of variables.
- *
- * @param variables: pointer to hash table of variables.
- * @param var_to_find: pointer to a variable struct which we intend to find in
- * the dynamic_array.
- *
- * @return: int
- */
-u64 get_var_stack_offset(ht *variables, variable *var_to_find);
-
-/*
  * @brief: check for a variable's type by its name / identifier and line data.
  *
  * @param variables: pointer to hash table of variable.
