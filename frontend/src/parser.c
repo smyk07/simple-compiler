@@ -1433,7 +1433,7 @@ static scu_result parse_instr(parser *p, instr_node *instr) {
 
   default:
     char *tok_val = token_get_value(token);
-    scu_perror("unexpected token: %s - '%s' [line %d]\n",
+    scu_perror("Unexpected token while parsing: %s - '%s' [line %d]\n",
                token_kind_to_str(token.kind), tok_val, token.line);
     free(tok_val);
     return SCU_ERR_PARSE;

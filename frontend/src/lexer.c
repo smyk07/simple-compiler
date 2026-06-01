@@ -13,6 +13,7 @@
 #include "core/utils.h"
 
 #include <ctype.h>
+#include <inttypes.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -582,6 +583,14 @@ scu_result lexer_tokenize(const char *buffer, u64 buffer_len,
   token tok;
   do {
     tok = lexer_next_token(&lexer);
+
+    if (tok.kind == TOKEN_INVALID) {
+      char *tok_val = token_get_value(tok);
+      scu_perror("Invalid token: %s - %s [line %" PRIu64 "]\n",
+                 token_kind_to_str(tok.kind), tok_val, tok.line);
+      free(tok_val);
+      return SCU_ERR_LEX;
+    }
 
     if (tok.kind == TOKEN_PDIR_INCLUDE) {
       token incl_str_token = lexer_next_token(&lexer);
