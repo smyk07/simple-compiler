@@ -596,23 +596,28 @@ scu_result lexer_tokenize(const char *buffer, u64 buffer_len,
       token incl_str_token = lexer_next_token(&lexer);
       u64 total_len =
           strlen(include_dir) + 1 + strlen(incl_str_token.value.str) + 1;
-      char *filepath_to_include = malloc(total_len);
+      char filepath_to_include[total_len];
       snprintf(filepath_to_include, total_len, "%s/%s", include_dir,
                incl_str_token.value.str);
 
       char *incl_buffer = NULL;
       u64 incl_buffer_len = 0;
-      SCU_TRY(
-          scu_read_file(filepath_to_include, &incl_buffer, &incl_buffer_len));
+
+      scu_result r =
+          (scu_read_file(filepath_to_include, &incl_buffer, &incl_buffer_len));
+      if (r != SCU_SUCCESS)
+        goto cleanup;
 
       lexer_tokenize(incl_buffer, incl_buffer_len, tokens, include_dir);
 
       dynamic_array_remove(tokens, tokens->count - 1);
-      free(filepath_to_include);
       free(incl_str_token.value.str);
       free(incl_buffer);
 
-      continue;
+    cleanup:
+      free(incl_str_token.value.str);
+      free(incl_buffer);
+      return r;
     }
 
     dynamic_array_push(tokens, &tok);
