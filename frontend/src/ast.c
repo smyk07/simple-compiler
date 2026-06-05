@@ -542,6 +542,7 @@ void print_instr(instr_node *instr) {
     break;
 
   case INSTR_FN_DECLARE:
+  case INSTR_FN_DEFINE:
     printf("function %s: %s(",
            instr->fn_declare_node.kind == FN_DECLARED ? "declaration"
                                                       : "definition",
@@ -560,57 +561,22 @@ void print_instr(instr_node *instr) {
     }
     printf(")");
 
-    if (instr->fn_declare_node.returntypes.count > 0) {
+    if (instr->fn_declare_node.returntype != TYPE_VOID) {
       printf(" : ");
-      for (u64 i = 0; i < instr->fn_declare_node.returntypes.count; i++) {
-        type ret_type;
-        dynamic_array_get(&instr->fn_declare_node.returntypes, i, &ret_type);
-        printf("%s", type_to_str(ret_type));
-        if (i < instr->fn_declare_node.returntypes.count - 1) {
-          printf(", ");
-        }
-      }
-    }
-    printf("\n");
-    break;
-
-  case INSTR_FN_DEFINE:
-    printf("function definition: %s(", instr->fn_define_node.name);
-    for (u64 i = 0; i < instr->fn_define_node.parameters.count; i++) {
-      variable param;
-      dynamic_array_get(&instr->fn_define_node.parameters, i, &param);
-      check_var_and_print(&param);
-      if (i < instr->fn_define_node.parameters.count - 1) {
-        printf(", ");
-      }
-    }
-    if (instr->fn_define_node.is_variadic) {
-      printf(", ...");
-    }
-    printf(")");
-
-    if (instr->fn_define_node.returntypes.count > 0) {
-      printf(" : ");
-      for (u64 i = 0; i < instr->fn_define_node.returntypes.count; i++) {
-        type ret_type;
-        dynamic_array_get(&instr->fn_define_node.returntypes, i, &ret_type);
-        printf("%s", type_to_str(ret_type));
-        if (i < instr->fn_define_node.returntypes.count - 1) {
-          printf(", ");
-        }
-      }
+      printf("%s", type_to_str(instr->fn_declare_node.returntype));
     }
     printf("\n");
 
-    icount++;
+    if (instr->kind == INSTR_FN_DEFINE) {
 
-    for (u64 i = 0; i < instr->fn_define_node.defined.instrs.count; i++) {
-      instr_node *body_instr = *(instr_node **)dynamic_array_get_ptr(
-          &instr->fn_declare_node.defined.instrs, i);
-      print_instr(body_instr);
+      icount++;
+      for (u64 i = 0; i < instr->fn_define_node.defined.instrs.count; i++) {
+        instr_node *body_instr = *(instr_node **)dynamic_array_get_ptr(
+            &instr->fn_declare_node.defined.instrs, i);
+        print_instr(body_instr);
+      }
+      icount--;
     }
-
-    icount--;
     break;
 
   case INSTR_RETURN:
@@ -882,12 +848,10 @@ void free_instr(instr_node *instr) {
   case INSTR_FN_DEFINE:
     ht_destroy(instr->fn_define_node.defined.variables);
     free_instrs(&instr->fn_define_node.defined.instrs);
-    dynamic_array_free(&instr->fn_define_node.returntypes);
     dynamic_array_free(&instr->fn_define_node.parameters);
     break;
 
   case INSTR_FN_DECLARE:
-    dynamic_array_free(&instr->fn_declare_node.returntypes);
     dynamic_array_free(&instr->fn_declare_node.parameters);
     break;
 

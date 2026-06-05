@@ -613,6 +613,7 @@ scu_result lexer_tokenize(const char *buffer, u64 buffer_len,
       dynamic_array_remove(tokens, tokens->count - 1);
       free(incl_str_token.value.str);
       free(incl_buffer);
+      continue;
 
     cleanup:
       free(incl_str_token.value.str);

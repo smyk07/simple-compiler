@@ -19,6 +19,7 @@
 
 #include <inttypes.h>
 #include <string.h>
+#include <unistd.h>
 
 static mem_arena *ast_arena;
 
@@ -1260,30 +1261,15 @@ static scu_result parse_fn(parser *p, instr_node *instr) {
   }
 
   parser_advance(p);
-
-  dynamic_array_init(&instr->fn_declare_node.returntypes, sizeof(type));
   parser_current(p, &token);
 
   if (token.kind == TOKEN_COLON) {
     parser_advance(p);
     parser_current(p, &token);
-
-    while (token.kind != TOKEN_LBRACE && token.kind != TOKEN_END) {
-      type ret_type = type_from_specifier_token(token.kind);
-      if (ret_type == TYPE_INVALID)
-        ret_type = TYPE_VOID;
-
-      dynamic_array_push(&instr->fn_declare_node.returntypes, &ret_type);
-
-      parser_advance(p);
-      parser_current(p, &token);
-
-      if (token.kind == TOKEN_COMMA) {
-        parser_advance(p);
-      } else {
-        break;
-      }
-    }
+    instr->fn_declare_node.returntype = type_from_specifier_token(token.kind);
+    parser_advance(p);
+  } else {
+    instr->fn_declare_node.returntype = TYPE_VOID;
   }
 
   parser_current(p, &token);
@@ -1432,10 +1418,16 @@ static scu_result parse_instr(parser *p, instr_node *instr) {
     break;
 
   default:
-    char *tok_val = token_get_value(token);
-    scu_perror("Unexpected token while parsing: %s - '%s' [line %d]\n",
-               token_kind_to_str(token.kind), tok_val, token.line);
-    free(tok_val);
+    scu_perror("Unexpected token while parsing: %s",
+               token_kind_to_str(token.kind));
+
+    if (token.value.kind == TLV_STR) {
+      char *tok_val = token_get_value(token);
+      fprintf(stderr, " - '%s'", tok_val);
+      free(tok_val);
+    }
+
+    fprintf(stderr, " [line %" PRIu64 "]\n", token.line);
     return SCU_ERR_PARSE;
   }
 

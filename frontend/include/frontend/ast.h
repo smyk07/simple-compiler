@@ -374,7 +374,7 @@ typedef enum fn_kind {
 typedef struct fn_node {
   char *name;
   fn_kind kind;
-  dynamic_array returntypes;
+  type returntype;
 
   bool is_variadic;
   dynamic_array parameters;

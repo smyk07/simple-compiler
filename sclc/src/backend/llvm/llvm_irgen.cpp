@@ -6,6 +6,7 @@
  */
 
 #include "sclc/backend/llvm/llvm_irgen.hpp"
+#include "frontend/types.h"
 
 extern "C" {
 #include "frontend/ast.h"
@@ -1097,13 +1098,7 @@ static scu_result llvm_irgen_instr_fn_define(llvm_backend_ctx &ctx,
     param_types.push_back(scl_type_to_llvm(ctx, param.type));
   }
 
-  llvm::Type *return_type = llvm::Type::getVoidTy(*ctx.context);
-  if (fn->returntypes.count > 0) {
-    type ret_type;
-    dynamic_array_get(&fn->returntypes, 0, &ret_type);
-
-    return_type = scl_type_to_llvm(ctx, ret_type);
-  }
+  llvm::Type *return_type = scl_type_to_llvm(ctx, fn->returntype);
 
   llvm::FunctionType *fn_type =
       llvm::FunctionType::get(return_type, param_types, fn->is_variadic);
@@ -1145,7 +1140,7 @@ static scu_result llvm_irgen_instr_fn_define(llvm_backend_ctx &ctx,
   }
 
   if (!ctx.builder->GetInsertBlock()->getTerminator()) {
-    if (fn->returntypes.count == 0) {
+    if (fn->returntype == TYPE_VOID) {
       ctx.builder->CreateRetVoid();
     } else {
       llvm::Value *zero = llvm::Constant::getNullValue(return_type);
@@ -1166,13 +1161,7 @@ static scu_result llvm_irgen_instr_fn_declare(llvm_backend_ctx &ctx,
     param_types.push_back(scl_type_to_llvm(ctx, param.type));
   }
 
-  llvm::Type *return_type = llvm::Type::getVoidTy(*ctx.context);
-  if (fn->returntypes.count > 0) {
-    type ret_type;
-    dynamic_array_get(&fn->returntypes, 0, &ret_type);
-
-    return_type = scl_type_to_llvm(ctx, ret_type);
-  }
+  llvm::Type *return_type = scl_type_to_llvm(ctx, fn->returntype);
 
   llvm::FunctionType *fn_type =
       llvm::FunctionType::get(return_type, param_types, fn->is_variadic);

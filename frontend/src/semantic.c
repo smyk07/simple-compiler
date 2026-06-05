@@ -772,16 +772,14 @@ static type term_type(term_node *term, type expected, ht *variables,
       }
     }
 
-    if (fn->returntypes.count == 0) {
+    if (fn->returntype == TYPE_VOID) {
       scu_perror("Function '%s' has no return value but is used in expression "
                  "[line %" PRIu64 "]\n",
                  term->fn_call.name, term->line);
       return TYPE_VOID;
     }
 
-    type return_type;
-    dynamic_array_get(&fn->returntypes, 0, &return_type);
-    return return_type;
+    return fn->returntype;
   }
   }
 }
@@ -1155,8 +1153,8 @@ static scu_result register_function(fn_node *fn, ht *functions) {
       return SCU_ERR_SEMA;
     }
 
-    if (existing->returntypes.count != fn->returntypes.count) {
-      scu_perror("Function '%s' return type count mismatch\n", fn->name);
+    if (existing->returntype != fn->returntype) {
+      scu_perror("Function '%s' return type mismatch\n", fn->name);
       return SCU_ERR_SEMA;
     }
 
@@ -1257,27 +1255,17 @@ static scu_result check_return_statement(return_node *ret, fn_node *fn,
   if (!fn)
     scu_punreachable("null function node");
 
-  if (ret->returnvals.count != fn->returntypes.count) {
-    scu_perror("Function '%s' expects %" PRIu64 " return values, but %" PRIu64
-               " were provided [line %" PRIu64 "]\n",
-               fn->name, fn->returntypes.count, ret->returnvals.count, line);
-    return SCU_ERR_SEMA;
-  }
-
   for (u64 i = 0; i < ret->returnvals.count; i++) {
     arithmetic_expr_node ret_expr;
     dynamic_array_get(&ret->returnvals, i, &ret_expr);
 
-    type expected_type;
-    dynamic_array_get(&fn->returntypes, i, &expected_type);
-
     type actual_type =
-        arithmetic_expr_type(&ret_expr, expected_type, variables, functions);
-    if (actual_type != expected_type && expected_type != TYPE_POINTER) {
+        arithmetic_expr_type(&ret_expr, fn->returntype, variables, functions);
+    if (actual_type != fn->returntype && fn->returntype != TYPE_POINTER) {
       scu_perror("Return type mismatch in function '%s': expected %s, got %s "
                  "[line %" PRIu64 "]\n",
-                 fn->name, type_to_str(expected_type), type_to_str(actual_type),
-                 line);
+                 fn->name, type_to_str(fn->returntype),
+                 type_to_str(actual_type), line);
       return SCU_ERR_SEMA;
     }
   }
